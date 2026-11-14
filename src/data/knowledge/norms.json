@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "note": "Only figures that are documented in the cited sources and that we are confident are accurate. Where a number could not be verified it is deliberately left out. Comparisons are for context, not diagnosis.",
+  "norms": [
+    {
+      "id": "swls-bands",
+      "kind": "interpretive-bands",
+      "instrument": "Satisfaction With Life Scale (SWLS)",
+      "label": "SWLS score interpretation",
+      "source": "Pavot & Diener (2008)",
+      "citation": "Pavot, W., & Diener, E. (2008). The Satisfaction With Life Scale and the emerging construct of life satisfaction. The Journal of Positive Psychology, 3(2), 137-152.",
+      "year": 2008,
+      "sampleSize": null,
+      "population": "Interpretive guidance synthesised from many samples, not a single sample",
+      "country": "Multiple",
+      "scoring": "Sum of 5 items rated 1 to 7. Possible range 5 to 35.",
+      "bands": [
+        { "min": 31, "max": 35, "label": "Extremely satisfied" },
+        { "min": 26, "max": 30, "label": "Satisfied" },
+        { "min": 21, "max": 25, "label": "Slightly satisfied" },
+        { "min": 20, "max": 20, "label": "Neutral" },
+        { "min": 15, "max": 19, "label": "Slightly dissatisfied" },
+        { "min": 10, "max": 14, "label": "Dissatisfied" },
+        { "min": 5, "max": 9, "label": "Extremely dissatisfied" }
+      ],
+      "limitations": "Bands are descriptive labels for score ranges, not clinical cut-offs. Scores reflect how a person judges their life at the time of answering and are influenced by culture, current mood and response style. If this app shows fewer than five SWLS answers the band is not shown."
+    },
+    {
+      "id": "swls-original-sample",
+      "kind": "sample-statistic",
+      "instrument": "Satisfaction With Life Scale (SWLS)",
+      "label": "Original SWLS validation sample",
+      "source": "Diener, Emmons, Larsen & Griffin (1985)",
+      "citation": "Diener, E., Emmons, R. A., Larsen, R. J., & Griffin, S. (1985). The Satisfaction With Life Scale. Journal of Personality Assessment, 49(1), 71-75.",
+      "year": 1985,
+      "sampleSize": 176,
+      "population": "Undergraduate students at a US university (University of Illinois)",
+      "country": "United States",
+      "statistics": { "mean": 23.5, "sd": 6.43, "range": [5, 35] },
+      "limitations": "One student sample from the mid-1980s. It is not representative of the general population, of other age groups or of other countries. Use it as a rough reference point only, never as a norm for the person taking this questionnaire."
+    }
+  ],
+  "omitted": [
+    {
+      "instrument": "Mini-IPIP",
+      "source": "Donnellan, Oswald, Baird & Lucas (2006)",
+      "reason": "Means and standard deviations for the US college samples are not included because we could not confirm the exact published values. No Mini-IPIP population comparison is shown. Big Five scores in this app are therefore presented as position on a 0 to 100 scale for the person, not as percentiles of a population."
+    },
+    {
+      "instrument": "PERMA, self-efficacy, values, RIASEC, motives",
+      "reason": "These are scored with custom or adapted items, so published population norms do not apply and none are shown."
+    }
+  ]
+}
