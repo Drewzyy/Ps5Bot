@@ -777,3 +777,329 @@ const HIDDEN: Rule[] = [
   R([['contribution', H], ['enterprising', H]], 'Mission-led building', 'A drive to contribute with an enterprising streak suggests social enterprise or community-building roles.'),
   R([['adaptability', H], ['curiosity', H]], 'A fast starter in new fields', 'Curiosity and adaptability often make people productive quickly in unfamiliar environments, which is valuable in changing industries.'),
 ]
+
+// ---------------------------------------------------------------- narrative sections
+
+const DRIVER_WHY: Partial<Record<DimId, string>> = {
+  achievement: 'Wanting to reach hard goals and see measurable results. It often needs a clear target to stay healthy.',
+  financialDrive: 'Valuing financial strength, as security, freedom or status. Worth separating which of these you are really after.',
+  recognitionNeed: 'Wanting others to see and value your work. It tends to motivate effort and can make you sensitive to feedback.',
+  influence: 'Wanting to shape decisions and direction. It may point to roles with scope to steer.',
+  contribution: 'Wanting your work to benefit others. It often supports persistence when things are hard.',
+  adventure: 'Craving novelty, challenge and new places. A routine without any of this may feel flat.',
+  stabilityNeed: 'Valuing predictability and a secure base. It frees energy for other things when it is met.',
+  freedomNeed: 'Valuing control over time, place and choices. It tends to rise when you feel constrained.',
+  familyOrientation: 'Putting family and close ties at the centre of life plans.',
+  growthDrive: 'Wanting to keep developing as a person. It tends to favour environments that stretch you.',
+  intellectualDrive: 'Wanting to understand things deeply and use your mind fully.',
+}
+
+function behavioral(x: Ctx): string {
+  const bits: string[] = []
+  if (x.ok('consistency', 'followThrough')) {
+    const a = (x.sc('consistency') + x.sc('followThrough')) / 2
+    bits.push(a >= 62 ? 'Your habit answers suggest you tend to keep going once you start, and finish most of what you commit to.' : a <= 38 ? 'Your habit answers suggest routines and finishing are a struggle, and this may come from conditions more than character.' : 'Your habit answers suggest a mixed picture: steady in some areas, patchy in others.')
+  }
+  if (x.ok('procrastination')) {
+    if (x.sc('procrastination') >= 62) bits.push('You report delaying tasks fairly often, which can be about fear, unclear next steps or low energy rather than laziness.')
+    else if (x.sc('procrastination') <= 38) bits.push('You rarely put things off, and early action tends to reduce stress.')
+  }
+  if (x.ok('planning', 'timeManagement')) {
+    const a = (x.sc('planning') + x.sc('timeManagement')) / 2
+    if (a >= 62) bits.push('Planning and time management seem like real strengths.')
+    else if (a <= 38) bits.push('Planning and time management are not your natural mode, so external structure such as calendars, deadlines and accountability partners may help more than willpower.')
+  }
+  if (x.ok('impulseControl') && x.sc('impulseControl') <= 38) bits.push('Impulse control may be a pressure point, particularly when tired or stressed.')
+  return bits.length ? bits.join(' ') : 'There were not enough habit answers to describe your day-to-day behaviour with confidence.'
+}
+
+function social(x: Ctx): string {
+  const bits: string[] = []
+  if (x.ok('extraversion')) bits.push(x.sc('extraversion') >= 62 ? 'You tend to gain energy from other people and activity.' : x.sc('extraversion') <= 38 ? 'You tend to prefer smaller groups and need time alone to recover.' : 'You sit in the middle on social energy, and context probably matters more than a fixed preference.')
+  if (x.ok('socialConfidence')) {
+    if (x.sc('socialConfidence') <= 38) bits.push('Social situations may take more effort than they appear from outside.')
+    else if (x.sc('socialConfidence') >= 62) bits.push('You feel reasonably at ease starting and joining conversations.')
+  }
+  if (x.ok('empathy', 'agreeableness') && (x.sc('empathy') + x.sc('agreeableness')) / 2 >= 62) bits.push('People are likely to experience you as warm and considerate.')
+  if (x.ok('assertiveness') && x.sc('assertiveness') <= 38) bits.push('You may hold back your view in groups, so others may not know what you want.')
+  if (x.ok('assertiveness') && x.sc('assertiveness') >= 62) bits.push('You usually say what you think and push for what you want.')
+  return bits.length ? bits.join(' ') : 'There were not enough social answers to describe your social style with confidence.'
+}
+
+function decisionStyle(x: Ctx): string {
+  const bits: string[] = []
+  if (x.ok('riskTolerance')) bits.push(x.sc('riskTolerance') >= 62 ? 'You are comfortable deciding with incomplete information and accepting some risk.' : x.sc('riskTolerance') <= 38 ? 'You tend to weigh downsides heavily and prefer to protect what you have.' : 'Your risk appetite is moderate, so the stakes and the details probably decide.')
+  if (x.ok('impulsivity')) bits.push(x.sc('impulsivity') >= 62 ? 'Decisions can come quickly and by feel.' : x.sc('impulsivity') <= 38 ? 'You tend to take time before deciding.' : '')
+  if (x.ok('planning') && x.sc('planning') >= 62) bits.push('You like to plan several steps ahead.')
+  if (x.ok('perfectionism', 'fearOfFailure') && (x.sc('perfectionism') + x.sc('fearOfFailure')) / 2 >= 62) bits.push('High standards and fear of failure may slow decisions, since every option feels as if it must be right.')
+  if (x.ok('curiosity', 'openness') && (x.sc('curiosity') + x.sc('openness')) / 2 >= 62) bits.push('You are open to unusual options and may be drawn to the less obvious one.')
+  if (x.ok('structurePreference') && x.sc('structurePreference') >= 62) bits.push('Clear criteria and a framework help you decide.')
+  return bits.filter(Boolean).join(' ') || 'There were not enough answers to describe your decision style with confidence.'
+}
+
+function identityOverview(x: Ctx, quality: Report['quality'], ts: Report['typeSketch']): string[] {
+  const out: string[] = []
+  const lines = (...ds: DimId[]) => top(x, ds, 2).map((d) => `${lc(dimLabel(d))} (${round(x.sc(d))})`)
+  const p1 = lines('extraversion', 'agreeableness', 'conscientiousness', 'emotionalStability', 'openness')
+  out.push(
+    para(
+      p1.length ? `Your clearest personality signals are ${p1.join(' and ')}.` : 'Your personality scores sit near the middle on most traits.',
+      ts.axes.every((a) => a.strength === 0) ? '' : `A loose type sketch gives ${ts.code}, which is only a starting point.`,
+      'The sections below try to explain how these combine instead of listing them one at a time. Treat each as a hypothesis, not a verdict.',
+    ),
+  )
+  const drv = top(x, ['achievement', 'financialDrive', 'recognitionNeed', 'influence', 'contribution', 'adventure', 'stabilityNeed', 'freedomNeed', 'familyOrientation', 'growthDrive', 'intellectualDrive'], 3)
+  if (drv.length) out.push(`What seems to move you most is ${drv.map((d) => lc(dimLabel(d))).join(', ')}. ${x.ok('intrinsicMotivation', 'extrinsicMotivation') ? (x.sc('intrinsicMotivation') >= x.sc('extrinsicMotivation') ? 'Your motivation leans more toward interest and meaning than rewards.' : 'Your motivation leans more toward outcomes, rewards and recognition than interest for its own sake.') : ''}`.trim())
+  const swb = x.avg(['lifeSatisfaction', 'meaning', 'engagement', 'positiveEmotion'])
+  if (swb !== null && x.ok('lifeSatisfaction')) out.push(swb >= 62 ? 'Overall you describe life in fairly good terms, so the aim may be refinement more than repair.' : swb <= 40 ? 'You describe life as less satisfying than you would like. This could be a temporary phase, and it is worth treating as information, not a flaw.' : 'You describe life as mixed: some things work well, others less so.')
+  if (quality.overallConfidence < 0.5 || quality.answered < 40) out.push('Many of these readings rest on a limited number of answers. Answering more questions, or retaking later, will make them more reliable.')
+  for (const f of quality.flags) {
+    if (f.id === 'straightlining') out.push('Some answers followed a very regular pattern, which can mean the questions blurred together. Confidence is lowered accordingly.')
+    if (f.id === 'speeding') out.push('Answers were given very quickly, which can reduce how much they reflect considered views.')
+    if (f.id === 'inconsistent-pairs') out.push('Some paired questions were answered in conflicting ways. That can reflect real ambivalence or a mixed mood, so some readings are held loosely.')
+  }
+  return out
+}
+
+function ambitions(x: Ctx, cons: Contradiction[]): Report['ambitions'] {
+  const ids = (Object.keys(DRIVER_WHY) as DimId[])
+  const drivers = top(x, ids, 5).map((d) => ({ dim: d, label: dimLabel(d), score: round(x.sc(d)), why: DRIVER_WHY[d]! }))
+  const intr = x.avg(['intrinsicMotivation', 'masteryOrientation'])
+  const extr = x.avg(['extrinsicMotivation', 'societalExpectation', 'performanceOrientation'])
+  let reading = 'There were not enough answers to compare intrinsic and extrinsic motivation.'
+  if (intr !== null && extr !== null) {
+    const diff = intr - extr
+    reading = diff >= 12
+      ? 'You lean toward doing things for their own sake. Goals that feel meaningful probably keep you going better than rewards do.'
+      : diff <= -12
+        ? 'You lean toward outcomes, status and others\' expectations as fuel. That can be effective, and it may be worth checking that the goals are also yours.'
+        : 'Interest and outcomes both matter to you. The balance may shift with the project, so ask of each goal which one is driving it.'
+  }
+  const ovr: string[] = []
+  if (drivers.length) {
+    ovr.push(`Your strongest drivers are ${drivers.slice(0, 3).map((d) => `${lc(d.label)} (${d.score})`).join(', ')}. ${DRIVER_WHY[drivers[0].dim]}`)
+    const weak = top(x, ids, 11).slice(-1)[0]
+    if (weak && weak !== drivers[0].dim && x.sc(weak) <= 40) ovr.push(`At the other end, ${lc(dimLabel(weak))} ranks low (${round(x.sc(weak))}). That is not a gap, only a place you may be less motivated, which is worth remembering when comparing yourself to people for whom it is central.`)
+  } else ovr.push('There were not enough answers on ambition to say what drives you.')
+  if (cons[0]) ovr.push(`One tension worth noticing: ${lc(cons[0].title)}.`)
+  return {
+    drivers,
+    overview: ovr,
+    intrinsicVsExtrinsic: { intrinsic: round(intr ?? 50), extrinsic: round(extr ?? 50), reading },
+    statedVsRevealed: fire(x, STATED_VS_REVEALED, 4),
+    conflicts: fire(x, DRIVE_CONFLICTS, 4),
+    overlooked: fire(x, OVERLOOKED, 4),
+  }
+}
+
+function happiness(x: Ctx): Report['happiness'] {
+  const parts: [DimId, number, boolean][] = [
+    ['lifeSatisfaction', 0.3, false],
+    ['positiveEmotion', 0.1, false],
+    ['engagement', 0.1, false],
+    ['relationshipQuality', 0.1, false],
+    ['meaning', 0.1, false],
+    ['accomplishment', 0.1, false],
+    ['stress', 0.1, true],
+    ['loneliness', 0.1, true],
+  ]
+  let num = 0
+  let den = 0
+  for (const [d, w, inv] of parts) {
+    if (x.s[d].n === 0) continue
+    num += w * (inv ? 100 - x.sc(d) : x.sc(d))
+    den += w
+  }
+  const overall = den ? round(num / den) : 50
+  const perma = prof(x, ['positiveEmotion', 'engagement', 'relationshipQuality', 'meaning', 'accomplishment'])
+  let stateVsTrait = 'There were not enough answers on recent mood and overall life satisfaction to compare them.'
+  if (x.s.recentMood.n > 0 && x.s.lifeSatisfaction.n > 0) {
+    const diff = x.sc('recentMood') - x.sc('lifeSatisfaction')
+    stateVsTrait = diff >= 15
+      ? `Your recent mood (${round(x.sc('recentMood'))}) is running higher than your longer-run satisfaction (${round(x.sc('lifeSatisfaction'))}). That could mean a good patch now, or that your overall appraisal is more critical than your day-to-day feelings.`
+      : diff <= -15
+        ? `Your recent mood (${round(x.sc('recentMood'))}) is lower than your overall life satisfaction (${round(x.sc('lifeSatisfaction'))}). That pattern often reflects a rough patch rather than a lasting state, though if it persists, speaking to someone is reasonable.`
+        : `Your recent mood (${round(x.sc('recentMood'))}) and life satisfaction (${round(x.sc('lifeSatisfaction'))}) are close, so how you feel lately looks like a fair guide to how you feel overall.`
+  }
+  const overview: string[] = []
+  const tone = overall >= 65 ? 'fairly high' : overall <= 40 ? 'on the lower side' : 'in the middle'
+  overview.push(`Your well-being composite is ${overall} out of 100, which is ${tone}. It combines life satisfaction, the five PERMA elements and subtracts stress and loneliness. It is a reflection of how you described recent life, not a diagnosis.`)
+  const pk = [...perma].sort((a, b) => b.score - a.score)
+  if (pk.length >= 2) overview.push(`Of the PERMA elements, ${lc(pk[0].label)} is your strongest (${pk[0].score}) and ${lc(pk[pk.length - 1].label)} the lowest (${pk[pk.length - 1].score}). Raising the lowest one a little tends to give more than polishing the highest.`)
+  if (overall <= 40 || (x.ok('stress') && x.sc('stress') >= 75) || (x.ok('loneliness') && x.sc('loneliness') >= 75)) overview.push('If this reflects how things have felt for a while, talking with a doctor, counsellor or someone you trust is a reasonable next step. This tool cannot assess that.')
+  return { overall, perma, lifts: fire(x, LIFTS, 4), drags: fire(x, DRAGS, 4), stateVsTrait, overview }
+}
+
+function confidence(x: Ctx): Report['confidence'] {
+  const group = ['selfEsteem', 'selfEfficacy', 'socialConfidence', 'professionalConfidence', 'bodyImage', 'selfAdvocacy', 'fearOfFailure', 'fearOfJudgment', 'fearOfRejection', 'perfectionism', 'validationNeed'] as DimId[]
+  const positive = x.avg(['selfEsteem', 'selfEfficacy', 'socialConfidence', 'professionalConfidence', 'selfAdvocacy'])
+  const fears = x.avg(['fearOfFailure', 'fearOfJudgment', 'fearOfRejection'])
+  const overview: string[] = []
+  if (positive !== null) overview.push(positive >= 62 ? 'Your self-confidence answers are mostly solid. Look at which areas fall below that level, since they are probably where it matters.' : positive <= 40 ? 'Your confidence answers lean low. Confidence is often domain-specific and changeable, and small, well-chosen wins tend to move it more than reassurance.' : 'Your confidence is mixed, strong in some areas and lower in others.')
+  else overview.push('There were not enough answers to describe your confidence.')
+  if (fears !== null) overview.push(fears >= 62 ? 'Fears of failing, being judged or rejected are fairly prominent. These can sit beside real competence and are often about stakes, not ability.' : fears <= 38 ? 'Fears of failure, judgement and rejection seem to have little hold on you, which makes risk-taking easier.' : 'Fears of failure, judgement and rejection are present but not dominant.')
+  const social = x.ok('socialConfidence'), work = x.ok('professionalConfidence')
+  if (social && work && Math.abs(x.sc('socialConfidence') - x.sc('professionalConfidence')) >= 20) overview.push(`Confidence differs by setting: social ${round(x.sc('socialConfidence'))} versus professional ${round(x.sc('professionalConfidence'))}. That suggests confidence is a skill of context rather than a fixed trait.`)
+  return { overview, profile: prof(x, group), hypotheses: fire(x, CONF_HYP, 5) }
+}
+
+function relationships(x: Ctx): Report['relationships'] {
+  const group = dimsInGroup('relationships')
+  const overview: string[] = []
+  if (x.ok('companionshipNeed', 'relationalIndependence')) overview.push(x.sc('companionshipNeed') > x.sc('relationalIndependence') + 12 ? 'You lean toward togetherness more than independence in close relationships. Time with people probably feeds you.' : x.sc('relationalIndependence') > x.sc('companionshipNeed') + 12 ? 'You lean toward independence more than constant togetherness. Space is probably part of how you stay close.' : 'You balance togetherness and independence fairly evenly.')
+  if (x.ok('empathy', 'communication')) overview.push(`Your empathy (${round(x.sc('empathy'))}) and open communication (${round(x.sc('communication'))}) set the tone for how people experience you in relationships.`)
+  if (x.ok('attachmentAnxiety') || x.ok('attachmentAvoidance')) {
+    const bits: string[] = []
+    if (x.ok('attachmentAnxiety') && x.sc('attachmentAnxiety') >= 62) bits.push('worrying about closeness and reassurance')
+    if (x.ok('attachmentAvoidance') && x.sc('attachmentAvoidance') >= 62) bits.push('keeping some distance when things get close')
+    if (bits.length) overview.push(`Some answers point toward ${bits.join(' and ')}. These are common styles, shaped by experience, and they can shift with supportive relationships. They are not labels or diagnoses.`)
+  }
+  if (!overview.length) overview.push('There were not enough answers on relationships to describe them.')
+  let currentVsIdeal = 'Not enough answers to compare how relationships are now with how much they matter.'
+  if (x.s.curRelationships.n > 0 && x.s.idealRelationships.n > 0) {
+    const g = x.sc('idealRelationships') - x.sc('curRelationships')
+    currentVsIdeal = g >= 15 ? `Relationships matter to you (${round(x.sc('idealRelationships'))}) more than they currently feel satisfying (${round(x.sc('curRelationships'))}). This gap is a good place to put effort.` : g <= -15 ? `Your relationships (${round(x.sc('curRelationships'))}) are doing better than you rate their importance (${round(x.sc('idealRelationships'))}). You might have room to invest elsewhere without losing much here.` : 'Your relationships and how much they matter to you are well matched right now.'
+  }
+  return { overview, profile: prof(x, group), strengths: fire(x, REL_STRENGTHS, 4), needs: fire(x, REL_NEEDS, 4), growth: fire(x, REL_GROWTH, 4), currentVsIdeal }
+}
+
+function environmentText(x: Ctx): string {
+  const bits: string[] = []
+  if (x.ok('workAutonomyNeed')) bits.push(x.sc('workAutonomyNeed') >= 62 ? 'a role with real say in how and when you work' : x.sc('workAutonomyNeed') <= 38 ? 'clear direction and well-defined expectations' : '')
+  if (x.ok('structurePreference')) bits.push(x.sc('structurePreference') >= 62 ? 'predictable routines and defined processes' : x.sc('structurePreference') <= 38 ? 'room to improvise and change plans' : '')
+  if (x.ok('riskTolerance') && x.sc('riskTolerance') >= 62) bits.push('tolerance for uncertainty, such as small, fast-moving teams')
+  if (x.ok('securityNeed') && x.sc('securityNeed') >= 62) bits.push('stable employment and clear progression')
+  if (x.ok('leadershipDrive') && x.sc('leadershipDrive') >= 62) bits.push('scope to lead people or projects')
+  if (x.ok('helpingDrive') && x.sc('helpingDrive') >= 62) bits.push('visible benefit to the people you serve')
+  if (x.ok('extraversion')) bits.push(x.sc('extraversion') >= 62 ? 'regular contact with colleagues' : x.sc('extraversion') <= 38 ? 'protected focus time and quieter spaces' : '')
+  if (x.ok('balancePriority') && x.sc('balancePriority') >= 62) bits.push('reasonable hours and limits on after-hours demands')
+  if (x.ok('creativity') && x.sc('creativity') >= 62) bits.push('space for original ideas')
+  const b = bits.filter(Boolean)
+  if (!b.length) return 'There were not enough work-preference answers to describe a best-fit environment. Add more answers to sharpen it.'
+  const list = b.length > 1 ? `${b.slice(0, -1).join(', ')} and ${b[b.length - 1]}` : b[0]
+  return `Your answers suggest you may do best in settings offering ${list}. This is a hypothesis about conditions, not about specific jobs, so test it against real roles.`
+}
+
+function career(x: Ctx, alts: CareerMatch[]): Report['career'] {
+  const m = (ds: DimId[], inv: DimId[] = []) => x.avg(ds, inv)
+  const comps: { label: string; w: number; v: number | null; ex: (v: number) => string }[] = [
+    {
+      label: 'Motivational fit',
+      w: 0.3,
+      v: m(['careerSatisfaction', 'engagement', 'accomplishment', 'autonomy', 'competence']),
+      ex: (v) => (v >= 62 ? 'Your answers suggest your current direction feeds your motivation: you feel engaged, capable and able to choose.' : v <= 40 ? 'Your answers suggest work is not feeding your motivation well. Engagement, sense of progress or choice may be low.' : 'Your motivation at work is mixed. Some needs for engagement, progress and choice are met, others less.'),
+    },
+    {
+      label: 'Values fit',
+      w: 0.25,
+      v: m(['careerFit', 'meaning', 'trajectoryFit']),
+      ex: (v) => (v >= 62 ? 'Your work seems to connect with what you find meaningful and where you want to go.' : v <= 40 ? 'Your work may be out of step with your sense of meaning or direction. Worth identifying which values go unserved.' : 'Your work partly reflects your values and partly does not.'),
+    },
+    {
+      label: 'Personality and interests fit',
+      w: 0.25,
+      v: m(['careerFit', 'competence', 'professionalConfidence', 'curCareer']),
+      ex: (v) => (v >= 62 ? 'You feel competent and well suited to your current path, which is a good sign for fit with your personality and interests.' : v <= 40 ? 'You report low fit and low confidence in your current path. It may be about the particular role rather than your ability.' : 'The fit between your personality, interests and current path seems partial.'),
+    },
+    {
+      label: 'Lifestyle fit',
+      w: 0.2,
+      v: m(['workLifeBalance', 'curFinances'], ['stress']),
+      ex: (v) => (v >= 62 ? 'Work seems to fit your wider life: workable balance, manageable stress and reasonable finances.' : v <= 40 ? 'Work may be costing you in time, stress or money. That cost can be as important as interest in the work itself.' : 'Work fits your life only partly, with some balance or stress issues.'),
+    },
+  ]
+  const components: AlignmentComponent[] = comps.map((c) => ({
+    label: c.label,
+    score: round(c.v ?? 50),
+    explanation: c.v === null ? 'Not enough answers to score this component, so it is left at the midpoint.' : c.ex(c.v),
+  }))
+  const known = comps.filter((c) => c.v !== null)
+  const align = known.length ? round(known.reduce((s, c) => s + c.w * c.v!, 0) / known.reduce((s, c) => s + c.w, 0)) : 50
+  const rc = riasecCode(x)
+  const rs = RIASEC.filter((r) => x.s[r.dim].n > 0)
+  const sorted = [...rs].sort((a, b) => x.sc(b.dim) - x.sc(a.dim))
+  const overview: string[] = []
+  overview.push(`Your career alignment score is ${align}. This is about how well your current direction seems to fit you, as you perceive it. It says nothing about what you ought to do, and it is built from motivation, values, personality and lifestyle.`)
+  if (sorted.length >= 3) {
+    const spread = x.sc(sorted[0].dim) - x.sc(sorted[5 > sorted.length - 1 ? sorted.length - 1 : 5].dim)
+    overview.push(`Your top interest themes are ${sorted.slice(0, 3).map((r) => `${lc(dimLabel(r.dim))} (${round(x.sc(r.dim))})`).join(', ')}, giving the Holland-style code ${rc}. ${spread < 20 ? 'Your interests are fairly even across themes, so many kinds of work might hold your interest and fit will depend more on conditions.' : 'Your interests are clearly differentiated, which tends to make narrowing options easier.'}`)
+  }
+  if (alts.length) overview.push(`The paths below are ideas to explore, not recommendations. The best match here is ${alts[0].title} (${alts[0].matchScore}), and real roles vary widely within any title.`)
+  return {
+    alignmentScore: align,
+    components,
+    riasecCode: rc,
+    riasec: RIASEC.filter((r) => x.s[r.dim].n > 0).map((r) => ({ dim: r.dim, label: dimLabel(r.dim), score: round(x.sc(r.dim)) })),
+    environment: environmentText(x),
+    conflicts: fire(x, CAREER_CONFLICTS, 4),
+    alternatives: alts,
+    overview,
+  }
+}
+
+function values(x: Ctx): Report['values'] {
+  const ids = dimsInGroup('values')
+  const ranked = ids.filter((d) => x.s[d].n > 0).sort((a, b) => x.sc(b) - x.sc(a)).map((d) => ({ dim: d, label: dimLabel(d), score: round(x.sc(d)) }))
+  let overview = 'There were not enough answers about values to rank them.'
+  if (ranked.length >= 3) {
+    const t = ranked.slice(0, 3).map((r) => lc(r.label))
+    overview = `Your three most important values appear to be ${t[0]}, ${t[1]} and ${t[2]}. Values show up most clearly in what you protect when time or money is short, so it is worth asking whether your calendar and spending reflect them.`
+  }
+  return { ranked, conflicts: fire(x, VALUE_CONFLICTS, 4), overview }
+}
+
+function habits(x: Ctx): Report['habits'] {
+  const ids: DimId[] = ['procrastination', 'consistency', 'followThrough', 'impulseControl', 'planning', 'goalClarity', 'timeManagement', 'avoidance', 'environmentObstacles', 'competingPriorities']
+  const sc: Record<'motivation' | 'clarity' | 'environment' | 'priorities', number | null> = {
+    motivation: x.avg(['procrastination', 'avoidance'], ['followThrough', 'consistency']),
+    clarity: x.avg([], ['goalClarity', 'planning']),
+    environment: x.avg(['environmentObstacles']),
+    priorities: x.avg(['competingPriorities']),
+  }
+  const entries = (Object.entries(sc) as [keyof typeof sc, number | null][]).filter((e): e is [keyof typeof sc, number] => e[1] !== null).sort((a, b) => b[1] - a[1])
+  const readings: Record<string, string> = {
+    motivation: 'Your answers fit a motivation or avoidance pattern best: delaying, dropping routines and trailing off. This often means tasks feel aversive or pointless, or there is a fear underneath. Making the first step very small and tying it to something you care about tends to help more than pressure.',
+    clarity: 'Your answers fit unclear goals best: goal clarity and planning are low, so effort may be scattered. Writing down what done looks like for one goal and a first step may help more than adding discipline.',
+    environment: 'Your answers fit an environment pattern best: obstacles around you, such as interruptions, access or other people, seem to be getting in the way. Changing the setting often beats trying harder.',
+    priorities: 'Your answers fit competing priorities best: too many demands are pulling at once, so something has to give. Choosing what to pause is likely to help more than better time management.',
+  }
+  let bottleneck: Report['habits']['bottleneck']
+  if (!entries.length) bottleneck = { kind: 'none', reading: 'There were not enough habit answers to say what gets in the way of follow-through.' }
+  else if (entries[0][1] < 52) bottleneck = { kind: 'none', reading: 'No single factor stands out as a bottleneck. Your habit answers suggest follow-through is not heavily blocked by motivation, unclear goals, environment or competing demands.' }
+  else {
+    const [k, v] = entries[0]
+    const next = entries[1] && entries[1][1] >= 55 ? ` A second factor, ${entries[1][0] === 'motivation' ? 'motivation' : entries[1][0] === 'clarity' ? 'goal clarity' : entries[1][0]}, also seems present, so it may be a combination.` : ''
+    bottleneck = { kind: k, reading: readings[k] + next + ` (Fit score ${round(v)}.)` }
+  }
+  const overview: string[] = [behavioral(x)]
+  if (x.ok('masteryOrientation', 'performanceOrientation')) overview.push(x.sc('masteryOrientation') >= x.sc('performanceOrientation') + 10 ? 'You are more oriented toward learning than proving yourself, which tends to support persistence after setbacks.' : x.sc('performanceOrientation') >= x.sc('masteryOrientation') + 10 ? 'You are more oriented toward proving yourself than learning, which can raise pressure and make mistakes feel costlier.' : 'You balance learning and proving yourself.')
+  return { overview, profile: prof(x, ids), bottleneck }
+}
+
+const DOMAINS: { name: string; cur: DimId; ideal: DimId }[] = [
+  { name: 'Career', cur: 'curCareer', ideal: 'idealCareer' },
+  { name: 'Relationships', cur: 'curRelationships', ideal: 'idealRelationships' },
+  { name: 'Health', cur: 'curHealth', ideal: 'idealHealth' },
+  { name: 'Finances', cur: 'curFinances', ideal: 'idealFinances' },
+  { name: 'Growth', cur: 'curGrowth', ideal: 'idealGrowth' },
+  { name: 'Leisure', cur: 'curLeisure', ideal: 'idealLeisure' },
+]
+
+function future(x: Ctx): { f: Report['future']; gaps: DomainGap[] } {
+  const gaps: DomainGap[] = DOMAINS.filter((d) => x.s[d.cur].n > 0 && x.s[d.ideal].n > 0).map((d) => ({ domain: d.name, current: round(x.sc(d.cur)), ideal: round(x.sc(d.ideal)) }))
+  const worst = [...gaps].sort((a, b) => b.ideal - b.current - (a.ideal - a.current))[0]
+  const overview: string[] = []
+  if (worst && worst.ideal - worst.current >= 15) {
+    overview.push(`The largest gap between how much something matters and how it is going is ${worst.domain.toLowerCase()} (importance ${worst.ideal}, now ${worst.current}). Gaps are most useful as a place to start, since small changes there tend to feel biggest.`)
+    const align = [...gaps].filter((g) => g.current >= g.ideal - 5 && g.ideal >= 60)
+    if (align.length) overview.push(`In contrast, ${align.map((g) => g.domain.toLowerCase()).join(' and ')} ${align.length > 1 ? 'are' : 'is'} going about as well as it matters to you.`)
+  } else if (gaps.length) overview.push('Most areas of life are going about as well as they matter to you, so the future question may be about what to add rather than what to fix.')
+  else overview.push('There were not enough answers on how areas of life are going compared with how much they matter.')
+  if (x.ok('futureClarity', 'futureOptimism')) overview.push(`You describe your future as ${x.band('futureClarity')} in clarity (${round(x.sc('futureClarity'))}) and ${x.band('futureOptimism')} in confidence (${round(x.sc('futureOptimism'))}).`)
+  const trajectory = fire(x, TRAJECTORY, 4)
+  if (worst && worst.ideal - worst.current >= 25) {
+    const dom = DOMAINS.find((d) => d.name === worst.domain)!
+    if (x.ok(dom.cur, dom.ideal)) trajectory.push({ title: `A large gap in ${worst.domain.toLowerCase()}`, body: `This area matters far more than it currently delivers. Without a change it may keep drawing down energy. Worth checking what the smallest real step would be.`, evidence: [dom.cur, dom.ideal] })
+  }
+  return { f: { overview, gaps, trajectory }, gaps }
+}
