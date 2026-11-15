@@ -22,17 +22,17 @@ export function Button({ variant = 'primary', size = 'md', className, ...p }: Bt
 }
 
 export function Card({ children, className, as: T = 'div' }: { children: ReactNode; className?: string; as?: 'div' | 'section' | 'article' }) {
-  return <T className={cx('rounded-card border border-line bg-surface shadow-card p-5 sm:p-7 print-avoid', className)}>{children}</T>
+  return <T className={cx('min-w-0 rounded-card border border-line bg-surface shadow-card p-5 sm:p-7 print-avoid', className)}>{children}</T>
 }
 
 export function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   const reduce = useReducedMotion()
   const printing = usePrinting()
-  if (reduce || printing) return <div className={className}>{children}</div>
+  if (reduce || printing) return <div className={cx('min-w-0', className)}>{children}</div>
   return (
     <motion.div
       data-reveal
-      className={className}
+      className={cx('min-w-0', className)}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -8% 0px' }}
@@ -129,9 +129,9 @@ export function Bar({ value, label, right, tone = 'accent', sub }: { value: numb
   const v = Math.max(0, Math.min(100, value))
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 text-[15px]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[15px]">
         <span className="font-medium">{label}</span>
-        <span className="text-muted tabular-nums flex items-center gap-2">{right}{Math.round(v)}</span>
+        <span className="text-muted tabular-nums flex flex-wrap items-center gap-2">{right}{Math.round(v)}</span>
       </div>
       <div className="mt-1.5 h-2 rounded-full bg-line/70 overflow-hidden" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v)}>
         {reduce ? (

@@ -7,7 +7,7 @@ export interface Pt {
   value: number
 }
 
-const trunc = (s: string, n = 22) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
+const trunc = (s: string, n = 28) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 function useTip() {
   const c = useColors()
@@ -38,7 +38,7 @@ export function RadarBlock({ data, height = 300, max = 100, name = 'Score' }: { 
   )
 }
 
-export function HBars({ data, height, max = 100, colorFn, name = 'Score', labelWidth = 118 }: { data: Pt[]; height?: number; max?: number; colorFn?: (p: Pt, i: number) => string; name?: string; labelWidth?: number }) {
+export function HBars({ data, height, max = 100, colorFn, name = 'Score', labelWidth = 136 }: { data: Pt[]; height?: number; max?: number; colorFn?: (p: Pt, i: number) => string; name?: string; labelWidth?: number }) {
   const c = useColors()
   const tip = useTip()
   const pr = usePrinting()
