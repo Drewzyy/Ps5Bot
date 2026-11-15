@@ -256,6 +256,7 @@ function matchHobbies(x: Ctx): HobbyMatch[] {
   for (const d of MOTIVE_DIMS) u[d] = x.s[d].n > 0 ? (x.sc(d) - mean) / 50 : 0
   const un = Math.sqrt(MOTIVE_DIMS.reduce((s, d) => s + u[d] ** 2, 0))
 
+  if (!known.length) return []
   const out = HOBBIES.map((hb) => {
     const w = MOTIVE_DIMS.map((d) => hb.motives[d as MotiveDim] ?? 0)
     const wm = w.reduce((a, b) => a + b, 0) / w.length
@@ -339,6 +340,7 @@ function riasecCode(x: Ctx): string {
 
 function matchCareers(x: Ctx): CareerMatch[] {
   const rs = RIASEC.filter((r) => x.s[r.dim].n > 0)
+  if (!rs.length && !PREF.some((p) => x.ok(p.dim))) return []
   const meanR = rs.length ? rs.reduce((s, r) => s + x.sc(r.dim), 0) / rs.length : 50
   const res = CAREERS.map((c) => {
     const wts = [3, 2, 1]
@@ -1102,4 +1104,301 @@ function future(x: Ctx): { f: Report['future']; gaps: DomainGap[] } {
     if (x.ok(dom.cur, dom.ideal)) trajectory.push({ title: `A large gap in ${worst.domain.toLowerCase()}`, body: `This area matters far more than it currently delivers. Without a change it may keep drawing down energy. Worth checking what the smallest real step would be.`, evidence: [dom.cur, dom.ideal] })
   }
   return { f: { overview, gaps, trajectory }, gaps }
+}
+
+// ---------------------------------------------------------------- roadmap
+
+interface Cand {
+  w: number
+  t: string
+  b: string
+  ev: DimId[]
+}
+function pickCands(x: Ctx, cands: Cand[], n: number): Insight[] {
+  return cands
+    .filter((c) => c.ev.length > 0 && x.ok(...c.ev))
+    .sort((a, b) => b.w - a.w)
+    .slice(0, n)
+    .map((c) => ({ title: c.t, body: c.b, evidence: c.ev }))
+}
+const pickText = (x: Ctx, cands: { w: number; t: string; ev: DimId[] }[], n: number): string[] =>
+  cands
+    .filter((c) => c.ev.length > 0 && x.ok(...c.ev))
+    .sort((a, b) => b.w - a.w)
+    .slice(0, n)
+    .map((c) => c.t)
+
+function roadmap(x: Ctx, hobbies: HobbyMatch[], alts: CareerMatch[], bn: Report['habits']['bottleneck'], gaps: DomainGap[], cons: Contradiction[], vals: Report['values']['ranked']): Report['roadmap'] {
+  const hob = hobbies[0]
+  const hob2 = hobbies[1]
+  const hobEv = (h?: HobbyMatch): DimId[] => (h && h.motives.length ? h.motives.slice(0, 2) : [])
+  const worst = [...gaps].sort((a, b) => b.ideal - b.current - (a.ideal - a.current))[0]
+  const worstDom = worst ? DOMAINS.find((d) => d.name === worst.domain)! : undefined
+  const bigGap = worst && worst.ideal - worst.current >= 15
+  const gapEv: DimId[] = worstDom ? [worstDom.cur, worstDom.ideal] : []
+  const valEv: DimId[] = vals.slice(0, 2).map((v) => v.dim)
+  const riasecEv = [...RIASEC].sort((a, b) => x.sc(b.dim) - x.sc(a.dim)).slice(0, 2).map((r) => r.dim)
+  const bnEv: Record<string, DimId[]> = {
+    motivation: ['procrastination', 'avoidance'],
+    clarity: ['goalClarity', 'planning'],
+    environment: ['environmentObstacles'],
+    priorities: ['competingPriorities'],
+    none: [],
+  }
+  const bnShort: Record<string, [string, string]> = {
+    motivation: ['Shrink one stalled task to ten minutes', 'Pick the task you have delayed longest and define a version you could do in ten minutes. Do only that today. Starting is usually the hard part.'],
+    clarity: ['Write one page on what you want', 'Describe in plain words what a good year would look like, and pick one measurable goal from it. Clarity usually comes from writing, not waiting.'],
+    environment: ['Remove one friction from your setting', 'Name the single biggest obstacle in your space or routine (a notification, a missing tool, a person) and change it this week.'],
+    priorities: ['Pick one thing to pause', 'List what is competing for your time and choose one commitment to pause or drop for a month. Relief is information about what to protect.'],
+  }
+  const stressHi = x.ok('stress') && x.sc('stress') >= 62
+  const lonely = x.ok('loneliness') && x.sc('loneliness') >= 62
+
+  const short: Cand[] = [
+    { w: 0.6, t: hob ? `Try ${lc(hob.name)} for two weeks` : '', b: hob ? `${hob.firstStep} This is a low-cost test of what your enjoyment answers suggest. Treat it as an experiment, and drop it freely if it does not fit.` : '', ev: hobEv(hob) },
+    ...(bn.kind !== 'none' ? [{ w: 0.9, t: bnShort[bn.kind][0], b: bnShort[bn.kind][1], ev: bnEv[bn.kind] }] : []),
+    { w: 0.75, t: worst ? `One small move in ${worst.domain.toLowerCase()}` : '', b: worst ? `${worst.domain} matters more than it is delivering right now. Choose one action that takes under an hour this month and book it in your calendar.` : '', ev: bigGap ? gapEv : [] },
+    { w: 0.8, t: 'Add one real recovery block', b: 'Your stress answers are high. Schedule one weekly block, such as a long walk or an unplugged evening, that is not negotiable. If stress stays high, speaking to a professional is reasonable.', ev: stressHi ? ['stress'] : [] },
+    { w: 0.78, t: 'Reach out to two people', b: 'Message two people you would like to see more of and propose a specific time. Small regular contact tends to help loneliness more than occasional big gestures.', ev: lonely ? ['loneliness'] : [] },
+    { w: 0.5, t: cons[0] ? 'Sit with one of your tensions' : '', b: cons[0] ? `Spend 20 minutes writing on this question: ${cons[0].question}` : '', ev: cons[0] ? [cons[0].a.dim, cons[0].b.dim] : [] },
+    { w: 0.3, t: 'Check your calendar against your top values', b: 'Write your top two values and compare them with how your last week was spent. The gap is where to adjust.', ev: valEv },
+  ]
+  const medium: Cand[] = [
+    { w: 0.6, t: hob2 ? `Run a 12-week project around ${lc(hob2.name)}` : '', b: hob2 ? 'Commit to a small, regular slot each week and track one measurable thing. Twelve weeks is long enough to tell whether it holds your interest.' : '', ev: hobEv(hob2) },
+    { w: 0.7, t: alts[0] ? 'Talk to people in adjacent paths' : '', b: alts[0] ? `Have three short conversations with people working as ${lc(alts[0].title)}${alts[1] ? ` or ${lc(alts[1].title)}` : ''}. Ask what a normal week is like and what they would tell their younger self. This tests the match against reality.` : '', ev: riasecEv },
+    { w: 0.7, t: 'Build a confidence ladder', b: 'List five situations that feel slightly scary and arrange them from easiest to hardest. Do one a week. Confidence usually follows evidence of coping, not preparation.', ev: x.ok('fearOfJudgment', 'fearOfFailure') && (x.sc('fearOfJudgment') + x.sc('fearOfFailure')) / 2 >= 60 ? ['fearOfJudgment', 'fearOfFailure'] : [] },
+    { w: 0.6, t: bn.kind !== 'none' ? 'Install a simple weekly review' : '', b: 'Spend 20 minutes each week listing what worked, what stalled and the one thing you will do next. It addresses the bottleneck in your habit answers over time.', ev: bn.kind !== 'none' ? bnEv[bn.kind] : [] },
+    { w: 0.55, t: worst ? `Redesign ${worst.domain.toLowerCase()}` : '', b: worst ? `Set a six-month target for ${worst.domain.toLowerCase()} that would close half the gap you reported, with a first milestone you can reach in a month.` : '', ev: bigGap ? gapEv : [] },
+    { w: 0.4, t: 'Retake this questionnaire', b: 'In three months, answer again and compare. Changes are more informative than any single reading.', ev: valEv },
+  ]
+  const long: Cand[] = [
+    { w: 0.7, t: 'Design toward your best-fit environment', b: environmentText(x), ev: x.ok('workAutonomyNeed') ? ['workAutonomyNeed'] : x.ok('structurePreference') ? ['structurePreference'] : [] },
+    { w: 0.65, t: alts[0] ? 'Run a low-cost trial before any big switch' : '', b: alts[0] ? `If ${lc(alts[0].title)} or a nearby path stays interesting, test it through a course, a side project or shadowing. This lowers the cost of being wrong.` : '', ev: riasecEv },
+    { w: 0.6, t: 'Build a financial buffer', b: 'Your answers suggest security matters and risk is uncomfortable. A buffer of several months of expenses makes later experiments feel far safer.', ev: x.ok('securityNeed', 'riskTolerance') && x.sc('securityNeed') >= 55 && x.sc('riskTolerance') <= 45 ? ['securityNeed', 'riskTolerance'] : [] },
+    { w: 0.55, t: 'Invest steadily in relationships', b: 'Relationships rank high for you. Protect recurring time with the few people who matter most, since long-run well-being research points strongly here.', ev: x.ok('companionshipNeed', 'relationshipQuality') && x.sc('companionshipNeed') >= 60 ? ['companionshipNeed', 'relationshipQuality'] : [] },
+    { w: 0.5, t: 'Make a creative practice permanent', b: 'Your creative pull is strong. A fixed weekly practice, with a shareable result each season, tends to matter more than occasional bursts.', ev: x.ok('creativity') && x.sc('creativity') >= 62 ? ['creativity'] : [] },
+    { w: 0.4, t: 'Review your direction against your values yearly', b: 'Once a year, rank your values again and ask whether your path is moving toward or away from them.', ev: valEv },
+  ]
+
+  const exp: { w: number; t: string; ev: DimId[] }[] = [
+    { w: 0.6, t: hob ? `${cap(lc(hob.name))}: ${hob.firstStep}` : '', ev: hobEv(hob) },
+    { w: 0.5, t: alts[0] ? `Spend a day shadowing someone working as ${lc(alts[0].title)}.` : '', ev: riasecEv },
+    { w: 0.55, t: 'Take a short trip with one unplanned day.', ev: x.ok('adventure') && x.sc('adventure') >= 60 ? ['adventure'] : [] },
+    { w: 0.55, t: 'Volunteer once for something you care about, and notice how it feels afterwards.', ev: x.ok('contribution') && x.sc('contribution') >= 60 ? ['contribution'] : [] },
+    { w: 0.5, t: 'Attend one small interest-based meetup instead of a large event.', ev: x.ok('extraversion') && x.sc('extraversion') <= 42 ? ['extraversion'] : [] },
+    { w: 0.5, t: 'Host a small gathering around a shared activity.', ev: x.ok('motSocial') && x.sc('motSocial') >= 62 ? ['motSocial'] : [] },
+    { w: 0.5, t: 'Take a one-off workshop in a medium you have never tried.', ev: x.ok('creativity') && x.sc('creativity') >= 60 ? ['creativity'] : [] },
+    { w: 0.45, t: 'Attend a talk or course far outside your field.', ev: x.ok('curiosity') && x.sc('curiosity') >= 60 ? ['curiosity'] : [] },
+    { w: 0.4, t: 'Try one new routine for a week, such as a different commute or a new weekly ritual.', ev: x.ok('stabilityNeed') && x.sc('stabilityNeed') >= 62 ? ['stabilityNeed'] : [] },
+    { w: 0.3, t: 'Spend a morning somewhere you have never been in your own city.', ev: x.ok('openness') ? ['openness'] : [] },
+  ]
+  const hab: { w: number; t: string; ev: DimId[] }[] = [
+    { w: 0.8, t: 'Two-minute start: begin any avoided task for just two minutes.', ev: x.ok('procrastination') && x.sc('procrastination') >= 58 ? ['procrastination'] : [] },
+    { w: 0.7, t: 'Weekly 20 minute review of what worked, what stalled and next steps.', ev: x.ok('planning') && x.sc('planning') <= 50 ? ['planning'] : x.ok('goalClarity') ? ['goalClarity'] : [] },
+    { w: 0.7, t: 'One planned no per week, practised in a low-stakes situation.', ev: x.ok('boundaries') && x.sc('boundaries') <= 45 ? ['boundaries'] : [] },
+    { w: 0.6, t: 'Fixed wake time and a short wind-down, to protect sleep when stress is high.', ev: stressHi ? ['stress'] : [] },
+    { w: 0.55, t: 'Three-line gratitude note each evening.', ev: x.ok('gratitude') && x.sc('gratitude') <= 50 ? ['gratitude'] : [] },
+    { w: 0.55, t: 'Phone out of reach during your first focus block of the day.', ev: x.ok('impulseControl') && x.sc('impulseControl') <= 45 ? ['impulseControl'] : [] },
+    { w: 0.5, t: 'A short daily movement block, such as a 20 minute walk.', ev: x.ok('curHealth') && x.sc('curHealth') <= 50 ? ['curHealth'] : [] },
+    { w: 0.5, t: 'Keep a done list for a week to see progress that otherwise goes unnoticed.', ev: x.ok('accomplishment') && x.sc('accomplishment') <= 50 ? ['accomplishment'] : [] },
+    { w: 0.4, t: 'Time-box work blocks and finish one thing before starting another.', ev: x.ok('followThrough') && x.sc('followThrough') <= 55 ? ['followThrough'] : [] },
+    { w: 0.3, t: 'A short weekly check-in with someone you trust.', ev: x.ok('relationshipQuality') ? ['relationshipQuality'] : [] },
+  ]
+  const refl: { w: number; t: string; ev: DimId[] }[] = [
+    ...cons.slice(0, 3).map((c, i) => ({ w: 0.9 - i * 0.1, t: c.question, ev: [c.a.dim, c.b.dim] as DimId[] })),
+    { w: 0.5, t: 'What would you try this year if you knew you could not fail?', ev: x.ok('fearOfFailure') && x.sc('fearOfFailure') >= 55 ? ['fearOfFailure'] : [] },
+    { w: 0.5, t: 'Which of your goals would you keep if nobody ever knew about them?', ev: x.ok('extrinsicMotivation') && x.sc('extrinsicMotivation') >= 55 ? ['extrinsicMotivation'] : [] },
+    { w: 0.45, t: 'Whose approval are you still working for?', ev: x.ok('validationNeed') && x.sc('validationNeed') >= 55 ? ['validationNeed'] : [] },
+    { w: 0.45, t: 'If your life five years from now looked exactly like today, how would you feel?', ev: x.ok('trajectoryFit') ? ['trajectoryFit'] : [] },
+    { w: 0.4, t: 'What gives you energy, and what quietly drains it?', ev: x.ok('engagement') ? ['engagement'] : [] },
+    { w: 0.4, t: 'What would you regret not trying?', ev: x.ok('regretRisk') ? ['regretRisk'] : [] },
+  ]
+  const sk: { w: number; t: string; ev: DimId[] }[] = [
+    { w: 0.8, t: 'Naming needs and limits in one clear sentence.', ev: x.ok('communication') && x.sc('communication') <= 45 ? ['communication'] : x.ok('boundaries') && x.sc('boundaries') <= 45 ? ['boundaries'] : [] },
+    { w: 0.75, t: 'Time-boxing and weekly planning.', ev: x.ok('timeManagement') && x.sc('timeManagement') <= 45 ? ['timeManagement'] : [] },
+    { w: 0.75, t: 'Asking and negotiating, from small requests to pay and scope.', ev: x.ok('selfAdvocacy') && x.sc('selfAdvocacy') <= 45 ? ['selfAdvocacy'] : [] },
+    { w: 0.6, t: 'Data literacy: reading charts, basic statistics and spreadsheets.', ev: x.ok('investigative') && x.sc('investigative') >= 60 ? ['investigative'] : [] },
+    { w: 0.6, t: 'A craft skill in one medium, such as drawing, writing or music.', ev: x.ok('artistic') && x.sc('artistic') >= 60 ? ['artistic'] : [] },
+    { w: 0.6, t: 'Persuasive writing and pitching ideas.', ev: x.ok('enterprising') && x.sc('enterprising') >= 60 ? ['enterprising'] : [] },
+    { w: 0.6, t: 'Active listening and facilitation.', ev: x.ok('social') && x.sc('social') >= 60 ? ['social'] : [] },
+    { w: 0.55, t: 'Hands-on repair or building with basic tools.', ev: x.ok('realistic') && x.sc('realistic') >= 60 ? ['realistic'] : [] },
+    { w: 0.55, t: 'Personal finance basics: budgeting, buffers and investing fundamentals.', ev: x.ok('financialDrive') && x.sc('financialDrive') >= 55 ? ['financialDrive'] : x.ok('curFinances') && x.sc('curFinances') <= 50 ? ['curFinances'] : [] },
+    { w: 0.5, t: 'Giving and receiving feedback without defensiveness.', ev: x.ok('fearOfJudgment') && x.sc('fearOfJudgment') >= 55 ? ['fearOfJudgment'] : [] },
+    { w: 0.45, t: 'Systems for organising and tracking work: spreadsheets, checklists, simple tools.', ev: x.ok('conventional') && x.sc('conventional') >= 60 ? ['conventional'] : [] },
+    { w: 0.3, t: 'Learning how to learn: spaced repetition and deliberate practice.', ev: x.ok('growthDrive') ? ['growthDrive'] : [] },
+  ]
+  return {
+    short: pickCands(x, short, 3),
+    medium: pickCands(x, medium, 3),
+    long: pickCands(x, long, 3),
+    experiences: pickText(x, exp, 5),
+    habits: pickText(x, hab, 5),
+    reflections: pickText(x, refl, 5),
+    skills: pickText(x, sk, 5),
+  }
+}
+
+// ---------------------------------------------------------------- population
+
+interface SwlsBand {
+  min: number
+  max: number
+  label: string
+}
+const SWLS_CITATION = 'Pavot, W., & Diener, E. (2008). The Satisfaction With Life Scale and the emerging construct of life satisfaction. The Journal of Positive Psychology, 3(2), 137-152.'
+const DEFAULT_SWLS: SwlsBand[] = [
+  { min: 31, max: 35, label: 'Extremely satisfied' },
+  { min: 26, max: 30, label: 'Satisfied' },
+  { min: 21, max: 25, label: 'Slightly satisfied' },
+  { min: 20, max: 20, label: 'Neutral' },
+  { min: 15, max: 19, label: 'Slightly dissatisfied' },
+  { min: 10, max: 14, label: 'Dissatisfied' },
+  { min: 5, max: 9, label: 'Extremely dissatisfied' },
+]
+
+interface NormEntry {
+  id?: string
+  kind?: string
+  instrument?: string
+  source?: string
+  citation?: string
+  sampleSize?: number | null
+  population?: string
+  limitations?: string
+  bands?: SwlsBand[]
+  statistics?: { mean?: number; sd?: number }
+}
+
+function normEntries(): NormEntry[] {
+  try {
+    const n = normsRaw as unknown as { norms?: unknown }
+    return Array.isArray(n?.norms) ? (n.norms as NormEntry[]) : []
+  } catch {
+    return []
+  }
+}
+
+const validBands = (b: unknown): b is SwlsBand[] =>
+  Array.isArray(b) && b.length >= 3 && b.every((x) => x && typeof x.min === 'number' && typeof x.max === 'number' && typeof x.label === 'string')
+
+function population(questions: Question[], answers: Answers): PopulationComparison[] {
+  const out: PopulationComparison[] = []
+  const r = rawSum(questions, answers, 'swls')
+  const items = questions.filter((q) => q.instrument === 'swls')
+  const sevenPoint = items.length > 0 && items.every((q) => q.type === 'likert' && (q.points ?? 5) === 7)
+  if (!(r.of === 5 && r.n === 5 && sevenPoint)) return out
+  const entries = normEntries()
+  const bandsEntry = entries.find((e) => e.kind === 'interpretive-bands' && /satisfaction with life/i.test(e.instrument ?? '') && validBands(e.bands))
+  const bands = bandsEntry ? (bandsEntry.bands as SwlsBand[]) : DEFAULT_SWLS
+  const b = bands.find((x) => r.sum >= x.min && r.sum <= x.max)
+  const instrument = 'Satisfaction With Life Scale (Diener, Emmons, Larsen & Griffin, 1985), 5 items, 7-point agreement.'
+  if (b) {
+    out.push({
+      id: 'swls',
+      label: 'Satisfaction with life',
+      userValue: `${r.sum} out of 35`,
+      band: `${b.label} (${b.min === b.max ? b.min : `${b.min}-${b.max}`})`,
+      source: bandsEntry?.citation ?? SWLS_CITATION,
+      sample: 'Descriptive score bands published with the scale. They are labels for ranges of the 5-35 total, not percentile ranks from a particular sample.',
+      population: bandsEntry?.population ?? 'Interpretive guidance, not a population average.',
+      instrument,
+      limitations: bandsEntry?.limitations ?? 'Self-report, and a single day or mood can shift it. Bands are descriptive, not diagnostic.',
+    })
+  }
+  const samp = entries.find((e) => e.kind === 'sample-statistic' && /satisfaction with life/i.test(e.instrument ?? '') && typeof e.statistics?.mean === 'number' && typeof e.statistics?.sd === 'number')
+  if (samp && samp.statistics) {
+    const mean = samp.statistics.mean!
+    const sd = samp.statistics.sd!
+    const diff = r.sum - mean
+    const z = diff / sd
+    out.push({
+      id: 'swls-original-sample',
+      label: 'Compared with the original SWLS validation sample',
+      userValue: `${r.sum} out of 35`,
+      band: Math.abs(z) < 0.25 ? `About the same as the sample mean of ${mean}` : `${Math.abs(diff).toFixed(1)} points ${diff > 0 ? 'above' : 'below'} the sample mean of ${mean} (about ${Math.abs(z).toFixed(1)} standard deviations)`,
+      source: samp.citation ?? samp.source ?? SWLS_CITATION,
+      sample: `${samp.sampleSize ?? 'A small'} participants. Mean ${mean}, SD ${sd}.`,
+      population: samp.population ?? 'A single validation sample.',
+      instrument,
+      limitations: samp.limitations ?? 'One non-representative sample. Use only as a rough reference point.',
+    })
+  }
+  return out
+}
+
+// ---------------------------------------------------------------- main
+
+export function buildReport(questions: Question[], answers: Answers, timings: Record<string, number> = {}): Report {
+  const { scores, quality } = scoreAll(questions, answers, timings)
+  const x = makeCtx(scores)
+
+  const ts = typeSketch(x)
+  const cons = contradictions(x)
+  const hobbies = matchHobbies(x)
+  const alts = matchCareers(x)
+  const amb = ambitions(x, cons)
+  const hap = happiness(x)
+  const conf = confidence(x)
+  const rel = relationships(x)
+  const car = career(x, alts)
+  const val = values(x)
+  const hab = habits(x)
+  const fut = future(x)
+  const head = headline(x)
+  const strengths = fire(x, STRENGTHS, 5)
+  const blind = fire(x, BLIND, 4)
+  const hidden = fire(x, HIDDEN, 5)
+  const motives = MOTIVE_DIMS.filter((d) => scores[d].n > 0)
+    .sort((a, b) => scores[b].score - scores[a].score)
+    .map((d) => ({ dim: d as DimId, label: dimLabel(d), score: round(scores[d].score) }))
+
+  const rm = roadmap(x, hobbies, alts, hab.bottleneck, fut.gaps, cons, val.ranked)
+
+  const summary: string[] = []
+  summary.push(para(`${head}.`, strengths[0] ? `A pattern worth building on is ${lc(strengths[0].title)}.` : '', blind[0] ? `A possible blind spot to keep an eye on is ${lc(blind[0].title)}.` : ''))
+  summary.push(
+    para(
+      cons[0] ? `The most interesting tension in your answers is ${lc(cons[0].title)}. ${cons[0].question}` : 'No strong tensions stood out in your answers, which may mean your priorities are fairly well aligned or that more answers are needed.',
+      hab.bottleneck.kind !== 'none' ? `On follow-through, the best fit was ${hab.bottleneck.kind === 'motivation' ? 'a motivation or avoidance pattern' : hab.bottleneck.kind === 'clarity' ? 'unclear goals' : hab.bottleneck.kind === 'environment' ? 'environmental obstacles' : 'competing priorities'}.` : '',
+    ),
+  )
+  summary.push(
+    para(
+      hobbies[0] && hobbies[0].motives.length ? `A low-cost place to start is ${lc(hobbies[0].name)}.` : '',
+      alts[0] ? `For career ideas, ${lc(alts[0].title)} came out as the closest overlap, as one of several to explore.` : '',
+      'Everything here is a hypothesis built from your own answers, so keep what rings true, challenge what does not, and retake this in a few months to see what moves.',
+    ),
+  )
+
+  return {
+    generatedAt: new Date().toISOString(),
+    scores,
+    quality,
+    identity: {
+      headline: head,
+      overview: identityOverview(x, quality, ts),
+      coreTraits: coreTraits(x),
+      behavioral: behavioral(x),
+      social: social(x),
+      decisionStyle: decisionStyle(x),
+      strengths,
+      blindSpots: blind,
+    },
+    typeSketch: ts,
+    ambitions: amb,
+    happiness: hap,
+    confidence: conf,
+    relationships: rel,
+    career: car,
+    values: val,
+    habits: hab,
+    future: fut.f,
+    hobbies,
+    motives,
+    contradictions: cons,
+    hiddenPotential: hidden,
+    roadmap: rm,
+    summary,
+    population: population(questions, answers),
+  }
 }
