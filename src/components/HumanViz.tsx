@@ -150,7 +150,8 @@ export function HumanViz({ report }: { report: Report }) {
                     cx={n.x} cy={n.y} r={r}
                     fill={c.accent} fillOpacity={op}
                     stroke={c.accent} strokeWidth={isOn ? 3 : 1.5} strokeOpacity={0.9}
-                    animate={reduce ? undefined : { r: [r, r * 1.08, r] }}
+                    style={{ transformOrigin: `${n.x}px ${n.y}px` }}
+                    animate={reduce ? undefined : { scale: [1, 1.1, 1] }}
                     transition={{ duration: 3 + (i % 4) * 0.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 }}
                   />
                   <circle cx={n.x} cy={n.y} r={36} fill="transparent" />
