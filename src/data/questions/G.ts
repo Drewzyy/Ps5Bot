@@ -4,15 +4,17 @@ import { choice, forced, likert, multi, ranking, scale10, textQ } from '../helpe
 const M = 'G' as const
 
 export const G: Question[] = [
-  scale10('G_sat1', M, 'How satisfied are you with the direction of your working life right now?', { careerSatisfaction: 1, curCareer: 0.5 }, 'Not at all', 'Completely', { pairWith: 'G_sat2' }),
-  likert('G_sat2', M, 'I often think about quitting or switching to something completely different.', { careerSatisfaction: -1 }),
-  likert('G_fit1', M, 'My current path makes good use of my strengths.', { careerFit: 1, professionalConfidence: 0.3 }),
-  likert('G_clar1', M, 'I know what kind of work I want to be doing in five years.', { careerClarity: 1, goalClarity: 0.4 }),
-  likert('G_mean1', M, 'My work feels meaningful to me.', { meaning: 1, careerFit: 0.4 }),
-  likert('G_stress1', M, 'My work or study leaves me drained for most of the week.', { stress: 1, workLifeBalance: -0.7, workloadTolerance: -0.5 }, { pairWith: 'C_stress1' }),
-  likert('G_acc1', M, 'At work I often feel I am getting better and achieving things.', { accomplishment: 1, competence: 0.6, professionalConfidence: 0.3 }),
-  likert('G_auto1', M, 'At work I have real say over how I do my tasks.', { autonomy: 1, workAutonomyNeed: -0.2 }),
-
+  scale10('G_sat1', M, 'How satisfied are you with the direction of your working life right now?', { careerSatisfaction: 1, curCareer: 0.5, careerClarity: 0.3 }, 'Not at all', 'Completely'),
+  likert('G_fit1', M, 'My current path makes good use of my strengths.', { careerFit: 1, professionalConfidence: 0.5, careerClarity: 0.6, competence: 0.5, autonomy: 0.3, meaning: 0.4, accomplishment: 0.4 }),
+  choice('G_ria_role', M, 'On a group project, which role would you most like to take?', [
+    ['build', 'Build or fix the physical thing', { realistic: 0.9, investigative: 0.35, conventional: 0.5 }],
+    ['research', 'Research the problem and work out the answer', { investigative: 0.9, conventional: 0.4, realistic: 0.3 }],
+    ['design', 'Design the look, idea or story', { artistic: 0.9, enterprising: 0.4, social: 0.4 }],
+    ['people', 'Look after the team and help everyone do well', { social: 0.9, artistic: 0.3, enterprising: 0.4 }],
+    ['pitch', 'Pitch it, persuade others and drive it forward', { enterprising: 0.9, social: 0.45, realistic: 0.2 }],
+    ['organise', 'Plan the schedule, budget and details', { conventional: 0.9, enterprising: 0.35, investigative: 0.3 }],
+  ]),
+  likert('G_stress1', M, 'My work or study leaves me drained for most of the week.', { stress: 1, workLifeBalance: -0.7, workloadTolerance: -0.5, engagement: -0.3 }, { pairWith: 'C_stress1' }),
   // Adaptive: unhappy with direction
   choice(
     'G_unsat1',
@@ -30,33 +32,10 @@ export const G: Question[] = [
     { showIf: { q: 'G_sat1', op: 'lte', value: 4 } },
   ),
   forced(
-    'G_unsat2',
-    M,
-    'If you could change one thing, which would you rather do?',
-    ['newfield', 'Move to a different kind of work entirely', { riskTolerance: 0.75, adaptability: 0.7, careerFit: 0.25 }],
-    ['samefield', 'Stay in my field but change the conditions', { riskTolerance: 0.3, stabilityNeed: 0.7, adaptability: 0.45 }],
-    { showIf: { q: 'G_sat1', op: 'lte', value: 4 } },
-  ),
-  textQ('G_unsat3', M, 'What would a better version of your working life look like?', 'Optional. Describe an ordinary good day.', { showIf: { q: 'G_sat1', op: 'lte', value: 4 } }),
-  choice(
-    'G_sathigh',
-    M,
-    'Your working life feels good. What makes it work best?',
-    [
-      ['people', 'The people', { relatedness: 0.85 }],
-      ['freedom', 'Freedom over how I work', { autonomy: 0.9, workAutonomyNeed: 0.85 }],
-      ['skill', 'Using and growing my skills', { competence: 0.9, growthDrive: 0.75 }],
-      ['purpose', 'The difference it makes', { meaning: 0.9, helpingDrive: 0.75 }],
-      ['reward', 'The rewards and security', { securityNeed: 0.75, financialDrive: 0.65 }],
-    ],
-    { showIf: { q: 'G_sat1', op: 'gte', value: 8 } },
-  ),
-
-  forced(
     'G_f1',
     M,
     'Which job would suit you better?',
-    ['free', 'Freedom to decide how I work, with less certainty', { workAutonomyNeed: 0.9, securityNeed: 0.2, riskTolerance: 0.7 }],
+    ['free', 'Freedom to decide how I work, with less certainty', { workAutonomyNeed: 0.9, autonomy: 0.8, securityNeed: 0.2, riskTolerance: 0.7 }],
     ['secure', 'A steady, secure role with clear expectations', { workAutonomyNeed: 0.3, securityNeed: 0.9, structurePreference: 0.75 }],
   ),
   forced(
@@ -80,7 +59,6 @@ export const G: Question[] = [
     ['lead', 'Leading a team and setting direction', { leadershipDrive: 0.9, influence: 0.8, enterprising: 0.7 }],
     ['expert', 'Being the deep expert people come to', { leadershipDrive: 0.2, investigative: 0.65, motMastery: 0.7 }],
   ),
-  scale10('G_inc1', M, 'What income would you need to feel financially comfortable, compared with the people around you?', { incomeExpectation: 1, financialDrive: 0.4 }, 'Modest', 'Very high'),
   // RIASEC interests
   multi('G_ria_mc', M, 'Which of these would you enjoy doing in a job? Pick up to six.', 6, [
     ['r1', 'Repair or build something with your hands', { realistic: 0.9 }],
@@ -110,10 +88,4 @@ export const G: Question[] = [
     ['e', 'A fast-moving business or sales floor', { enterprising: 1 }],
     ['c', 'A tidy office with clear systems', { conventional: 1 }],
   ]),
-  likert('G_r1', M, 'I enjoy working with my hands, tools or physical things.', { realistic: 1 }),
-  likert('G_i1', M, 'I like digging into a problem until I understand it.', { investigative: 1 }),
-  likert('G_a1', M, 'I want my work to leave room for imagination and self-expression.', { artistic: 1 }),
-  likert('G_s1', M, 'I get energy from helping other people learn or feel better.', { social: 1 }),
-  likert('G_e1', M, 'I enjoy persuading others and pitching ideas.', { enterprising: 1 }),
-  likert('G_c1', M, 'I like work where things are well organised and accurate.', { conventional: 1 }),
 ]

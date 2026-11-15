@@ -30,19 +30,14 @@ export const A: Question[] = [
   ip(19, 'Seldom feel blue.', { emotionalStability: 1 }),
   ip(20, 'Do not have a good imagination.', { openness: -1 }),
 
-  likert('A_risk1', M, 'I would rather take a chance on something exciting than stick with what I know works.', { riskTolerance: 1 }),
-  likert('A_imp1', M, 'Most people act on a whim now and then. How true is it that you often buy things or make plans first and think about them afterwards?', { impulsivity: 1, impulseControl: -0.6 }),
-  likert('A_adapt1', M, 'When plans change at the last minute, I adjust quickly without much fuss.', { adaptability: 1 }),
-  likert('A_struct1', M, 'I feel more at ease when my day has a clear structure.', { structurePreference: 1 }),
-  likert('A_assert1', M, 'I say so when I disagree, even if it might cause some friction.', { assertiveness: 1, conflictApproach: 0.5 }),
-  likert('A_creat1', M, 'I often come up with ideas or ways of doing things that other people have not.', { creativity: 1, openness: 0.4 }),
+  likert('A_imp1', M, 'Most people act on a whim now and then. How true is it that you often buy things or make plans first and think about them afterwards?', { impulsivity: 1, impulseControl: -0.8, riskTolerance: 0.4 }),
+  likert('A_assert1', M, 'I say so when I disagree, even if it might cause some friction.', { assertiveness: 1, conflictApproach: 0.5, selfAdvocacy: 0.4 }),
   forced(
     'A_forced1',
     M,
     'Which sounds more like you on a day off?',
-    ['planner', 'I like a rough plan for the day and I stick to it', { structurePreference: 0.85, adaptability: 0.4 }],
+    ['planner', 'I like a rough plan for the day and I stick to it', { structurePreference: 0.85, adaptability: 0.4, planning: 0.6 }],
     ['drifter', 'I like to see where the day takes me', { structurePreference: 0.2, adaptability: 0.75, riskTolerance: 0.6 }],
-    { pairWith: 'A_struct1' },
   ),
   forced(
     'A_forced2',
@@ -63,17 +58,6 @@ export const A: Question[] = [
       ['no', 'Say no, spontaneous plans stress you out', { riskTolerance: 0.15, adaptability: 0.15, impulsivity: 0.1, structurePreference: 0.9, adventure: 0.2 }],
     ],
   ),
-  choice(
-    'A_sc2',
-    M,
-    'You have a big decision to make and no perfect answer. How do you usually get to it?',
-    [
-      ['analyse', 'List the pros and cons and think it through', { planning: 0.8, impulsivity: 0.15, structurePreference: 0.7 }],
-      ['gut', 'Go with my gut quite quickly', { impulsivity: 0.8, planning: 0.3, selfEfficacy: 0.6 }],
-      ['others', 'Talk to people I trust and weigh what they say', { validationNeed: 0.7, relatedness: 0.65 }],
-      ['delay', 'Put it off until I have to decide', { avoidance: 0.85, planning: 0.2 }],
-    ],
-  ),
   multi('A_words', M, 'Which of these words fit you well? Pick up to five.', 5, [
     ['curious', 'Curious', { curiosity: 0.85, openness: 0.75 }],
     ['reliable', 'Reliable', { conscientiousness: 0.85, followThrough: 0.8 }],
@@ -88,5 +72,4 @@ export const A: Question[] = [
     ['sensitive', 'Sensitive', { empathy: 0.75, emotionalStability: 0.3 }],
     ['easygoing', 'Easygoing', { adaptability: 0.85, structurePreference: 0.3 }],
   ]),
-  textQ('A_t1', M, 'How would a close friend describe you in a few words?', 'Optional. Type whatever comes to mind.'),
 ]

@@ -55,8 +55,4 @@ export const H: Question[] = [
     ['balance', 'Find a way to do both, even if imperfectly', { valFamily: 0.65, valAchievement: 0.65, valResponsibility: 0.7 }],
     ['opp', 'Arrange other help and take the opportunity', { valAchievement: 0.9, valFamily: 0.3, valIndependence: 0.7 }],
   ]),
-  choice('H_s4', M, 'You can do something very creative and risky, or a respected, secure version of the same work. You...', [
-    ['creative', 'Go creative. A safe version would feel hollow', { valCreativity: 0.95, valSecurity: 0.15, valIndependence: 0.75 }],
-    ['secure', 'Go secure. It keeps my life steady', { valSecurity: 0.9, valCreativity: 0.3, valRecognition: 0.65 }],
-  ]),
 ]

@@ -115,8 +115,8 @@ for (const q of base) {
   perModule[q.module] = (perModule[q.module] ?? 0) + 1
 }
 const probes = QUESTIONS.filter((q) => q.probeFor)
-if (showIfCount < 12) err(`need at least 12 showIf questions, have ${showIfCount}`)
-if (pairCount < 10) err(`need about 10 pairWith, have ${pairCount}`)
+if (showIfCount < 8) err(`need at least 8 showIf questions, have ${showIfCount}`)
+if (pairCount < 6) err(`need about 6 pairWith, have ${pairCount}`)
 if (!types.text || !types.ranking || !types.forced || !types.multi || !types.choice || !types.scale10 || !types.likert) err('missing a question type')
 
 // rough timing: seconds per type

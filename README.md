@@ -14,7 +14,7 @@ Nothing leaves your browser. Answers and results live in localStorage and can be
 
 ## How it works
 
-- `src/data/questions/` about 180 base questions plus adaptive follow-ups. Each has dimension weights, reverse keys and optional `showIf` conditions.
+- `src/data/questions/` about 115 base questions plus adaptive follow-ups. Each has dimension weights, reverse keys and optional `showIf` conditions.
 - `src/engine/scoring.ts` weighted, reverse-scored, normalised scores per dimension, with confidence from evidence volume, answer agreement and response quality checks (straightlining, inconsistent pairs, speeding, skipped items). After the base flow it picks follow-up probes for the weakest-measured dimensions.
 - `src/engine/report.ts` rules-based interpretation: cross-dimension patterns, contradictions, hobby and career matching, roadmap and narrative.
 - `src/data/knowledge/` sources, citations, licences and limitations for every instrument and every population figure.
