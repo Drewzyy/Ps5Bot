@@ -15,16 +15,26 @@ const areas = [
 const cur: Question[] = areas.map(([name, phrase, c]) =>
   scale10(`J_cur_${name.toLowerCase()}`, M, `Right now, how well is your ${phrase} going?`, { [c]: 1 }, 'Not well', 'Very well', { help: name === 'Career' ? 'Rate where things stand today.' : undefined }),
 )
-const ideal: Question[] = areas.map(([name, phrase, , i]) =>
-  scale10(`J_ideal_${name.toLowerCase()}`, M, `How much does it matter to you that your ${phrase} is in great shape over the next five years?`, { [i]: 1 }, 'Matters little', 'Matters hugely', {
-    help: name === 'Career' ? 'This is about importance, not how it is going now.' : undefined,
-  }),
-)
+const idealRank: Question = {
+  id: 'J_ideal',
+  module: M,
+  type: 'ranking',
+  instrument: 'custom',
+  text: 'Which areas matter most for the next five years? Rank them, most important first.',
+  help: 'This is about importance, not how things are going now.',
+  options: [
+    { id: 'career', label: 'Career or studies', effects: { idealCareer: 1 } },
+    { id: 'relationships', label: 'Relationships', effects: { idealRelationships: 1 } },
+    { id: 'health', label: 'Physical and mental health', effects: { idealHealth: 1 } },
+    { id: 'finances', label: 'Financial situation', effects: { idealFinances: 1 } },
+    { id: 'growth', label: 'Personal growth and learning', effects: { idealGrowth: 1 } },
+    { id: 'leisure', label: 'Leisure and fun', effects: { idealLeisure: 1 } },
+  ],
+}
 
 export const J: Question[] = [
   ...cur,
-  ...ideal,
-  likert('J_clar1', M, 'I have a fairly clear picture of who I want to be in ten years.', { futureClarity: 1 }),
+  idealRank,
   likert('J_opt1', M, 'I feel hopeful about my future.', { futureOptimism: 1, optimism: 0.5, trajectoryFit: 0.6, regretRisk: -0.4 }),
   likert('J_reg1', M, 'I worry that I will one day wish I had taken more chances or spent my time on different things.', { regretRisk: 1, trajectoryFit: -0.5, futureClarity: -0.3 }),
   textQ('J_t1', M, 'When you are 80, what would you most regret not having done?', 'Optional. Take your time.'),
@@ -44,7 +54,4 @@ export const J: Question[] = [
     ],
     { showIf: { dim: 'trajectoryFit', op: 'lte', value: 40 } },
   ),
-  textQ('J_fu2', M, 'Health matters a lot to you and is not where you want it. What is one small step you could take this month?', 'Optional. Keep it small and realistic.', {
-    showIf: { all: [{ q: 'J_ideal_health', op: 'gte', value: 8 }, { q: 'J_cur_health', op: 'lte', value: 5 }] },
-  }),
 ]

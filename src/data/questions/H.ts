@@ -40,19 +40,4 @@ export const H: Question[] = [
     ['responsibility', 'Responsibility', { valResponsibility: 0.9 }],
     ['recognition', 'Recognition', { valRecognition: 0.9 }],
   ]),
-  choice('H_s1', M, 'A close friend asks you to cover for them with a small lie that would not hurt anyone. What do you do?', [
-    ['lie', 'Cover for them. Loyalty comes first', { valLoyalty: 0.9, valHonesty: 0.25 }],
-    ['refuse', 'Refuse, but stay a good friend otherwise', { valHonesty: 0.85, valLoyalty: 0.55 }],
-    ['tell', 'Explain that I do not lie, even small lies', { valHonesty: 0.95, valLoyalty: 0.35, valJustice: 0.6 }],
-  ]),
-  choice('H_s2', M, 'You are offered a much better-paid job at a company whose practices you find questionable. You...', [
-    ['take', 'Take it. I can do good with the money', { valWealth: 0.85, valSecurity: 0.7, valJustice: 0.2 }],
-    ['think', 'Think hard, and probably take it if it is not illegal', { valWealth: 0.6, valJustice: 0.4 }],
-    ['pass', 'Pass. I would not feel right', { valJustice: 0.9, valWealth: 0.25, valHonesty: 0.7 }],
-  ]),
-  choice('H_s3', M, 'A relative needs a year of your help. It would pause a promising opportunity. You...', [
-    ['help', 'Help without hesitation', { valFamily: 0.95, valCompassion: 0.85, valResponsibility: 0.8, valAchievement: 0.25 }],
-    ['balance', 'Find a way to do both, even if imperfectly', { valFamily: 0.65, valAchievement: 0.65, valResponsibility: 0.7 }],
-    ['opp', 'Arrange other help and take the opportunity', { valAchievement: 0.9, valFamily: 0.3, valIndependence: 0.7 }],
-  ]),
 ]

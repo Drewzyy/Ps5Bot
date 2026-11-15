@@ -27,20 +27,8 @@ export const B: Question[] = [
     M,
     'Which outcome would feel better?',
     ['quiet', 'Doing excellent work that only a few people ever see', { recognitionNeed: 0.15, intrinsicMotivation: 0.85, masteryOrientation: 0.7 }],
-    ['public', 'Doing good work that many people celebrate', { recognitionNeed: 0.9, valRecognition: 0.8, extrinsicMotivation: 0.8, performanceOrientation: 0.7 }],
+    ['public', 'Doing good work that many people celebrate', { societalExpectation: 0.6, recognitionNeed: 0.9, valRecognition: 0.8, extrinsicMotivation: 0.8, performanceOrientation: 0.7 }],
     { pairWith: 'B_nobody' },
-  ),
-  choice(
-    'B_voice',
-    M,
-    'Think about your biggest ambition. Whose voice is loudest behind it?',
-    [
-      ['mine', 'Mine. I would want it whatever anyone thought', { intrinsicMotivation: 0.9, societalExpectation: 0.1 }],
-      ['family', 'My family’s hopes or expectations', { societalExpectation: 0.8, familyOrientation: 0.7, intrinsicMotivation: 0.4 }],
-      ['partner', 'People close to me, like a partner or friends', { societalExpectation: 0.5, relatedness: 0.7 }],
-      ['society', 'What a “successful life” is supposed to look like', { societalExpectation: 0.95, extrinsicMotivation: 0.8, intrinsicMotivation: 0.25 }],
-      ['unsure', 'I honestly cannot tell', { societalExpectation: 0.55, goalClarity: 0.25 }],
-    ],
   ),
   multi('B_goals', M, 'Which of these are real goals for you right now? Pick up to four.', 4, [
     ['advance', 'Move up or get recognised in my career', { achievement: 0.8, recognitionNeed: 0.7, prestigeNeed: 0.6, idealCareer: 0.85 }],
@@ -54,5 +42,4 @@ export const B: Question[] = [
     ['give', 'Help others or give back', { contribution: 0.85, helpingDrive: 0.7, valCompassion: 0.6 }],
     ['calm', 'Feel calmer and less pressured', { stabilityNeed: 0.6, balancePriority: 0.7, stress: 0.7 }],
   ]),
-  textQ('B_t1', M, 'If money were guaranteed for the rest of your life, what would you pursue?', 'Optional. Be as specific or as vague as you like.'),
 ]

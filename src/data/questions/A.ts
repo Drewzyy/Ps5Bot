@@ -30,15 +30,7 @@ export const A: Question[] = [
   ip(19, 'Seldom feel blue.', { emotionalStability: 1 }),
   ip(20, 'Do not have a good imagination.', { openness: -1 }),
 
-  likert('A_imp1', M, 'Most people act on a whim now and then. How true is it that you often buy things or make plans first and think about them afterwards?', { impulsivity: 1, impulseControl: -0.8, riskTolerance: 0.4 }),
-  likert('A_assert1', M, 'I say so when I disagree, even if it might cause some friction.', { assertiveness: 1, conflictApproach: 0.5, selfAdvocacy: 0.4 }),
-  forced(
-    'A_forced1',
-    M,
-    'Which sounds more like you on a day off?',
-    ['planner', 'I like a rough plan for the day and I stick to it', { structurePreference: 0.85, adaptability: 0.4, planning: 0.6 }],
-    ['drifter', 'I like to see where the day takes me', { structurePreference: 0.2, adaptability: 0.75, riskTolerance: 0.6 }],
-  ),
+  likert('A_assert1', M, 'I say so when I disagree, even if it might cause some friction.', { assertiveness: 1, conflictApproach: 0.5, selfAdvocacy: 0.6, boundaries: 0.5 }),
   forced(
     'A_forced2',
     M,

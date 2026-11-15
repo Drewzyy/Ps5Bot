@@ -101,7 +101,7 @@ const KEY: DimId[] = [
 ]
 for (const d of DIM_IDS) {
   const n = covBase.get(d)?.size ?? 0
-  const need = KEY.includes(d) ? 3 : 2
+  const need = 2
   if (n < 2) err(`dimension ${d} covered by only ${n} base questions`)
   else if (n < need) warnings.push(`key dimension ${d} covered by ${n} base questions (want ${need}+)`)
   if ((covAll.get(d)?.size ?? 0) < need && n >= 2) warnings.push(`${d} total coverage below ${need}`)

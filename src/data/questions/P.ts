@@ -12,7 +12,6 @@ export const P: Question[] = [
   p(likert('P_stab', 'A', 'I stay fairly steady when things go wrong.', { emotionalStability: 1 }), ['emotionalStability']),
   p(likert('P_ope', 'A', 'I enjoy ideas and experiences that are unusual or unfamiliar.', { openness: 1 }), ['openness']),
   p(scale10('P_life', 'C', 'Overall, taking everything together, how satisfied are you with your life as a whole?', { lifeSatisfaction: 1 }, 'Not at all', 'Completely'), ['lifeSatisfaction']),
-  p(likert('P_meaning', 'C', 'I know why I get up in the morning.', { meaning: 1 }), ['meaning']),
   p(likert('P_se', 'D', 'I treat myself with the kindness I would show a good friend.', { selfEsteem: 1 }), ['selfEsteem']),
   p(likert('P_intr', 'B', 'I do my best work on things I find interesting, whatever the reward.', { intrinsicMotivation: 1 }), ['intrinsicMotivation']),
   p(likert('P_extr', 'B', 'Rewards, such as pay or praise, are a big part of what keeps me going.', { extrinsicMotivation: 1 }), ['extrinsicMotivation']),
@@ -29,8 +28,4 @@ export const P: Question[] = [
     ),
     ['financialDrive', 'riskTolerance'],
   ),
-  p(likert('P_follow', 'I', 'When I am excited about a goal, I keep working on it long after the excitement fades.', { followThrough: 1, achievement: 0.3 }), ['followThrough', 'achievement']),
-  p(likert('P_cfit', 'G', 'I feel I am in the right line of work for me.', { careerFit: 1, careerSatisfaction: 0.5 }), ['careerFit', 'careerSatisfaction']),
-  p(likert('P_futclar', 'J', 'I can name the next two or three steps toward the life I want.', { futureClarity: 1, planning: 0.4 }), ['futureClarity']),
-  p(likert('P_mastery', 'F', 'I enjoy the slow work of getting really good at something.', { motMastery: 1, motProgress: 0.5 }), ['motMastery', 'motProgress']),
 ]

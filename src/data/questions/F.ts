@@ -73,22 +73,6 @@ export const F: Question[] = [
     ],
     { showIf: anyOf('F_acts', ['gaming', 'boardgames']) },
   ),
-  multi(
-    'F_why_mind',
-    M,
-    'For reading, learning and tech, what do you enjoy most? Pick up to two.',
-    2,
-    [
-      ['solve', 'Figuring things out', { motProblemSolving: 0.95, intellectualDrive: 0.75, valKnowledge: 0.7 }],
-      ['master', 'Becoming truly good at something', { motMastery: 0.95 }],
-      ['progress', 'Seeing myself move forward', { motProgress: 0.95 }],
-      ['escape', 'Getting lost in it', { motEscapism: 0.85 }],
-      ['calm', 'Relaxing', { motRelaxation: 0.85 }],
-      ['stories', 'Ideas and stories', { curiosity: 0.85, openness: 0.7, valKnowledge: 0.6 }],
-    ],
-    { showIf: anyOf('F_acts', ['reading', 'learning', 'tech', 'screen']) },
-  ),
-
   likert('F_flow', M, 'There is at least one activity that absorbs me so fully that hours pass without my noticing.', { engagement: 1, motMastery: 0.3, curLeisure: 0.4, positiveEmotion: 0.4 }),
   forced(
     'F_solo',
@@ -105,5 +89,4 @@ export const F: Question[] = [
     ['learn', 'Digging into something I want to master', { motMastery: 0.9, motProgress: 0.8, motProblemSolving: 0.6 }],
     ['out', 'Out exploring somewhere new', { adventure: 0.9, motNature: 0.6 }],
   ]),
-  textQ('F_t1', M, 'Is there something you have always wanted to try but never have?', 'Optional. Anything counts.'),
 ]
