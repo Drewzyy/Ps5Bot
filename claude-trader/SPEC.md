@@ -87,17 +87,24 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
   },
   "exits": {
     "tranches": [
-      { "atMultiple": 2.0, "sellPct": 50 },
-      { "atMultiple": 5.0, "sellPct": 30 }
+      { "atPct": 20, "sellPct": 40 },
+      { "atPct": 40, "sellPct": 30 },
+      { "atPct": 60, "sellPct": 20 }
     ],
     "trailingStopPct": 20,
     "softStopPct": -20,
     "softStopRecoverySeconds": 30,
     "hardStopPct": -25,
     "sellBelowAverageEntry": true,
-    "maxHoldMinutes": 10,
+    "maxHoldSeconds": 300,
+    "stallExit": { "fromSeconds": 60, "toSeconds": 90, "minPct": 3 },
+    "bleederExit": { "afterSeconds": 120, "belowPct": -20, "peakNeverAbovePct": 20 },
+    "volumeTaper": { "windowSeconds": 10, "decliningWindows": 3, "lastBelowBaselinePct": 50, "sellPct": 50 },
+    "momentumDeath": { "afterHoldSeconds": 90, "lookbackSeconds": 45, "minBuysPerMinute": 0.5 },
+    "whaleSellPctOfCurve": 3,
     "exitOnDevSell": true,
-    "sellOnMigration": true
+    "sellOnMigration": true,
+    "exitLoopMs": 1000
   },
   "risk": {
     "maxPctBankrollPerTrade": 1.0,
@@ -114,9 +121,13 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
 
 Rules:
 - Stop-loss [user]: two layers. Price at or below -20% starts a 30 s recovery wait; during the wait the hard stop at -25% is checked every 1 s and sells at once. If the price is still at or below -20% after 30 s, sell all.
-- Take-profit [user]: 50% at 2x, 30% at 5x, remainder on a 20% trailing stop from the peak once in profit.
+- Style [user, 2026-11-25]: quick scalps. Every position is closed within 5 minutes, no exceptions.
+- Take-profit [user]: 40% at +20%, 30% at +40%, 20% at +60%, last 10% on a 20% trailing stop from the peak.
 - Holder concentration [user]: single holder ≤5%, top holders combined ≤15%, with bonding-curve and pool accounts excluded from both numbers.
-- Max hold [user]: 10 minutes. Anything still open at 10 minutes is sold in full.
+- Max hold [user]: 5 minutes (300 s). Anything still open is sold in full.
+- Fade exits [user] (from the Capital repo's smart_exit.py, untested there since its engine is never called): stall (under +3% between 60 and 90 s: sell all); bleeder (past 120 s, below -20%, peak never above +20%: sell all); volume taper (3 falling 10 s buy-volume windows and the last under 50% of baseline: sell 50%); momentum death (after 90 s, fewer than 0.5 buys/min over 45 s: sell all); whale sell of 3% or more of the curve, or any dev sell: sell all at once.
+- Exit loop runs every 1 s on curve-account WebSocket pushes, RPC fallback.
+- Fees: pump.fun 0.30% per side plus PumpPortal 0.5% per side plus priority fee. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
 - Size: 1% of bankroll per trade, clamped to 0.05–0.25 SOL. Fixed size, no doubling after a loss, never add to a loser.
 - `entry.style` options: `snipe`, `confirmation`, `dip-40pct`, `graduation-dip`. One active at a time. Default `dip-40pct`. The observation-window gate applies to every style.
 - Break-even check: before a buy, compute break-even % for the trade size (fees, tips, slippage). Reject the buy if TP1 is not above break-even with margin.
@@ -215,10 +226,14 @@ If live isn't approved, stop after the gate demo.
 - [ ] Fresh subagent reviews against this SPEC, rechecking paper-only, no-keys, free-APIs-only rules; all gaps fixed and re-verified.
 - [ ] Setup walkthrough completes; every ⓘ opens a correct explanation; start-with-Windows and tray work.
 
+## 13b. Research basis
+
+Sources for the scalp values: kontia1/gmgn-screener README (stops, ladder shape); moonkeemoo/oilfront research doc (fees, base rates: win rate went 22% to 36% only after adding filters); madeonsol surge tracker, search snippet only (65 surges, median peak 1.45x at ~4 min, 60% peaked within 5 min); DoradoDevs repo smart_exit.py (fade exits). Medium, alchemii.io and the vercel counter-study were blocked by the network and are unread.
+
 ## 14. Open questions (must be answered before the milestone named)
 
 1. Before M3: `minProTraders: 10` from the original config has no defined data source on the free stack (no free "pro trader" label exists). Options: drop it, or define it as "≥N buyers from the Top Trader watch list". Left out of section 6 until answered.
-2. Before M3: with a 10-minute max hold, the 5x tranche will rarely trigger. Keep the 2x/5x ladder anyway, or tighten it? Kept as answered for now.
+2. Before M3: entry style. `dip-40pct` (wait for a 40-50% dip after the first spike) may not fit a 5-minute scalp. The Capital repo instead enters on momentum: curve 12-40 SOL sweet spot, at least 15 unique holders, coin at least 60 s old. Keep dip-40pct as default or switch to momentum?
 3. Before M3: `requireCommunityChecks` is undefined (socials present? X mentions? Telegram?). Needs a concrete rule.
 4. Before M3: failed-fill rate and fill delay for the paper simulator (suggest 10% failed, 400–1500 ms delay) need sign-off.
 5. Before M4: live per-trade size, `liveMinSolReserve` value, Helius key, top-trader wallet list.
