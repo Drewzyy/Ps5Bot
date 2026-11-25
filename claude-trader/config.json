@@ -1,0 +1,74 @@
+{
+  "mode": "paper",
+  "paper": { "bankrollSol": 10 },
+  "feed": { "minMarketCapUsd": 7000, "launchpads": ["pumpfun"] },
+  "filters": {
+    "mintAuthorityRevoked": true,
+    "freezeAuthorityRevoked": true,
+    "maxCreatorHoldingPct": 10,
+    "maxInsidersPct": 20,
+    "maxSingleHolderPct": 5,
+    "maxTopHoldersCombinedPct": 15,
+    "excludeCurveAndPoolAccounts": true,
+    "rejectDevSnipeFirstBlock": true,
+    "rejectBundle": true,
+    "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true }
+  },
+  "observation": {
+    "minScore": 80, "minUniqueBuyers": 5, "minBuySellRatio": 2.0, "minPriceChangePct": 5
+  },
+  "entry": {
+    "style": "momentum",
+    "minBuySellRatio": 2.0,
+    "minUniqueBuyers30s": 5,
+    "requireRisingVolumeSlope": true,
+    "curveSolMin": 12, "curveSolMax": 40,
+    "minHolders": 15,
+    "minAgeSeconds": 60,
+    "paperVariant": { "style": "dip-40pct", "minDipPct": 40, "maxDipPct": 50, "confirmVolumeExpanding": true }
+  },
+  "exits": {
+    "tranches": [
+      { "atPct": 20, "sellPct": 40 },
+      { "atPct": 40, "sellPct": 30 },
+      { "atPct": 60, "sellPct": 20 }
+    ],
+    "trailingStopPct": 10,
+    "softStopPct": -10,
+    "softStopRecoverySeconds": 15,
+    "hardStopPct": -15,
+    "sellBelowAverageEntry": true,
+    "maxHoldSeconds": 300,
+    "stallExit": { "fromSeconds": 60, "toSeconds": 90, "minPct": 3 },
+    "bleederExit": { "afterSeconds": 120, "belowPct": -20, "peakNeverAbovePct": 20 },
+    "volumeTaper": { "windowSeconds": 10, "decliningWindows": 3, "lastBelowBaselinePct": 50, "sellPct": 50 },
+    "momentumDeath": { "afterHoldSeconds": 90, "lookbackSeconds": 45, "minBuysPerMinute": 0.5 },
+    "whaleSellPctOfCurve": 3,
+    "exitOnDevSell": true,
+    "sellOnMigration": true,
+    "exitLoopMs": 1000
+  },
+  "fees": {
+    "modelPumpFunPctPerSide": 1.25,
+    "pumpPortalPctPerSide": 0.5,
+    "priorityMicroLamports": 150000,
+    "computeUnits": 150000,
+    "pumpPortalPriorityFeeSol": 0.0005,
+    "pumpPortalPriorityFeeCapSol": 0.005
+  },
+  "paperFill": {
+    "buyFailPct": 10, "sellFailPct": 15,
+    "delayMsMin": 400, "delayMsMax": 1200,
+    "slippageCapPct": 15
+  },
+  "risk": {
+    "maxPctBankrollPerTrade": 1.0,
+    "minTradeSol": 0.1, "maxTradeSol": 0.25,
+    "maxOpenPositions": 5, "maxTotalExposurePct": 5,
+    "dailyLossLimitPct": 7.5,
+    "consecutiveLossStop": 3,
+    "reduceSizeAfterWins": 3,
+    "cooldownSecondsPerToken": 300,
+    "liveMinSolReserve": 0.02
+  }
+}

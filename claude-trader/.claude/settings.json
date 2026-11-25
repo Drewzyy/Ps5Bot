@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/*keypair*.json)",
+      "Read(**/*keypair*)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Read(**/wallet*.json)",
+      "Read(**/wallet*.dat)",
+      "Read(**/*secret*)",
+      "Read(**/id.json)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.keystore)",
+      "Read(~/.config/solana/**)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/check-live-gate.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
