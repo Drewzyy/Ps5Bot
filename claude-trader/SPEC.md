@@ -68,7 +68,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
   "filters": {
     "mintAuthorityRevoked": true,
     "freezeAuthorityRevoked": true,
-    "maxCreatorHoldingPct": 15,
+    "maxCreatorHoldingPct": 10,
     "maxInsidersPct": 20,
     "maxSingleHolderPct": 5,
     "maxTopHoldersCombinedPct": 15,
@@ -126,7 +126,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
   },
   "risk": {
     "maxPctBankrollPerTrade": 1.0,
-    "minTradeSol": 0.05, "maxTradeSol": 0.25,
+    "minTradeSol": 0.1, "maxTradeSol": 0.25,
     "maxOpenPositions": 5, "maxTotalExposurePct": 5,
     "dailyLossLimitPct": 7.5,
     "consecutiveLossStop": 3,
@@ -175,7 +175,7 @@ Rules:
 ```
 
 - Daily summary: win rate, avg win, avg loss, profit factor, max drawdown, total PnL, trades per day.
-- Promotion to live: at least a few days and ~50 trades, stats reviewed with the user, positive after fees and slippage.
+- Promotion to live: at least a few days and at least 100 trades, stats reviewed with the user, positive after fees and slippage.
 
 ## 9. Dashboard and UI
 
@@ -204,6 +204,51 @@ Theme: white background, white cards, green accents (#16a34a primary, #14532d te
 - `.claude/settings.json` with deny rules (no reading the key file / keystore paths) and a Stop hook that fails if a live-trade call path exists outside the Executor's live gate. Created in M1.
 - Sell-path invariants: SUCCESS / REVERTED / UNCONFIRMED (re-check chain before re-selling); only SUBMIT_FAILED retries; never store 0.0 as last-known price.
 - Every real send simulated first.
+
+## 11b. Loss protections (from trap/scam research, 2026-11-25)
+
+Context: Solidus Labs flags ~98.7% of pump.fun tokens as showing pump-and-dump or rug patterns (pump.fun disputes it). The bot treats every token as hostile until every check passes. Values marked [est] are starting values with no published source; paper mode tunes them.
+
+Urgent, before any buy code (M3 paper sim and M4 live):
+- pump.fun rotated its fee recipients (pump-fun/pump-public-docs FEE_RECIPIENT_ROTATION.md, cutoff Nov 25). Trades built with old recipients fail. Never hardcode fee recipients or account lists: let PumpPortal trade-local build the transaction, and cross-check against a recent successful on-chain trade. Startup self-test simulates a tiny buy and sell; 3 consecutive simulation failures halt all buying.
+
+Token scams (pre-buy, all required):
+1. Mint account parsed on-chain (not RugCheck alone). Reject if: mint authority set, freeze authority set, Token-2022 transferHook with a program, permanentDelegate, transferFee > 0 bps, closeAuthority. (Pump `create_v2` coins are all Token-2022, so inspect extensions, don't reject the program.)
+2. Honeypot: simulateTransaction of a sell must succeed before buying.
+3. Creator holds no more than 10% [est]. Exit at once if the creator sells more than 25% of their bag [est] (on top of the any-dev-sell exit).
+4. Serial ruggers: local SQLite of creator wallets and outcomes. Blacklist a creator after 1 token that fell more than 70% within 5 min [est], and wallets that funded a blacklisted creator.
+5. Wash volume: at least 15 distinct buyer wallets in the last 60 s, and the top 3 wallets under 40% of trades [est].
+6. Copycats: skip if name or symbol is within Levenshtein 2 of a token seen trending in the last 24 h [est]; skip if the metadata URI is missing or doesn't resolve within 2 s.
+7. Chase risk: no entry if market cap already rose more than 3x from launch within 60 s [est].
+8. Bot-bait: never buy in the first 60 s (minAgeSeconds), dev-snipe-first-block block stays on.
+9. Graduation: sell everything when market cap reaches 90% of the graduation target [est]. Never hold through migration.
+10. Cabal dump: 3 or more sells each above 3% of supply within 10 s means sell all at once [est].
+11. Slow rug: sells above 60% of volume for 2 consecutive 30 s windows means sell all [est].
+
+Execution:
+12. Slippage cap 5% on buys [est]. Quote must be under 2 s old; re-quote from curve state before signing.
+13. Realized slippage monitor: pause buying if average slippage over the last 10 trades exceeds 6% [est].
+14. Fee gate: reject a buy if priority fee plus tip exceeds 1% of size. Break-even gate includes fees, tips and unrecovered rent. Minimum trade raised to 0.1 SOL so fixed costs stay small.
+15. Close the token account after every full sell to recover rent (~0.002 SOL).
+16. One in-flight order per mint. Per-mint state machine OPEN → SELLING → CLOSED with a lock. Confirm by signature within 20 s, then check wallet balance before any retry. Never resend a sell until the first is confirmed dead (blockhash expired).
+17. Exit escalation: a failed sell retries with priority fee 2x then 4x (cap 0.005 SOL); after 3 failures, sell 50% first.
+18. Verify every transaction PumpPortal returns before signing: only expected program IDs, and simulated SOL change no worse than trade size plus 5%.
+
+Operational and security:
+19. Dedicated hot wallet holding no more than 1 SOL [est]. Main wallet never touched.
+20. Supply chain: commit lockfiles, install with `npm ci --ignore-scripts`, CI fails if any lockfile URL is not registry.npmjs.org (a 2025 fake "solana-pumpfun-bot" swapped a dependency to steal keys, per SlowMist). Pin exact versions, `npm audit` and `cargo audit` in CI, minimal dependencies. Never run third-party bot code with a real key.
+21. Helius free tier: own rate limiter at 8 req/s and 1 sendTransaction/s, back off on HTTP 429, fallback RPC, halt new buys if RPC latency exceeds 2 s [est].
+22. One shared PumpPortal socket, reconnect backoff 1/2/4 s up to 30 s, no buys if disconnected more than 5 s.
+23. Clock check against RPC slot time at start and every 10 min; halt if drift exceeds 2 s.
+24. Crash safety: write the position to SQLite before sending the buy. On startup reconcile against wallet token balances and sell any orphan at once.
+
+Strategy:
+25. Max 30 trades per day [est]. Daily loss halt and 3-loss stop need a manual restart.
+26. Unit test proves size never increases after a loss.
+27. Regime pause: rolling 20-trade profit factor below 0.8, or new-token rate under half its 7-day median [est].
+28. Paper-to-live gate raised to at least 100 paper trades. Live starts at the minimum size. Halt live if realized PnL is more than 30% worse than paper over 20 trades. Recalibrate the paper fill model from the first 20 live fills.
+
+All 28 protections are acceptance items: each needs a unit test or a recorded demo before its milestone closes (token checks and execution rules in M2/M3, live-only rules in M4).
 
 ## 12. Out of scope
 
