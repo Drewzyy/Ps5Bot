@@ -75,15 +75,20 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
     "excludeCurveAndPoolAccounts": true,
     "rejectDevSnipeFirstBlock": true,
     "rejectBundle": true,
-    "requireCommunityChecks": true
+    "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true }
   },
   "observation": {
     "minScore": 80, "minUniqueBuyers": 5, "minBuySellRatio": 2.0, "minPriceChangePct": 5
   },
   "entry": {
-    "style": "dip-40pct",
-    "minDipPct": 40, "maxDipPct": 50,
-    "confirmVolumeExpanding": true
+    "style": "momentum",
+    "minBuySellRatio": 2.0,
+    "minUniqueBuyers30s": 5,
+    "requireRisingVolumeSlope": true,
+    "curveSolMin": 12, "curveSolMax": 40,
+    "minHolders": 15,
+    "minAgeSeconds": 60,
+    "paperVariant": { "style": "dip-40pct", "minDipPct": 40, "maxDipPct": 50, "confirmVolumeExpanding": true }
   },
   "exits": {
     "tranches": [
@@ -91,10 +96,10 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
       { "atPct": 40, "sellPct": 30 },
       { "atPct": 60, "sellPct": 20 }
     ],
-    "trailingStopPct": 20,
-    "softStopPct": -20,
-    "softStopRecoverySeconds": 30,
-    "hardStopPct": -25,
+    "trailingStopPct": 10,
+    "softStopPct": -10,
+    "softStopRecoverySeconds": 15,
+    "hardStopPct": -15,
     "sellBelowAverageEntry": true,
     "maxHoldSeconds": 300,
     "stallExit": { "fromSeconds": 60, "toSeconds": 90, "minPct": 3 },
@@ -106,34 +111,50 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
     "sellOnMigration": true,
     "exitLoopMs": 1000
   },
+  "fees": {
+    "modelPumpFunPctPerSide": 1.25,
+    "pumpPortalPctPerSide": 0.5,
+    "priorityMicroLamports": 150000,
+    "computeUnits": 150000,
+    "pumpPortalPriorityFeeSol": 0.0005,
+    "pumpPortalPriorityFeeCapSol": 0.005
+  },
+  "paperFill": {
+    "buyFailPct": 10, "sellFailPct": 15,
+    "delayMsMin": 400, "delayMsMax": 1200,
+    "slippageCapPct": 15
+  },
   "risk": {
     "maxPctBankrollPerTrade": 1.0,
     "minTradeSol": 0.05, "maxTradeSol": 0.25,
-    "maxOpenPositions": 3, "maxTotalExposurePct": 5,
+    "maxOpenPositions": 5, "maxTotalExposurePct": 5,
     "dailyLossLimitPct": 7.5,
     "consecutiveLossStop": 3,
     "reduceSizeAfterWins": 3,
     "cooldownSecondsPerToken": 300,
-    "liveMinSolReserve": null
+    "liveMinSolReserve": 0.02
   }
 }
 ```
 
 Rules:
-- Stop-loss [user]: two layers. Price at or below -20% starts a 30 s recovery wait; during the wait the hard stop at -25% is checked every 1 s and sells at once. If the price is still at or below -20% after 30 s, sell all.
+- Stop-loss [Claude, 2026-11-25, replaces the earlier -20/-25 choice]: soft stop -10% starts a 15 s recovery wait; hard stop -15% sells at once (checked every 1 s). Tightened because fees model at ~3.5% per round trip and the user asked for minimal losses; -15% hard stops are used by gmgn-screener (high-risk entries), OilFront and the Capital repo config.
 - Style [user, 2026-11-25]: quick scalps. Every position is closed within 5 minutes, no exceptions.
-- Take-profit [user]: 40% at +20%, 30% at +40%, 20% at +60%, last 10% on a 20% trailing stop from the peak.
+- Take-profit [user]: 40% at +20%, 30% at +40%, 20% at +60%, last 10% on a 10% trailing stop from the peak.
 - Holder concentration [user]: single holder ≤5%, top holders combined ≤15%, with bonding-curve and pool accounts excluded from both numbers.
 - Max hold [user]: 5 minutes (300 s). Anything still open is sold in full.
 - Fade exits [user] (from the Capital repo's smart_exit.py, untested there since its engine is never called): stall (under +3% between 60 and 90 s: sell all); bleeder (past 120 s, below -20%, peak never above +20%: sell all); volume taper (3 falling 10 s buy-volume windows and the last under 50% of baseline: sell 50%); momentum death (after 90 s, fewer than 0.5 buys/min over 45 s: sell all); whale sell of 3% or more of the curve, or any dev sell: sell all at once.
 - Exit loop runs every 1 s on curve-account WebSocket pushes, RPC fallback.
 - Fees: pump.fun 0.30% per side plus PumpPortal 0.5% per side plus priority fee. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
 - Size: 1% of bankroll per trade, clamped to 0.05–0.25 SOL. Fixed size, no doubling after a loss, never add to a loser.
-- `entry.style` options: `snipe`, `confirmation`, `dip-40pct`, `graduation-dip`. One active at a time. Default `dip-40pct`. The observation-window gate applies to every style.
+- `entry.style` options: `momentum`, `snipe`, `confirmation`, `dip-40pct`, `graduation-dip`. Default `momentum` [Claude]: the only entry with any track record found (Capital repo: 458 self-reported live trades, buy/sell ratio and volume slope were the strongest predictors; score gate gave 41.9% win rate). `dip-40pct` runs as a parallel paper-only variant so the two can be compared; live uses whichever wins in paper. The observation-window gate applies to every style.
 - Break-even check: before a buy, compute break-even % for the trade size (fees, tips, slippage). Reject the buy if TP1 is not above break-even with margin.
 - Daily loss limit halts trading for the rest of the local day. 3 stopped trades in a row also halts. After 3 wins in a row, halve size for the next trade.
 - Scam blocks are automatic with no override: honeypot, creator holding over the limit, dev-snipe in first block, live mint/freeze authority, bundled/fake holders.
-- Top-trader wallets are a score input only. Never copy-trade.
+- Top-trader wallets: off in v1 (no free, verified smart-money source exists). `minProTraders` is dropped. Later version may build a local list from wallets with 3+ early buys on graduated tokens. Never copy-trade.
+- Community check [Claude]: at least one social link and an image in metadata. Weak hard filter only, not a score driver (link presence is easy to fake). All metadata fields logged so their predictive value can be measured in paper.
+- Fees [Claude]: model pump.fun at 1.25% per side (conservative end of conflicting sources), PumpPortal 0.5% per side, so ~3.5% per round trip plus priority fee. Verify both against live docs before M4.
+- Volume [Claude]: the bot scans every launch nonstop but only buys what clears every gate. Up to 5 positions at once, 300 s cooldown per token.
 
 ## 7. Scam Shield
 
@@ -230,10 +251,11 @@ If live isn't approved, stop after the gate demo.
 
 Sources for the scalp values: kontia1/gmgn-screener README (stops, ladder shape); moonkeemoo/oilfront research doc (fees, base rates: win rate went 22% to 36% only after adding filters); madeonsol surge tracker, search snippet only (65 surges, median peak 1.45x at ~4 min, 60% peaked within 5 min); DoradoDevs repo smart_exit.py (fade exits). Medium, alchemii.io and the vercel counter-study were blocked by the network and are unread.
 
-## 14. Open questions (must be answered before the milestone named)
+## 14. Open items
 
-1. Before M3: `minProTraders: 10` from the original config has no defined data source on the free stack (no free "pro trader" label exists). Options: drop it, or define it as "≥N buyers from the Top Trader watch list". Left out of section 6 until answered.
-2. Before M3: entry style. `dip-40pct` (wait for a 40-50% dip after the first spike) may not fit a 5-minute scalp. The Capital repo instead enters on momentum: curve 12-40 SOL sweet spot, at least 15 unique holders, coin at least 60 s old. Keep dip-40pct as default or switch to momentum?
-3. Before M3: `requireCommunityChecks` is undefined (socials present? X mentions? Telegram?). Needs a concrete rule.
-4. Before M3: failed-fill rate and fill delay for the paper simulator (suggest 10% failed, 400–1500 ms delay) need sign-off.
-5. Before M4: live per-trade size, `liveMinSolReserve` value, Helius key, top-trader wallet list.
+Trading values are decided by Claude from research (user delegated this on 2026-11-25). Only these need the user:
+1. Before M2: free Helius API key.
+2. Before M4: approval of paper stats; live per-trade size.
+3. Before M4: confirm pump.fun and PumpPortal fees against their docs (hosts were blocked during research).
+
+Paper-fill numbers (fail rates, delay) are conservative estimates with no published source; recalibrate from real M4 fills.
