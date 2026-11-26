@@ -2,7 +2,7 @@ import type { Config, EngineEvent } from "./types";
 import defaultConfig from "../../config.json";
 
 export interface DataSource {
-  kind: "tauri" | "mock";
+  kind: "tauri" | "mock" | "ws";
   subscribe(cb: (e: EngineEvent) => void): () => void;
   getConfig(): Promise<Config>;
 }
@@ -72,4 +72,44 @@ function tauriSource(): DataSource {
   };
 }
 
-export const source: DataSource = isTauri() ? tauriSource() : mockSource();
+/** Browser mode against a running engine-cli: open the page with ?engine=8765 (or ?engine=ws://127.0.0.1:8765). */
+function engineWsUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search).get("engine");
+  if (!q) return null;
+  return /^wss?:\/\//.test(q) ? q : `ws://127.0.0.1:${q}`;
+}
+
+function wsSource(url: string): DataSource {
+  return {
+    kind: "ws",
+    subscribe(cb) {
+      let ws: WebSocket | null = null;
+      let dead = false;
+      let retry: ReturnType<typeof setTimeout> | undefined;
+      const open = () => {
+        ws = new WebSocket(url);
+        ws.onmessage = (m) => {
+          try {
+            cb(JSON.parse(m.data as string) as EngineEvent);
+          } catch {
+            /* ignore malformed frame */
+          }
+        };
+        ws.onclose = () => {
+          if (!dead) retry = setTimeout(open, 2000);
+        };
+      };
+      open();
+      return () => {
+        dead = true;
+        clearTimeout(retry);
+        ws?.close();
+      };
+    },
+    getConfig: async () => defaultConfig as Config,
+  };
+}
+
+const wsUrl = engineWsUrl();
+export const source: DataSource = isTauri() ? tauriSource() : wsUrl ? wsSource(wsUrl) : mockSource();

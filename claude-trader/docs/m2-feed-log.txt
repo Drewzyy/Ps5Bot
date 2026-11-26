@@ -1,0 +1,181 @@
+# M2 live feed log. engine-cli feed --minutes 14 --relax-metadata-egress (public RPC, container egress proxy). 2026-11-26 00:32-00:46 UTC.
+# Trimmed: all feed/trade-feed LOG lines, every NEW-TOKEN, HANDOFF counts, all chain/pre-buy/observation results, summary. Cheap-prefilter PASS lines and per-token handoff lines omitted.
+2026-11-26T00:32:43.237Z LOG          events served on ws://127.0.0.1:8765
+2026-11-26T00:32:43.237Z LOG          WARNING: --relax-metadata-egress is on (sandbox only): unreachable metadata hosts are flagged, not blocked
+2026-11-26T00:32:43.255Z LOG          engine: rpc endpoint https://api.mainnet-beta.solana.com
+2026-11-26T00:32:43.471Z LOG          engine: SOL price used for USD conversion: $70.95
+2026-11-26T00:32:43.742Z LOG          trade feed: connected
+2026-11-26T00:32:43.743Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:32:43.899Z LOG          feed: connected to wss://pumpportal.fun/api/data (subscribeNewToken, subscribeMigration)
+2026-11-26T00:32:58.791Z NEW-TOKEN  mint=he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A symbol=INU name="HeliusInu" mcapSol=6036.30
+2026-11-26T00:32:58.792Z BLOCK       INU he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 100.0% of the supply (limit 10%).
+2026-11-26T00:33:09.166Z NEW-TOKEN  mint=896G1bviLZEy7ZGgZE8hRPwHESFraqfthm4vk32Qpump symbol=Nvidia Cat name="Nvidia Cat" mcapSol=29.04
+2026-11-26T00:33:09.918Z BLOCK       Nvidia Cat 896G1bviLZEy7ZGgZE8hRPwHESFraqfthm4vk32Qpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:33:10.753Z NEW-TOKEN  mint=79QHAViWMJQrv9Eg4vvg5sHVNfYpe5qk5UU1Qyjspump symbol=TARIFF name="TRUMP" mcapSol=27.96
+2026-11-26T00:33:11.302Z PASS        TARIFF 79QHAViWMJQrv9Eg4vvg5sHVNfYpe5qk5UU1Qyjspump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachab
+2026-11-26T00:33:13.743Z LOG          trade feed: 2 subscriptions confirmed, 493 log messages, 52 trades decoded
+2026-11-26T00:33:37.825Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:33:39.065Z LOG          trade feed: connected
+2026-11-26T00:33:39.066Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:33:47.936Z NEW-TOKEN  mint=35835H5C1mk92nAWMLRBS8mWfZHAAuYfepLwNJXcpump symbol=DEAD name="DEAD INSIDE" mcapSol=28.07
+2026-11-26T00:33:48.917Z PASS        DEAD 35835H5C1mk92nAWMLRBS8mWfZHAAuYfepLwNJXcpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifia
+2026-11-26T00:34:04.161Z NEW-TOKEN  mint=FJ9oXNgzVTSqR1kLT4pLnNW6mLK6P5Ppnuag7Yijpump symbol=FOX PUMP name="FOX PUMP" mcapSol=29.04
+2026-11-26T00:34:05.395Z BLOCK       FOX PUMP FJ9oXNgzVTSqR1kLT4pLnNW6mLK6P5Ppnuag7Yijpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:34:09.067Z LOG          trade feed: 3 subscriptions confirmed, 169 log messages, 30 trades decoded
+2026-11-26T00:34:10.754Z SCORE       TARIFF 79QHAViWMJQrv9Eg4vvg5sHVNfYpe5qk5UU1Qyjspump score=77.3 picked=false buyers=45 buys=51 sells=39 ratio=1.31 priceChg=43.9% curveSol=6.0 gates=["curve holds 6.0 SOL (needs 12-40)", "buy/sell 1.3 below 2", "3 buyers in 30 s (needs 5)", "volume not rising", "market cap $2855 below $7000"]
+2026-11-26T00:34:20.095Z NEW-TOKEN  mint=EcC9ZjCHB3PUTx9pjW4aXDtgpHYvHQcw7AAus412pump symbol=Solace name="ZeroSumEnjoyer" mcapSol=32.75
+2026-11-26T00:34:21.333Z BLOCK       Solace EcC9ZjCHB3PUTx9pjW4aXDtgpHYvHQcw7AAus412pump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:34:25.704Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:34:26.947Z LOG          trade feed: connected
+2026-11-26T00:34:26.948Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:34:28.165Z NEW-TOKEN  mint=GnFvJw3US8goA8JttqXbyfURRnypfVXBRNWxmo16bN4J symbol=SOLACE name="Solace" mcapSol=27.96
+2026-11-26T00:34:29.400Z BLOCK       SOLACE GnFvJw3US8goA8JttqXbyfURRnypfVXBRNWxmo16bN4J stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | Create transaction not found in the curve's signature list.
+2026-11-26T00:34:30.915Z NEW-TOKEN  mint=Cb3JcCaR8gMzwHhguxZayNTJGYNVNTgKrAHKJb4vpump symbol=JHCOIN name="Jensen Huang Coin" mcapSol=29.17
+2026-11-26T00:34:32.146Z BLOCK       JHCOIN Cb3JcCaR8gMzwHhguxZayNTJGYNVNTgKrAHKJb4vpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:34:42.281Z NEW-TOKEN  mint=HdRHqp9BSmbrUQx3YU7c4UL8dvNhqhmbifDjgcSwTSCc symbol=BILLY name="BillyCoin" mcapSol=27.96
+2026-11-26T00:34:42.510Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:34:43.527Z PASS        BILLY HdRHqp9BSmbrUQx3YU7c4UL8dvNhqhmbifDjgcSwTSCc stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachabl
+2026-11-26T00:34:43.680Z LOG          trade feed: connected
+2026-11-26T00:34:43.682Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:34:47.938Z SCORE       DEAD 35835H5C1mk92nAWMLRBS8mWfZHAAuYfepLwNJXcpump score=54.7 picked=false buyers=4 buys=28 sells=18 ratio=1.56 priceChg=-71.3% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 1.6 below 2", "2 buyers in 30 s (needs 5)", "volume not rising", "market cap $571 below $7000"]
+2026-11-26T00:34:49.442Z NEW-TOKEN  mint=Bt3f94tPRZYaCvFL9h7UT8HSAE3zfBuMuX5AvwEkM4XM symbol=cooldog name="cooldog" mcapSol=27.96
+2026-11-26T00:34:50.677Z PASS        cooldog Bt3f94tPRZYaCvFL9h7UT8HSAE3zfBuMuX5AvwEkM4XM stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreacha
+2026-11-26T00:34:56.012Z NEW-TOKEN  mint=DzU3PGMyDJQLqnyCPsYe4eCEYzWZ79UAJz7krVFdpump symbol=JHCOIN name="Jensen Huang Coin" mcapSol=28.92
+2026-11-26T00:34:57.252Z BLOCK       JHCOIN DzU3PGMyDJQLqnyCPsYe4eCEYzWZ79UAJz7krVFdpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:35:13.444Z NEW-TOKEN  mint=7re6uHVoQZrx8fFWctjpaeLDdWmv8iwyaC5b76aMqimV symbol=ZEPHEX name="Zephex" mcapSol=27.96
+2026-11-26T00:35:13.682Z LOG          trade feed: 5 subscriptions confirmed, 1 log messages, 1 trades decoded
+2026-11-26T00:35:14.681Z PASS        ZEPHEX 7re6uHVoQZrx8fFWctjpaeLDdWmv8iwyaC5b76aMqimV stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachab
+2026-11-26T00:35:18.339Z NEW-TOKEN  mint=2CKo2yD23X41RgAmcE9bAD2B56uAKEBZHafvoP6ipump symbol=HOLIDAYSZN name="Holiday Szn" mcapSol=33.92
+2026-11-26T00:35:18.947Z BLOCK       HOLIDAYSZN 2CKo2yD23X41RgAmcE9bAD2B56uAKEBZHafvoP6ipump stage=chain reason=DEV_SNIPE verdict=HIGH | 3 other transaction(s) landed in the same block as the launch (slot 473949112).
+2026-11-26T00:35:31.472Z NEW-TOKEN  mint=H7FjTGQ7LDAkWLoNFxcuoxF5hYLt3USVvrVP2zg9pump symbol=JHCOIN name="Jensen Huang Coin" mcapSol=28.87
+2026-11-26T00:35:32.708Z BLOCK       JHCOIN H7FjTGQ7LDAkWLoNFxcuoxF5hYLt3USVvrVP2zg9pump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:35:42.283Z SCORE       BILLY HdRHqp9BSmbrUQx3YU7c4UL8dvNhqhmbifDjgcSwTSCc score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $0 below $7000"]
+2026-11-26T00:35:43.682Z LOG          trade feed: 7 subscriptions confirmed, 1 log messages, 1 trades decoded
+2026-11-26T00:35:49.444Z SCORE       cooldog Bt3f94tPRZYaCvFL9h7UT8HSAE3zfBuMuX5AvwEkM4XM score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $0 below $7000"]
+2026-11-26T00:36:13.445Z SCORE       ZEPHEX 7re6uHVoQZrx8fFWctjpaeLDdWmv8iwyaC5b76aMqimV score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $0 below $7000"]
+2026-11-26T00:36:13.682Z LOG          trade feed: 7 subscriptions confirmed, 1 log messages, 1 trades decoded
+2026-11-26T00:36:22.628Z NEW-TOKEN  mint=HCnridjAEzsGreBzfuoGvyy2frvTDr7WCfBdWmqMpump symbol=JHCOIN name="Jensen Huang Coin" mcapSol=28.85
+2026-11-26T00:36:23.572Z PASS        JHCOIN HCnridjAEzsGreBzfuoGvyy2frvTDr7WCfBdWmqMpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverif
+2026-11-26T00:36:43.146Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:36:44.387Z LOG          trade feed: connected
+2026-11-26T00:36:44.388Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:36:51.358Z NEW-TOKEN  mint=HsJYQGBgcMTzqxTeBiuxYWnipxRvb1jqQFbiYCZzpump symbol=CORE name="LOSER" mcapSol=27.98
+2026-11-26T00:36:52.608Z BLOCK       CORE HsJYQGBgcMTzqxTeBiuxYWnipxRvb1jqQFbiYCZzpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | Create transaction not found in the curve's signature list.
+2026-11-26T00:37:14.388Z LOG          trade feed: 2 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:37:16.000Z NEW-TOKEN  mint=GdRNbrRcAFWFvVEMCqeX5orSHrJYDJrrJZkYQkkwpump symbol=4paid name="4paid" mcapSol=33.92
+2026-11-26T00:37:17.240Z BLOCK       4paid GdRNbrRcAFWFvVEMCqeX5orSHrJYDJrrJZkYQkkwpump stage=chain reason=DEV_SNIPE verdict=HIGH | 3 other transaction(s) landed in the same block as the launch (slot 473949659).
+2026-11-26T00:37:22.629Z SCORE       JHCOIN HCnridjAEzsGreBzfuoGvyy2frvTDr7WCfBdWmqMpump score=2.0 picked=false buyers=0 buys=0 sells=2 ratio=0.00 priceChg=-67.1% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $673 below $7000"]
+2026-11-26T00:37:31.685Z NEW-TOKEN  mint=B3TdJJR5TY74gEsb63dLN1YHMuYecyEE81oDricYpump symbol=DCTY name="DacityCoin" mcapSol=34.77
+2026-11-26T00:37:31.687Z BLOCK       DCTY B3TdJJR5TY74gEsb63dLN1YHMuYecyEE81oDricYpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 11.1% of the supply (limit 10%).
+2026-11-26T00:37:42.649Z NEW-TOKEN  mint=6iqBG8RfSSHy5qGZ1imqv1NecWbgbneB22vgKK7Ypump symbol=VIGIL name="Vigil Bounties" mcapSol=98.04
+2026-11-26T00:37:42.651Z BLOCK       VIGIL 6iqBG8RfSSHy5qGZ1imqv1NecWbgbneB22vgKK7Ypump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 50.0% of the supply (limit 10%).
+2026-11-26T00:37:44.389Z LOG          trade feed: 3 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:37:45.231Z NEW-TOKEN  mint=8euw4vSo498jbsh5d3RKk1RpQHBndLUqYdzCVe5GEqDG symbol=SILVER name="Digital Silver" mcapSol=37.92
+2026-11-26T00:37:45.232Z BLOCK       SILVER 8euw4vSo498jbsh5d3RKk1RpQHBndLUqYdzCVe5GEqDG stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 15.2% of the supply (limit 10%).
+2026-11-26T00:37:52.800Z NEW-TOKEN  mint=92YtxAuC89DqAajjnW3JGF7cVAjaPU4Jp8gzBAdgpump symbol=floored name="floored" mcapSol=30.17
+2026-11-26T00:37:53.604Z BLOCK       floored 92YtxAuC89DqAajjnW3JGF7cVAjaPU4Jp8gzBAdgpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 473949833).
+2026-11-26T00:38:14.388Z LOG          trade feed: 4 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:38:17.879Z NEW-TOKEN  mint=AW6eGWB9xqVqqYUZQHPEzBoJLA2JGZbHvjeFGzyspump symbol=Doomer name="Original Doomer" mcapSol=30.17
+2026-11-26T00:38:19.112Z BLOCK       Doomer AW6eGWB9xqVqqYUZQHPEzBoJLA2JGZbHvjeFGzyspump stage=chain reason=DEV_SNIPE verdict=HIGH | 5 other transaction(s) landed in the same block as the launch (slot 473949952).
+2026-11-26T00:38:28.489Z NEW-TOKEN  mint=SHEPc9Ndpt6dpW9WfoB5TXdJU3W3fQNihpLKRm3fKZA symbol=SHEP name="shep" mcapSol=29.45
+2026-11-26T00:38:29.723Z BLOCK       SHEP SHEPc9Ndpt6dpW9WfoB5TXdJU3W3fQNihpLKRm3fKZA stage=chain reason=DEV_SNIPE verdict=HIGH | 4 other transaction(s) landed in the same block as the launch (slot 473950004).
+2026-11-26T00:38:36.983Z NEW-TOKEN  mint=GyFRTLdXeveX8ttK69ueSQtxTeUmevjz8jfckMdxpump symbol=The Entert name="The Entertainer" mcapSol=29.17
+2026-11-26T00:38:38.219Z BLOCK       The Entert GyFRTLdXeveX8ttK69ueSQtxTeUmevjz8jfckMdxpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:38:44.389Z LOG          trade feed: 7 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:39:14.388Z LOG          trade feed: 7 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:39:34.685Z NEW-TOKEN  mint=FAUPa19ymTBqnwP4gWoLFocfY8Gvu6t5tiz37pTk999T symbol=BABYRASM name="Baby Grindr Mascot" mcapSol=27.99
+2026-11-26T00:39:35.705Z PASS        BABYRASM FAUPa19ymTBqnwP4gWoLFocfY8Gvu6t5tiz37pTk999T stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreach
+2026-11-26T00:39:44.388Z LOG          trade feed: 8 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:39:55.084Z NEW-TOKEN  mint=Ce2gx9KGXJ6C9Mp5b5x1sn9Mg87JwEbrQby4Zqo3pump symbol= name="" mcapSol=6034.97
+2026-11-26T00:39:55.086Z BLOCK        Ce2gx9KGXJ6C9Mp5b5x1sn9Mg87JwEbrQby4Zqo3pump stage=cheap-prefilter reason=METADATA_MISSING verdict=HIGH | Name, symbol or metadata link is missing.
+2026-11-26T00:40:07.610Z NEW-TOKEN  mint=59eGgBhAPsm6E5qmZSxHhBEx2SvajgZ7ynBjzytEpump symbol=SPEED name="IShowSpeed" mcapSol=31.76
+2026-11-26T00:40:09.614Z BLOCK       SPEED 59eGgBhAPsm6E5qmZSxHhBEx2SvajgZ7ynBjzytEpump stage=chain reason=SINGLE_HOLDER verdict=HIGH | One wallet (956C..pJLA) holds 6.6% of supply (limit 5%), curve and pool accounts excluded.
+2026-11-26T00:40:14.388Z LOG          trade feed: 9 subscriptions confirmed, 4 log messages, 4 trades decoded
+2026-11-26T00:40:30.124Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:40:31.425Z LOG          trade feed: connected
+2026-11-26T00:40:31.427Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:40:34.687Z SCORE       BABYRASM FAUPa19ymTBqnwP4gWoLFocfY8Gvu6t5tiz37pTk999T score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $0 below $7000"]
+2026-11-26T00:40:35.377Z NEW-TOKEN  mint=9f7awBVxu1LwAY2n2TuuvpPxCwVECxkm7T5jYsEbpump symbol=DI name="Discount Inu" mcapSol=29.83
+2026-11-26T00:40:36.608Z BLOCK       DI 9f7awBVxu1LwAY2n2TuuvpPxCwVECxkm7T5jYsEbpump stage=chain reason=DEV_SNIPE verdict=HIGH | 5 other transaction(s) landed in the same block as the launch (slot 473950600).
+2026-11-26T00:40:42.408Z NEW-TOKEN  mint=FP2rCSnZchWAiHm2MNXygNnDJFJS1cHhBUVu9ZoXpump symbol=The Entert name="The Entertainer" mcapSol=28.85
+2026-11-26T00:40:43.644Z BLOCK       The Entert FP2rCSnZchWAiHm2MNXygNnDJFJS1cHhBUVu9ZoXpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:41:01.427Z LOG          trade feed: 3 subscriptions confirmed, 38 log messages, 8 trades decoded
+2026-11-26T00:41:02.572Z NEW-TOKEN  mint=5GF9H2PCrtFzNmD2HDhqpUbAi1k4Mb6Ci4CXa5v5pump symbol=bluk name="bluk zeruh" mcapSol=32.00
+2026-11-26T00:41:03.163Z BLOCK       bluk 5GF9H2PCrtFzNmD2HDhqpUbAi1k4Mb6Ci4CXa5v5pump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 473950725).
+2026-11-26T00:41:31.427Z LOG          trade feed: 4 subscriptions confirmed, 38 log messages, 8 trades decoded
+2026-11-26T00:41:43.395Z NEW-TOKEN  mint=4vYuoGWamVKWyU91L4j7KSW54pB35qTTbaP9RkaFpump symbol=RASMR name="The Jester" mcapSol=31.76
+2026-11-26T00:41:44.127Z BLOCK       RASMR 4vYuoGWamVKWyU91L4j7KSW54pB35qTTbaP9RkaFpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:41:57.228Z NEW-TOKEN  mint=2zoDcnQ6aPRgzgeSN7FZHwSn5GrGiLhhF2Tr9pJDpump symbol=Chudbot name="Chudbot" mcapSol=29.83
+2026-11-26T00:41:58.460Z BLOCK       Chudbot 2zoDcnQ6aPRgzgeSN7FZHwSn5GrGiLhhF2Tr9pJDpump stage=chain reason=DEV_SNIPE verdict=HIGH | 6 other transaction(s) landed in the same block as the launch (slot 473950982).
+2026-11-26T00:42:01.427Z LOG          trade feed: 6 subscriptions confirmed, 38 log messages, 8 trades decoded
+2026-11-26T00:42:12.491Z NEW-TOKEN  mint=8RKNjtyxd3aZ3WvxdXcU1kLg5FUvmWTPtnZ6aGmtpump symbol=RASMR name="The Jester" mcapSol=29.83
+2026-11-26T00:42:13.718Z PASS        RASMR 8RKNjtyxd3aZ3WvxdXcU1kLg5FUvmWTPtnZ6aGmtpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifi
+2026-11-26T00:42:17.527Z NEW-TOKEN  mint=6mRf5aXERTy2LAWSq1n9Hq4ttWhGn3FnLN6doc4tUkMf symbol=Guy name="The Crypto Guy" mcapSol=40.10
+2026-11-26T00:42:17.529Z BLOCK       Guy 6mRf5aXERTy2LAWSq1n9Hq4ttWhGn3FnLN6doc4tUkMf stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 17.7% of the supply (limit 10%).
+2026-11-26T00:42:27.867Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-26T00:42:29.135Z LOG          trade feed: connected
+2026-11-26T00:42:29.137Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-26T00:42:39.391Z NEW-TOKEN  mint=4oZqAT8xgFviPyU6jygJc4gzN2SPy1SBJC1W7UdDpump symbol=VIGIL name="Vigil Bounties" mcapSol=98.04
+2026-11-26T00:42:39.395Z BLOCK       VIGIL 4oZqAT8xgFviPyU6jygJc4gzN2SPy1SBJC1W7UdDpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 50.0% of the supply (limit 10%).
+2026-11-26T00:42:45.914Z NEW-TOKEN  mint=F67nU9tqZD2aTcCXAH9f7mEvKkcpjL3sPPmHbqNbpump symbol=SALECOIN name="This Coin Is On Sale" mcapSol=28.14
+2026-11-26T00:42:47.886Z NEW-TOKEN  mint=BFUZvRYvEuDjeegWQBuQrwBVhwyhzfymPmQmKcvpump symbol=DCTY name="DacityCoin" mcapSol=34.77
+2026-11-26T00:42:47.888Z BLOCK       DCTY BFUZvRYvEuDjeegWQBuQrwBVhwyhzfymPmQmKcvpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 11.1% of the supply (limit 10%).
+2026-11-26T00:42:47.919Z BLOCK       SALECOIN F67nU9tqZD2aTcCXAH9f7mEvKkcpjL3sPPmHbqNbpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:42:57.793Z NEW-TOKEN  mint=7uRAUmzuy4UnfvbjsJuoGSpmhMedoXvXkxeJTnTZYLiQ symbol=LTEST27 name="Liquid Live Test" mcapSol=28.00
+2026-11-26T00:42:59.138Z LOG          trade feed: 3 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:42:59.798Z BLOCK       LTEST27 7uRAUmzuy4UnfvbjsJuoGSpmhMedoXvXkxeJTnTZYLiQ stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:00.176Z NEW-TOKEN  mint=J4nuUs384B22ZpvK8vVtMvKzRagTFdgW8azyW5Ugpump symbol=SCUR name="Swift Current" mcapSol=31.47
+2026-11-26T00:43:00.843Z NEW-TOKEN  mint=9ygeXKdQB3NJo2KBg3VyfsLmx3Be9mLSDmhTKyLbpump symbol=ChudBot name="ChudBot" mcapSol=29.21
+2026-11-26T00:43:01.737Z NEW-TOKEN  mint=HgP6K7Lh8LEKGyaaWjP8Rnc2XCRDVpjs8qotJS6dxZ4s symbol=AMI name="Justice for Ali Meat Internation" mcapSol=62.39
+2026-11-26T00:43:01.740Z BLOCK       AMI HgP6K7Lh8LEKGyaaWjP8Rnc2XCRDVpjs8qotJS6dxZ4s stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 35.5% of the supply (limit 10%).
+2026-11-26T00:43:02.181Z BLOCK       SCUR J4nuUs384B22ZpvK8vVtMvKzRagTFdgW8azyW5Ugpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:02.848Z BLOCK       ChudBot 9ygeXKdQB3NJo2KBg3VyfsLmx3Be9mLSDmhTKyLbpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:07.208Z NEW-TOKEN  mint=4wWNsjKwm5dVwSE9esr9JxUN1QjcBAU8uWexxrZvpump symbol=ty name="ty" mcapSol=29.83
+2026-11-26T00:43:09.213Z BLOCK       ty 4wWNsjKwm5dVwSE9esr9JxUN1QjcBAU8uWexxrZvpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:43:12.493Z SCORE       RASMR 8RKNjtyxd3aZ3WvxdXcU1kLg5FUvmWTPtnZ6aGmtpump score=21.3 picked=false buyers=2 buys=2 sells=3 ratio=0.67 priceChg=-6.3% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 12-40)", "buy/sell 0.7 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap $1984 below $7000", "creator is selling"]
+2026-11-26T00:43:19.351Z NEW-TOKEN  mint=7tM3zYKcnajrAxbWtcRya8dbjYWjncMnfkMSaJU3pump symbol=wCAT name="Wondering" mcapSol=28.61
+2026-11-26T00:43:21.355Z BLOCK       wCAT 7tM3zYKcnajrAxbWtcRya8dbjYWjncMnfkMSaJU3pump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:24.334Z NEW-TOKEN  mint=FARknNbjk4Bp9BxWQrUoYJEATmxAMwQ4pioSAssycoQY symbol=LCAT name="Liquid Ponzi Cat" mcapSol=27.96
+2026-11-26T00:43:26.338Z BLOCK       LCAT FARknNbjk4Bp9BxWQrUoYJEATmxAMwQ4pioSAssycoQY stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:29.137Z LOG          trade feed: 8 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:43:37.945Z NEW-TOKEN  mint=3bG49P93sRX7Jf1LmH2iCoF6nBkrdMHuFnxf7Ptjpump symbol=HARVEST name="Harvest" mcapSol=33.92
+2026-11-26T00:43:39.950Z BLOCK       HARVEST 3bG49P93sRX7Jf1LmH2iCoF6nBkrdMHuFnxf7Ptjpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:43:58.027Z NEW-TOKEN  mint=he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A symbol=VIGIL name="VigilBounties" mcapSol=6036.30
+2026-11-26T00:43:58.027Z BLOCK       VIGIL he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 100.0% of the supply (limit 10%).
+2026-11-26T00:43:59.137Z LOG          trade feed: 9 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:44:12.537Z NEW-TOKEN  mint=9UbSfpUBroN2vBhAAgMo2hu7id271Rid4b6Hji3jpump symbol=1000X name="1000x" mcapSol=29.00
+2026-11-26T00:44:14.542Z BLOCK       1000X 9UbSfpUBroN2vBhAAgMo2hu7id271Rid4b6Hji3jpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:44:19.540Z NEW-TOKEN  mint=ExWdgdDZVAr66Dp2LdgMnSx4ApwFKFmwTk2gpTBNpump symbol=PAIRPAD name="PairPad" mcapSol=28.49
+2026-11-26T00:44:21.544Z BLOCK       PAIRPAD ExWdgdDZVAr66Dp2LdgMnSx4ApwFKFmwTk2gpTBNpump stage=chain reason=UNDECIDED_DEV_SNIPE verdict=ELEVATED | timed out
+2026-11-26T00:44:29.137Z LOG          trade feed: 11 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:44:32.859Z NEW-TOKEN  mint=4PWtxHM1mujngxzJFvmAaNQeZhUMfMKeWHPR5fB5pump symbol=Barron name="Official Barron Trump" mcapSol=37.92
+2026-11-26T00:44:32.861Z BLOCK       Barron 4PWtxHM1mujngxzJFvmAaNQeZhUMfMKeWHPR5fB5pump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 15.2% of the supply (limit 10%).
+2026-11-26T00:44:42.547Z NEW-TOKEN  mint=F7dLK2t3geXwkXXx2jm427hvcGLiPUs7Hhxctqhcpump symbol=Kimchi name="Kimchi" mcapSol=29.83
+2026-11-26T00:44:43.780Z BLOCK       Kimchi F7dLK2t3geXwkXXx2jm427hvcGLiPUs7Hhxctqhcpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 473951738).
+2026-11-26T00:44:58.502Z NEW-TOKEN  mint=9LtJnnbgFv4ryvCCw8cH7rfnKp9m5kCHvbrsYGSYpump symbol=Private in name="Private Intel" mcapSol=29.00
+2026-11-26T00:44:59.137Z LOG          trade feed: 13 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:44:59.813Z BLOCK       Private in 9LtJnnbgFv4ryvCCw8cH7rfnKp9m5kCHvbrsYGSYpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:45:03.857Z NEW-TOKEN  mint=55EKrXjzK29zDXt4rmwv3fNw9iqsEsaLeUqFAdfSpump symbol=SPEED name="ISpaceSpeed" mcapSol=31.76
+2026-11-26T00:45:04.439Z BLOCK       SPEED 55EKrXjzK29zDXt4rmwv3fNw9iqsEsaLeUqFAdfSpump stage=chain reason=SINGLE_HOLDER verdict=HIGH | One wallet (3jBq..ySkw) holds 6.6% of supply (limit 5%), curve and pool accounts excluded.
+2026-11-26T00:45:09.644Z NEW-TOKEN  mint=5Ldb46ryVwpxP96tqhMsfTKSDr1MLeEokHinmFtNY28f symbol=TGW name="Turkey Gone Wild" mcapSol=37.26
+2026-11-26T00:45:09.645Z BLOCK       TGW 5Ldb46ryVwpxP96tqhMsfTKSDr1MLeEokHinmFtNY28f stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 14.4% of the supply (limit 10%).
+2026-11-26T00:45:29.137Z LOG          trade feed: 14 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:45:31.391Z NEW-TOKEN  mint=MsvibYkZ1Vwf6diFRZpoGHbihSGmaFUnBujuJ31yNiJ symbol=PCAT name="Ponzi Cat" mcapSol=27.96
+2026-11-26T00:45:32.627Z BLOCK       PCAT MsvibYkZ1Vwf6diFRZpoGHbihSGmaFUnBujuJ31yNiJ stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 473951966).
+2026-11-26T00:45:50.361Z NEW-TOKEN  mint=3zkS99ZxQ7kWbPuwDpPaUeAb91bAKUZ4c8t4zGRTpump symbol=Worthles C name="Worthles Coin" mcapSol=29.06
+2026-11-26T00:45:50.964Z BLOCK       Worthles C 3zkS99ZxQ7kWbPuwDpPaUeAb91bAKUZ4c8t4zGRTpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:45:59.137Z LOG          trade feed: 16 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:46:11.284Z NEW-TOKEN  mint=4AXj68XhGmMFMZtZyoM1fWT8zAkiJQvYzpZUhrHZiiuv symbol=STELLARX name="STELLAR" mcapSol=27.96
+2026-11-26T00:46:11.613Z NEW-TOKEN  mint=6uKg676tJwT7P4yt1NfcHfmk8YqGZDuwx5cgBmJ7qK8U symbol=Zero name="ZeroSumEnjoyer" mcapSol=42.33
+2026-11-26T00:46:11.615Z BLOCK       Zero 6uKg676tJwT7P4yt1NfcHfmk8YqGZDuwx5cgBmJ7qK8U stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 20.1% of the supply (limit 10%).
+2026-11-26T00:46:12.515Z BLOCK       STELLARX 4AXj68XhGmMFMZtZyoM1fWT8zAkiJQvYzpZUhrHZiiuv stage=chain reason=DEV_SNIPE verdict=HIGH | 4 other transaction(s) landed in the same block as the launch (slot 473952146).
+2026-11-26T00:46:29.137Z LOG          trade feed: 17 subscriptions confirmed, 117 log messages, 2 trades decoded
+2026-11-26T00:46:31.426Z NEW-TOKEN  mint=BB7U39TmXseXMTWtCkW6on2k5zXFuZZuJ47tH6gTpump symbol=Terry name="Terry" mcapSol=29.04
+2026-11-26T00:46:32.653Z BLOCK       Terry BB7U39TmXseXMTWtCkW6on2k5zXFuZZuJ47tH6gTpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-26T00:46:43.447Z SUMMARY      checked=57 blocked=49 passed=8 decisions=111
+2026-11-26T00:46:43.447Z SUMMARY      block-reason RUGCHECK_DANGER x14
+2026-11-26T00:46:43.447Z SUMMARY      block-reason CREATOR_HOLDING x12
+2026-11-26T00:46:43.447Z SUMMARY      block-reason DEV_SNIPE x11
+2026-11-26T00:46:43.447Z SUMMARY      block-reason UNDECIDED_DEV_SNIPE x10
+2026-11-26T00:46:43.448Z SUMMARY      block-reason SINGLE_HOLDER x2
+2026-11-26T00:46:43.448Z SUMMARY      block-reason METADATA_MISSING x1

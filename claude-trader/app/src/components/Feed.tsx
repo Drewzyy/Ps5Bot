@@ -9,10 +9,17 @@ export default function Feed({ items }: { items: ActivityItem[] }) {
       ) : (
         <div className="feed">
           {items.map((it, i) => (
-            <button key={i} title="Token details come in a later version">
-              <span className="ts">{new Date(it.ts).toLocaleTimeString()}</span>
-              <span>{it.text}</span>
-            </button>
+            it.mint ? (
+              <a key={i} href={`https://solscan.io/token/${it.mint}`} target="_blank" rel="noreferrer" title="Open this coin on Solscan">
+                <span className="ts">{new Date(it.ts).toLocaleTimeString([], { hour12: false })}</span>
+                <span>{it.text}</span>
+              </a>
+            ) : (
+              <div key={i} className="plain">
+                <span className="ts">{new Date(it.ts).toLocaleTimeString([], { hour12: false })}</span>
+                <span>{it.text}</span>
+              </div>
+            )
           ))}
         </div>
       )}

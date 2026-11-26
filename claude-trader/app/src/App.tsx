@@ -40,7 +40,7 @@ export default function App() {
             <div className="section-title">Activity</div>
             <Feed items={engine.activity} />
             <div className="section-title">Widgets</div>
-            <Widgets config={config} openSettings={() => go("settings")} />
+            <Widgets config={config} openSettings={() => go("settings")} engine={engine} />
           </>
         ) : (
           <SettingsPage config={config} />

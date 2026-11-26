@@ -1,9 +1,17 @@
-//! Claude Trader engine (M1: types, events and a demo event generator).
-//! No network, no signing, no wallet code lives here yet.
+//! Claude Trader engine. M2: live feed, Scam Shield, Token Picker. Paper only: no signing, no wallet code.
 
 pub mod config;
 pub mod demo;
+pub mod db;
+pub mod engine;
 pub mod events;
+pub mod hub;
+pub mod monitor;
+pub mod picker;
+pub mod pump;
+pub mod rpc;
+pub mod shield;
+pub mod net;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};
