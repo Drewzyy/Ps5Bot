@@ -1,5 +1,6 @@
 import type { Config, RiskVerdict, WatchRow } from "../types";
 import type { EngineState } from "../useEngine";
+import { FeesCard, OpenPositions, PerformanceCard, PositionChart } from "./Trading";
 
 export const REASON_LABEL: Record<string, string> = {
   MINT_AUTHORITY: "Mint authority still set",
@@ -139,58 +140,15 @@ export default function Widgets({ config, openSettings, engine }: { config: Conf
     <div className="grid">
       <Watchlist rows={engine.watchlist} />
 
-      <section className="card">
-        <h3>Open positions <span className="hint">0 of {config.risk.maxOpenPositions}</span></h3>
-        <Empty>No open trades. Each position closes within 5 minutes.</Empty>
-      </section>
+      <OpenPositions engine={engine} config={config} />
 
       <ShieldCard engine={engine} />
 
-      <section className="card span2">
-        <h3>Position chart <span className="hint">no position selected</span></h3>
-        <div className="chartbox">Pick an open position to see its price, your entry, your stop and your profit targets.</div>
-        <div className="legend">
-          <span><i className="g" />Entry</span>
-          <span><i className="r" />Exit</span>
-          <span><i className="r dash" />Stop loss</span>
-          <span><i className="g dash" />Take profit</span>
-          <span><i className="k" />Live price</span>
-        </div>
-      </section>
+      <PositionChart engine={engine} />
 
-      <section className="card">
-        <h3>Fees paid</h3>
-        <Rows
-          rows={[
-            ["Today", "0.0000 SOL"],
-            ["All time", "0.0000 SOL"],
-            ["PumpPortal", "0.0000 SOL"],
-            ["Network fee", "0.0000 SOL"],
-            ["Priority fee", "0.0000 SOL"],
-            ["Jito tip", "0.0000 SOL"],
-            ["Average per trade", "none yet"],
-          ]}
-        />
-      </section>
+      <FeesCard lane={engine.stats?.lanes[0]} />
 
-      <section className="card span2">
-        <h3>Performance <span className="hint">all closed trades</span></h3>
-        <div className="stats4">
-          {[
-            ["Win rate", "none yet"],
-            ["Average win", "none yet"],
-            ["Average loss", "none yet"],
-            ["Profit factor", "none yet"],
-            ["Max drawdown", "none yet"],
-            ["Best trade", "none yet"],
-            ["Worst trade", "none yet"],
-            ["Trades per day", "none yet"],
-          ].map(([k, v]) => (
-            <div key={k}><b>{v}</b><span>{k}</span></div>
-          ))}
-        </div>
-        <div className="chartbox" style={{ height: 90 }}>The equity curve appears after the first closed trade.</div>
-      </section>
+      <PerformanceCard engine={engine} />
 
       <section className="card">
         <h3>Settings <span className="hint">key values</span></h3>

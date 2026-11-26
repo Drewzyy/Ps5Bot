@@ -7,9 +7,10 @@ use crate::events::*;
 use crate::hub::Hub;
 use crate::monitor::{self, Incoming, MonitorState};
 use crate::picker;
-use crate::pump::{mcap_sol, solscan_token, FeedMsg};
+use crate::pump::{mcap_sol, solscan_token, FeedMsg, Trade};
 use crate::rpc::{now_ms, Rpc, TradeFeed};
 use crate::shield::rules::{ev, should_blacklist_creator, Outcome};
+use crate::trader::{Pick, Trader};
 use crate::shield::{decide, ChainFacts, Decision, Shield, ShieldOpts};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -25,6 +26,12 @@ pub struct EngineOpts {
     /// Sandbox only: metadata hosts blocked by the network policy count as a flagged pass instead of undecided.
     pub relax_egress: bool,
     pub sol_usd: Option<f64>,
+    /// Where paper-trade JSONL and daily summaries go.
+    pub logs_dir: String,
+    /// Manual restart of a halted lane.
+    pub clear_halt: bool,
+    /// Run a scripted market instead of the live feeds (proves a full trade through the same engine).
+    pub replay: Option<String>,
 }
 
 impl EngineOpts {
@@ -40,14 +47,17 @@ impl EngineOpts {
             feed_url: monitor::PUMPPORTAL_WS.into(),
             relax_egress: false,
             sol_usd: None,
+            logs_dir: "paper-logs".into(),
+            clear_halt: false,
+            replay: None,
         }
     }
 }
 
-struct Ctx {
+pub struct Ctx {
     cfg: Config,
     shield: Shield,
-    feed: TradeFeed,
+    trader: Arc<Trader>,
     hub: Arc<Hub>,
     db: Arc<Db>,
     mon: Arc<MonitorState>,
@@ -86,13 +96,22 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     };
     hub.log(format!("engine: SOL price used for USD conversion: ${sol_usd:.2}"));
     let hub_log = hub.clone();
-    let feed = TradeFeed::spawn(rpc.ws_url(), Arc::new(move |s| hub_log.log(s)));
+    let feed = if opts.replay.is_some() { TradeFeed::offline() } else { TradeFeed::spawn(rpc.ws_url(), Arc::new(move |s| hub_log.log(s))) };
+    let trader = Trader::new(opts.config.clone(), db.clone(), hub.clone(), feed, if opts.replay.is_some() { None } else { Some(rpc.clone()) }, sol_usd, std::path::PathBuf::from(&opts.logs_dir), opts.replay.is_some());
+    if opts.clear_halt {
+        trader.clear_halts();
+    }
+    let resumed = trader.resume();
+    if resumed > 0 {
+        hub.log(format!("engine: resumed {resumed} open paper position(s) from SQLite"));
+    }
+    trader.spawn_ticker(stop.clone());
     let shield = Shield::new(opts.config.clone(), db.clone(), rpc, ShieldOpts { relax_egress: opts.relax_egress });
     let mon = Arc::new(MonitorState::default());
     let ctx = Arc::new(Ctx {
         cfg: opts.config.clone(),
         shield,
-        feed,
+        trader: trader.clone(),
         hub: hub.clone(),
         db: db.clone(),
         mon: mon.clone(),
@@ -107,11 +126,20 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         status(&hub, a, StatusColor::Grey, "Not active yet (later version)");
     }
     status(&hub, AgentId::TopTraderMonitor, StatusColor::Grey, "Off in version 1");
-    status(&hub, AgentId::HoldTimer, StatusColor::Grey, "No open positions");
-    status(&hub, AgentId::Executor, StatusColor::Grey, "Idle: paper trades start in M3");
 
     let (tx, mut rx) = mpsc::unbounded_channel();
-    tokio::spawn(monitor::run(opts.feed_url.clone(), tx, mon.clone(), hub.clone(), stop.clone()));
+    let _keep_tx;
+    if let Some(name) = &opts.replay {
+        let sc = crate::replay::scenario(name).ok_or_else(|| format!("unknown replay scenario {name:?} (use hot or dump)"))?;
+        mon.connected.store(true, Ordering::Relaxed);
+        mon.last_msg_ms.store(now_ms(), Ordering::Relaxed);
+        hub.log(format!("REPLAY: scripted market {:?}. Every number below is replayed, not live.", sc.name));
+        tokio::spawn(replay_drive(ctx.clone(), sc));
+        _keep_tx = Some(tx);
+    } else {
+        _keep_tx = None;
+        tokio::spawn(monitor::run(opts.feed_url.clone(), tx, mon.clone(), hub.clone(), stop.clone()));
+    }
 
     let mut tick = tokio::time::interval(Duration::from_secs(2));
     let mut stop = stop;
@@ -122,6 +150,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
             m = rx.recv() => match m {
                 Some(Incoming::Create(t)) => { tokio::spawn(process_token(ctx.clone(), t)); }
                 Some(Incoming::Migrate(t)) => {
+                    trader.on_migration(&t.mint);
                     hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::MemecoinMonitor, text: format!("Migration to the DEX seen: {}", short_mint(&t.mint)), mint: Some(t.mint.clone()) });
                 }
                 None => break,
@@ -202,11 +231,10 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     }
 
     // Start collecting trades right away so the chain checks and the observation share the same data.
-    ctx.feed.subscribe(&t.mint, &t.bonding_curve_key);
+    ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
 
     // Stage B: chain checks (bounded concurrency; waiting too long counts as an undecided required check)
-    let permit = tokio::time::timeout(Duration::from_secs(8), ctx.chain_slots.acquire()).await;
-    let (b, facts): (Decision, ChainFacts) = match permit {
+    let (b, facts): (Decision, ChainFacts) = match tokio::time::timeout(Duration::from_secs(8), ctx.chain_slots.acquire()).await {
         Ok(Ok(_p)) => {
             let (res, facts) = ctx.shield.stage_b(&t).await;
             (decide(res), facts)
@@ -219,11 +247,15 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     ctx.checking.fetch_sub(1, Ordering::Relaxed);
     record(&ctx, &t, "chain", &b);
     if b.block.is_some() {
-        ctx.feed.unsubscribe(&t.mint);
+        ctx.trader.release_feed(&t.mint);
         return;
     }
     pulse(&ctx, AgentId::ScamShield, AgentId::TokenPicker, format!("Clean coin {} handed to Token Picker", t.symbol), &t.mint);
+    observe_and_trade(ctx, t, t0, facts).await;
+}
 
+/// Observation window, score, pre-buy checks, then the entry rule of each lane. Shared by live and replay runs.
+pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainFacts) {
     // Observation window
     ctx.observing.fetch_add(1, Ordering::Relaxed);
     let min_age = ctx.cfg.entry.min_age_seconds as i64 * 1000;
@@ -231,7 +263,7 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     tokio::time::sleep(Duration::from_millis(wait)).await;
     let now = now_ms();
     let age = (now - t0) as f64 / 1000.0;
-    let trades = ctx.feed.store.snapshot(&t.mint);
+    let trades = ctx.trader.feed.store.snapshot(&t.mint);
     let launch_price = if t.v_tokens_in_bonding_curve > 0.0 { t.v_sol_in_bonding_curve / t.v_tokens_in_bonding_curve } else { 0.0 };
     let obs = picker::observe(&trades, &t.trader_public_key, launch_price, (t.v_sol_in_bonding_curve - 30.0).max(0.0), age, now);
     let sc = picker::score(&obs, &ctx.cfg, ctx.sol_usd);
@@ -247,21 +279,20 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
 
     let mut gates = sc.gates.clone();
     let mut picked = sc.picked;
-    let mut pre: Option<Decision> = None;
-    if picked {
-        if ctx.mon.no_buys() {
-            gates.push("feed down: no buys".into());
+    // The paper variant (dip-40pct) shares the observation gate (score) but not the momentum entry gates.
+    let mut dip_eligible = sc.score >= ctx.cfg.observation.min_score && obs.dev_sold_pct <= 0.0;
+    if (picked || dip_eligible) && ctx.mon.no_buys() {
+        gates.push("feed down: no buys".into());
+        picked = false;
+        dip_eligible = false;
+    }
+    if picked || dip_eligible {
+        let d = decide(ctx.shield.pre_buy(&t, &trades, &facts, obs.mcap_sol, age).into_iter().collect());
+        record(&ctx, &t, "pre-buy", &d);
+        if d.block.is_some() {
             picked = false;
-        } else {
-            let launch_mcap = mcap_sol(t.v_sol_in_bonding_curve, t.v_tokens_in_bonding_curve);
-            let d = decide(ctx.shield.pre_buy(&t, &trades, &facts, obs.mcap_sol, age).into_iter().collect());
-            record(&ctx, &t, "pre-buy", &d);
-            let _ = launch_mcap;
-            if d.block.is_some() {
-                picked = false;
-                gates.push(format!("Scam Shield pre-buy: {}", d.block.as_ref().map(|b| b.code.clone()).unwrap_or_default()));
-            }
-            pre = Some(d);
+            dip_eligible = false;
+            gates.push(format!("Scam Shield pre-buy: {}", d.block.as_ref().map(|b| b.code.clone()).unwrap_or_default()));
         }
     }
 
@@ -292,13 +323,85 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     ctx.hub.emit(EngineEvent::Decision { ts: now, agent: AgentId::TokenPicker, text: format!("{}: {detail}", t.symbol) });
     ctx.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::TokenPicker, text: format!("Scored {} at {:.1}{}", t.symbol, sc.score, if picked { ": picked" } else { "" }), mint: Some(t.mint.clone()) });
     ctx.observing.fetch_sub(1, Ordering::Relaxed);
-    ctx.feed.unsubscribe(&t.mint);
-    let _ = pre;
+    let pick = Pick { mint: t.mint.clone(), symbol: t.symbol.clone(), creator: t.trader_public_key.clone(), curve_key: t.bonding_curve_key.clone(), score: sc.score };
+    if dip_eligible {
+        ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+        tokio::spawn(dip_watch(ctx.clone(), pick_clone(&pick), t0));
+    }
     if picked {
         ctx.picked.fetch_add(1, Ordering::Relaxed);
         pulse(&ctx, AgentId::TokenPicker, AgentId::Executor, format!("Pick {} (score {:.0}) handed to Executor", t.symbol, sc.score), &t.mint);
-        status(&ctx.hub, AgentId::Executor, StatusColor::Amber, format!("Pick received: {}. Paper fills arrive in M3", t.symbol));
+        status(&ctx.hub, AgentId::Executor, StatusColor::Amber, format!("Pick received: {}, buying on paper", t.symbol));
+        let _ = ctx.trader.try_enter("momentum", &pick).await;
     }
+    ctx.trader.release_feed(&t.mint);
+}
+
+/// Scripted market: injects the scenario's trades into the trade store at their offsets, then runs the normal
+/// observation -> score -> entry path. After a restart (the coin already has a position) it only continues the
+/// market, so the resumed position meets the same prices it would have met live.
+async fn replay_drive(ctx: Arc<Ctx>, sc: crate::replay::Scenario) {
+    let key = format!("replay_t0:{}", sc.name);
+    let restart = ctx.db.mint_has_position(&sc.create.mint);
+    let t0 = match (restart, ctx.db.kv_get(&key).and_then(|v| v.parse::<i64>().ok())) {
+        (true, Some(t)) => t,
+        _ => {
+            let t = now_ms();
+            ctx.db.kv_set(&key, &t.to_string());
+            t
+        }
+    };
+    let t = sc.create.clone();
+    ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+    ctx.hub.emit(EngineEvent::Token { ts: t0, mint: t.mint.clone(), symbol: t.symbol.clone(), name: t.name.clone(), creator: t.trader_public_key.clone(), mcap_sol: t.market_cap_sol });
+    let store = ctx.trader.feed.store.clone();
+    let mint = t.mint.clone();
+    let events = sc.events;
+    tokio::spawn(async move {
+        for (off, tr) in events {
+            let due = t0 + off;
+            let now = now_ms();
+            if due > now {
+                tokio::time::sleep(Duration::from_millis((due - now) as u64)).await;
+            }
+            store.add(Trade { recv_ms: due, mint: mint.clone(), ..tr });
+        }
+    });
+    if restart {
+        ctx.hub.log(format!("REPLAY: restart detected, the scripted market continues from its original clock (started {} s ago)", (now_ms() - t0) / 1000));
+        return;
+    }
+    ctx.db.upsert_token(&t.mint, t0, &t.name, &t.symbol, &t.trader_public_key, t.market_cap_sol);
+    observe_and_trade(ctx.clone(), t, t0, ChainFacts::default()).await;
+}
+
+fn pick_clone(p: &Pick) -> Pick {
+    Pick { mint: p.mint.clone(), symbol: p.symbol.clone(), creator: p.creator.clone(), curve_key: p.curve_key.clone(), score: p.score }
+}
+
+/// Paper variant `dip-40pct`: after the observation gate, wait (until the coin is 4 minutes old) for a 40-50% dip
+/// from the peak with buy volume expanding, then enter. Holds the trade feed for the coin while it watches.
+async fn dip_watch(ctx: Arc<Ctx>, p: Pick, t0: i64) {
+    let until = t0 + 240_000;
+    let style = ctx.cfg.entry.paper_variant.style.clone();
+    loop {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        let now = now_ms();
+        if now >= until || ctx.mon.no_buys() {
+            break;
+        }
+        let trades = ctx.trader.feed.store.snapshot(&p.mint);
+        if trades.iter().any(|x| !x.is_buy && x.user == p.creator) {
+            break; // creator sold: not a dip we buy
+        }
+        if let Some(dip) = picker::dip_signal(&trades, now, &ctx.cfg) {
+            ctx.hub.log(format!("TRADE[{style}] dip signal on {}: {dip:.1}% below the peak with buying expanding", p.symbol));
+            pulse(&ctx, AgentId::TokenPicker, AgentId::Executor, format!("Dip pick {} ({dip:.0}% off the peak) handed to Executor", p.symbol), &p.mint);
+            let _ = ctx.trader.try_enter(&style, &p).await;
+            break;
+        }
+    }
+    ctx.trader.release_feed(&p.mint);
 }
 
 #[cfg(test)]

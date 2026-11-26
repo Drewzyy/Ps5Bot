@@ -80,6 +80,16 @@ async fn main() {
         opts.rpc_url = r;
     }
     opts.relax_egress = args.iter().any(|a| a == "--relax-metadata-egress");
+    if let Some(l) = arg(&args, "--logs") {
+        opts.logs_dir = l;
+    }
+    opts.clear_halt = args.iter().any(|a| a == "--clear-halt");
+    opts.replay = arg(&args, "--replay");
+    opts.sol_usd = arg(&args, "--sol-usd").and_then(|v| v.parse().ok());
+    if opts.replay.is_some() && opts.sol_usd.is_none() {
+        // the $7000 market-cap gate and the 3x chase rule only fit together near $150 per SOL (see STATUS.md)
+        opts.sol_usd = Some(150.0);
+    }
 
     let hub = Hub::new();
     hub.set_logger(Arc::new(|l| println!("{} LOG          {l}", ts(engine::rpc::now_ms()))));
@@ -113,6 +123,7 @@ async fn main() {
     let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
     let h2 = hub.clone();
     let db_for_summary = db_path.clone();
+    let logs_dir = opts.logs_dir.clone();
     let engine_task = tokio::spawn(run(opts, h2, stop_rx));
     match minutes {
         Some(m) => tokio::time::sleep(Duration::from_secs_f64(m * 60.0)).await,
@@ -126,7 +137,19 @@ async fn main() {
     printer.abort();
     if let Ok(db) = engine::db::Db::open(&db_for_summary) {
         let (checked, blocked, passed, by) = db.summary(0);
-        println!("{} SUMMARY      checked={checked} blocked={blocked} passed={passed} decisions={}", ts(engine::rpc::now_ms()), db.decision_count());
+        let scored = db.scalar("SELECT COUNT(DISTINCT mint) FROM decisions WHERE stage='observation'");
+        let picked = db.scalar("SELECT COUNT(DISTINCT mint) FROM decisions WHERE stage='observation' AND outcome='pass'");
+        let seen = db.scalar("SELECT COUNT(*) FROM tokens_seen");
+        let entered = db.scalar("SELECT COUNT(*) FROM positions WHERE kind='trade'");
+        let failed = db.scalar("SELECT COUNT(*) FROM positions WHERE kind='failed-buy'");
+        let gated = db.scalar("SELECT COUNT(*) FROM decisions WHERE stage='risk-gate'");
+        println!("{} SUMMARY      coinsSeen={seen} checked={checked} blocked={blocked} passed={passed} scored={scored} picked={picked} riskGateBlocks={gated} entered={entered} failedBuys={failed} decisions={}", ts(engine::rpc::now_ms()), db.decision_count());
+        let date = engine::timefmt::date_local(engine::rpc::now_ms());
+        for lane in ["momentum", "dip-40pct"] {
+            if let Ok(s) = engine::report::write_daily_summary(std::path::Path::new(&logs_dir), lane, &date) {
+                println!("{} {}", ts(engine::rpc::now_ms()), engine::report::print_summary(lane, &s));
+            }
+        }
         for r in by {
             println!("{} SUMMARY      block-reason {} x{}", ts(engine::rpc::now_ms()), r.reason, r.count);
         }

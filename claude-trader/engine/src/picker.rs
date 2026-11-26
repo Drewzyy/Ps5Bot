@@ -114,6 +114,32 @@ pub fn score(o: &Observation, cfg: &Config, sol_usd: f64) -> Scored {
     Scored { score: (total * 10.0).round() / 10.0, parts, gates, picked }
 }
 
+/// Paper-only variant `dip-40pct` (SPEC 6): buy a coin that already passed the observation gate after it fell
+/// 40-50% from its peak while buy volume is expanding again (last 15 s of buying above the 15 s before, with at
+/// least 2 buys in the last 15 s). Returns the dip in percent when the signal fires.
+pub fn dip_signal(trades: &[Trade], now_ms: i64, cfg: &Config) -> Option<f64> {
+    let v = &cfg.entry.paper_variant;
+    let peak = trades.iter().map(|t| t.price()).fold(0.0, f64::max);
+    let last = trades.iter().max_by_key(|t| (t.slot, t.recv_ms))?;
+    if peak <= 0.0 || last.price() <= 0.0 {
+        return None;
+    }
+    let dip = (1.0 - last.price() / peak) * 100.0;
+    if dip < v.min_dip_pct || dip > v.max_dip_pct {
+        return None;
+    }
+    if v.confirm_volume_expanding {
+        let vol = |from: i64, to: i64| trades.iter().filter(|t| t.is_buy && t.recv_ms >= from && t.recv_ms < to).map(|t| t.sol).sum::<f64>();
+        let recent = vol(now_ms - 15_000, now_ms + 1);
+        let before = vol(now_ms - 30_000, now_ms - 15_000);
+        let n = trades.iter().filter(|t| t.is_buy && now_ms - t.recv_ms <= 15_000).count();
+        if n < 2 || recent <= before {
+            return None;
+        }
+    }
+    Some(dip)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,5 +213,32 @@ mod tests {
         let s = score(&o, &cfg(), 150.0);
         assert_eq!(s.score, 100.0);
         assert!((s.parts.iter().map(|p| p.1).sum::<f64>() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dip_signal_needs_a_40_to_50_percent_dip_and_expanding_volume() {
+        let mut t = hot_trades(); // price rises to the peak
+        let peak = t.iter().map(|x| x.price()).fold(0.0, f64::max);
+        // price falls ~45% from the peak, then buying picks up in the last 15 s
+        let mut dip = tr("d0", false, 100_000, 30.0, 10.0);
+        dip.v_sol = 40.0;
+        dip.v_tokens = dip.v_sol / (peak * 0.55);
+        t.push(dip);
+        for i in 0..3 {
+            let mut b = tr(&format!("nb{i}"), true, 110_000 + i * 2000, 30.0, 10.0);
+            b.v_sol = 40.0;
+            b.v_tokens = b.v_sol / (peak * 0.55);
+            b.sol = 1.0;
+            t.push(b);
+        }
+        let d = dip_signal(&t, 118_000, &cfg()).expect("dip with expanding volume");
+        assert!((d - 45.0).abs() < 0.5, "{d}");
+        // no expanding volume: same dip but the buys are older than 30 s
+        assert_eq!(dip_signal(&t, 200_000, &cfg()), None);
+        // too shallow a dip
+        let mut shallow = hot_trades();
+        let last = shallow.last_mut().unwrap();
+        last.v_tokens = last.v_sol / (peak * 0.9);
+        assert_eq!(dip_signal(&shallow, 61_000, &cfg()), None);
     }
 }

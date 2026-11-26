@@ -96,6 +96,16 @@ impl Rpc {
         Err("mint account not visible after 8 polls".into())
     }
 
+    /// Bonding-curve account state (RPC fallback for the exit loop). Layout: 8-byte discriminator, then
+    /// virtualTokenReserves, virtualSolReserves, realTokenReserves, realSolReserves, tokenTotalSupply (u64 LE), complete (u8).
+    pub async fn curve_state(&self, curve_addr: &str) -> Result<(crate::curve::Curve, bool), String> {
+        let r = self.call("getAccountInfo", json!([curve_addr, {"encoding":"base64","commitment":"processed"}])).await?;
+        let b64 = r["value"]["data"][0].as_str().ok_or("curve account not found")?;
+        use base64::Engine;
+        let d = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
+        decode_curve_account(&d)
+    }
+
     /// (signature, slot, failed) newest first.
     pub async fn signatures(&self, addr: &str, limit: u32) -> Result<Vec<(String, u64, bool)>, String> {
         let r = self.call("getSignaturesForAddress", json!([addr, {"limit": limit, "commitment":"confirmed"}])).await?;
@@ -107,6 +117,15 @@ impl Rpc {
             })
             .unwrap_or_default())
     }
+}
+
+pub fn decode_curve_account(d: &[u8]) -> Result<(crate::curve::Curve, bool), String> {
+    if d.len() < 49 {
+        return Err(format!("curve account too short ({} bytes)", d.len()));
+    }
+    let u = |o: usize| u64::from_le_bytes(d[o..o + 8].try_into().unwrap());
+    let c = crate::curve::Curve { v_tokens: u(8) as f64 / 1e6, v_sol: u(16) as f64 / 1e9, real_sol: u(32) as f64 / 1e9 };
+    Ok((c, d[48] != 0))
 }
 
 // ------------------------------------------------------------------ trade store + log feed
@@ -126,6 +145,10 @@ impl TradeStore {
                 v.push(t);
             }
         }
+    }
+    /// Newest trade (by slot, then arrival) of a tracked mint.
+    pub fn last(&self, mint: &str) -> Option<Trade> {
+        self.inner.lock().unwrap().get(mint).and_then(|e| e.0.iter().max_by_key(|t| (t.slot, t.recv_ms)).cloned())
     }
     pub fn start(&self, mint: &str) {
         self.inner.lock().unwrap().entry(mint.to_string()).or_default();
@@ -151,6 +174,8 @@ pub struct TradeFeed {
     tx: mpsc::UnboundedSender<FeedCmd>,
     pub store: Arc<TradeStore>,
     pub connected: Arc<std::sync::atomic::AtomicBool>,
+    /// When the current connection was established (ms), 0 while disconnected. Trades in a gap are lost.
+    pub connected_since_ms: Arc<std::sync::atomic::AtomicI64>,
 }
 
 impl TradeFeed {
@@ -159,8 +184,14 @@ impl TradeFeed {
         let (tx, rx) = mpsc::unbounded_channel();
         let store = Arc::new(TradeStore::default());
         let connected = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        tokio::spawn(feed_task(ws_url, rx, store.clone(), connected.clone(), log));
-        TradeFeed { tx, store, connected }
+        let since = Arc::new(std::sync::atomic::AtomicI64::new(0));
+        tokio::spawn(feed_task(ws_url, rx, store.clone(), connected.clone(), since.clone(), log));
+        TradeFeed { tx, store, connected, connected_since_ms: since }
+    }
+    /// A feed with no network task: trades are pushed into `store` by hand (scripted replay and tests).
+    pub fn offline() -> TradeFeed {
+        let (tx, _rx) = mpsc::unbounded_channel();
+        TradeFeed { tx, store: Arc::new(TradeStore::default()), connected: Arc::new(std::sync::atomic::AtomicBool::new(true)), connected_since_ms: Arc::new(std::sync::atomic::AtomicI64::new(0)) }
     }
     pub fn subscribe(&self, mint: &str, curve: &str) {
         self.store.start(mint);
@@ -177,6 +208,7 @@ async fn feed_task(
     mut rx: mpsc::UnboundedReceiver<FeedCmd>,
     store: Arc<TradeStore>,
     connected: Arc<std::sync::atomic::AtomicBool>,
+    since: Arc<std::sync::atomic::AtomicI64>,
     log: Arc<dyn Fn(String) + Send + Sync>,
 ) {
     use std::sync::atomic::Ordering;
@@ -198,6 +230,7 @@ async fn feed_task(
         };
         backoff = 1;
         connected.store(true, Ordering::Relaxed);
+        since.store(now_ms(), Ordering::Relaxed);
         log("trade feed: connected".into());
         let mut next_id: u64 = 100;
         let mut pending: HashMap<u64, String> = HashMap::new(); // request id -> mint
@@ -258,6 +291,7 @@ async fn feed_task(
             }
         };
         connected.store(false, Ordering::Relaxed);
+        since.store(0, Ordering::Relaxed);
         log(format!("trade feed: disconnected ({end}), reconnecting in {backoff}s"));
         tokio::time::sleep(Duration::from_secs(backoff)).await;
         backoff = (backoff * 2).min(30);
@@ -283,6 +317,19 @@ fn sub_msg(id: u64, curve: &str) -> String {
 mod tests {
     use super::*;
     use crate::pump::tests::REAL_SELL_B64;
+
+    #[test]
+    fn curve_account_layout_decodes() {
+        let mut d = vec![0u8; 49];
+        d[8..16].copy_from_slice(&(7_000_000_000_000_000u64).to_le_bytes()); // 7e9 tokens? no: 7e15 / 1e6 = 7e9
+        d[16..24].copy_from_slice(&(45_500_000_000u64).to_le_bytes());
+        d[32..40].copy_from_slice(&(15_500_000_000u64).to_le_bytes());
+        d[48] = 1;
+        let (c, done) = decode_curve_account(&d).unwrap();
+        assert!((c.v_sol - 45.5).abs() < 1e-9 && (c.real_sol - 15.5).abs() < 1e-9 && (c.v_tokens - 7.0e9).abs() < 1.0);
+        assert!(done);
+        assert!(decode_curve_account(&d[..20]).is_err());
+    }
 
     #[test]
     fn ws_url_derivation_and_masking() {

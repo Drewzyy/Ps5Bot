@@ -1,0 +1,13 @@
+2026-11-26T03:35:01.444Z LOG          REPLAY: scripted market "hot". Every number below is replayed, not live.
+2026-11-26T03:36:01.451Z LOG          TRADE[momentum] SIGNAL RHOT mint=ReplayHot1111111111111111111111111111111pump score=100.0 size=0.1 SOL quote=5.932312e-8 impactRoundTrip=0.45%
+2026-11-26T03:36:02.332Z LOG          TRADE[momentum] FILL BUY RHOT mint=ReplayHot1111111111111111111111111111111pump spent=0.100000000 SOL tokens=1656184.07 avgPrice=5.932312e-8 slippage=0.00% delay=879ms fees=0.002255000 SOL (pump.fun 0.001250000 + PumpPortal 0.000500000 + tx 0.000005000 + priority 0.000500000)
+2026-11-26T03:36:30.251Z LOG          TRADE[momentum] RESUMED RHOT mint=ReplayHot1111111111111111111111111111111pump entryPrice=5.932312e-8 tokensLeft=1656184.07 tranchesDone=0 heldSoFar=28s
+2026-11-26T03:36:30.251Z LOG          engine: resumed 1 open paper position(s) from SQLite
+2026-11-26T03:36:30.264Z LOG          REPLAY: scripted market "hot". Every number below is replayed, not live.
+2026-11-26T03:36:30.264Z LOG          REPLAY: restart detected, the scripted market continues from its original clock (started 88 s ago)
+2026-11-26T03:36:31.822Z LOG          TRADE[momentum] FILL SELL RHOT reason=take-profit-1 tokens=662473.63 avgPrice=8.881957e-8 gross=0.058840624 net=0.057305913 SOL fees=0.001534711 SOL attempts=[#0 prio=0.0005 qty=662474 filled]
+2026-11-26T03:36:33.249Z LOG          TRADE[momentum] FILL SELL RHOT reason=take-profit-2 tokens=496855.22 avgPrice=9.219489e-8 gross=0.045807512 net=0.044500881 SOL fees=0.001306631 SOL attempts=[#0 prio=0.0005 qty=496855 filled]
+2026-11-26T03:36:35.907Z LOG          TRADE[momentum] FILL SELL RHOT reason=take-profit-3 tokens=331236.81 avgPrice=9.563504e-8 gross=0.031677845 net=0.030618483 SOL fees=0.001059362 SOL attempts=[#0 prio=0.0005 qty=331237 filled]
+2026-11-26T03:36:55.381Z LOG          TRADE[momentum] FILL SELL RHOT reason=trailing-stop tokens=165618.41 avgPrice=1.055567e-7 gross=0.017482136 net=0.016671198 SOL fees=0.000810937 SOL attempts=[#0 prio=0.0005 qty=165618 filled]
+2026-11-26T03:36:55.383Z LOG          TRADE[momentum] CLOSED RHOT reason=trailing-stop pnl=+0.048591475 SOL (+48.59%) hold=53s fees=0.006966642 SOL log=paper-logs/2026-11-26.jsonl
+2026-11-26T03:36:55.383Z LOG          TRADE[momentum] JSONL {"ts":"2026-11-26T03:36:55+00:00","mint":"ReplayHot1111111111111111111111111111111pump","symbol":"RHOT","side":"buy","sizeSol":0.1,"entryPrice":5.9323116262815846e-8,"entryMcapUsd":8918,"exitPrice":9.286897523727525e-8,"exitReason":"trailing-stop","pnlSol":0.048591475,"pnlPct":48.59,"holdSeconds":53,"feesSol":0.006966642,"mode":"paper"}

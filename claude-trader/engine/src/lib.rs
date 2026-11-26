@@ -2,6 +2,11 @@
 
 pub mod config;
 pub mod curve;
+pub mod replay;
+pub mod trader;
+pub mod report;
+pub mod risk;
+pub mod timefmt;
 pub mod paper;
 pub mod exits;
 pub mod position;

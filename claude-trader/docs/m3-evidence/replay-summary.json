@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-26",
+  "trades": 2,
+  "wins": 1,
+  "losses": 1,
+  "winRatePct": 50.0,
+  "avgWinSol": 0.06359217,
+  "avgLossSol": -0.009098643,
+  "profitFactor": 6.9891927840228485,
+  "maxDrawdownSol": 0.009098643000000003,
+  "totalPnlSol": 0.054493527,
+  "tradesPerDay": 2.0,
+  "bestSol": 0.06359217,
+  "worstSol": -0.009098643,
+  "feesSol": 0.014203001
+}

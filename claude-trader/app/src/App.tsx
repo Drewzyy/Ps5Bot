@@ -32,7 +32,7 @@ export default function App() {
 
   return (
     <>
-      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} />
+      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} />
       <main className="page">
         {page === "dashboard" ? (
           <>

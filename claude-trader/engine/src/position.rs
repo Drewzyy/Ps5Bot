@@ -244,3 +244,54 @@ impl Position {
         if self.tokens_sold > 0.0 { self.gross_exit_sol / self.tokens_sold } else { 0.0 }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn open_pos() -> Position {
+        let mut p = Position::new_buying("momentum", "M", "T", "C", "CV", 0.1, 0, 150.0);
+        p.fill_buy(1e-7, 1_000_000.0, 7000.0, &FeeBreakdown::default(), 0.0).unwrap();
+        p
+    }
+
+    fn fill(tokens: f64) -> (StageSell, FeeBreakdown) {
+        (StageSell { ts: 1, reason: "r".into(), tokens, price: 1e-7, gross_sol: 0.1, net_sol: 0.098, fees_sol: 0.002 }, FeeBreakdown::default())
+    }
+
+    #[test]
+    fn state_machine_allows_open_selling_open_closed_and_nothing_else() {
+        let mut p = open_pos();
+        assert!(p.end_sell(None, &Default::default(), 1, "x").is_err(), "no sell result without a sell in flight");
+        p.begin_sell().unwrap();
+        assert_eq!(p.state, PosState::Selling);
+        assert!(p.begin_sell().is_err(), "no double sell while SELLING");
+        p.end_sell(Some(fill(400_000.0)), &Default::default(), 2, "take-profit-1").unwrap();
+        assert_eq!(p.state, PosState::Open, "partial fill goes back to OPEN");
+        p.begin_sell().unwrap();
+        p.end_sell(Some(fill(600_000.0)), &Default::default(), 3, "max-hold").unwrap();
+        assert_eq!(p.state, PosState::Closed);
+        assert_eq!(p.exit_reason, "max-hold");
+        assert!(p.begin_sell().is_err(), "CLOSED cannot be sold again");
+    }
+
+    #[test]
+    fn a_failed_sell_returns_to_open_and_counts_the_failure() {
+        let mut p = open_pos();
+        p.begin_sell().unwrap();
+        let fee = FeeBreakdown { tx: 0.000005, priority: 0.0005, ..Default::default() };
+        p.end_sell(None, &fee, 2, "hard-stop").unwrap();
+        assert_eq!((p.state, p.sell_fails), (PosState::Open, 1));
+        assert!((p.failed_sol - 0.000505).abs() < 1e-12);
+    }
+
+    #[test]
+    fn pnl_nets_every_fee() {
+        let mut p = open_pos();
+        p.buy_fixed_sol = 0.0005;
+        p.begin_sell().unwrap();
+        p.end_sell(Some(fill(1_000_000.0)), &FeeBreakdown { tx: 0.000005, ..Default::default() }, 9, "x").unwrap();
+        // realized 0.098 - size 0.1 - buy fixed 0.0005 - failed 0.000005
+        assert!((p.pnl_sol - (0.098 - 0.1 - 0.0005 - 0.000005)).abs() < 1e-12);
+    }
+}

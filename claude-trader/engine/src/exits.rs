@@ -41,6 +41,9 @@ pub struct Market<'a> {
     pub migrated: bool,
 }
 
+/// Float slack so that exactly +20.0% (1.2x) counts as +20%.
+const EPS: f64 = 1e-9;
+
 fn buy_sol(trades: &[Trade], from: i64, to: i64) -> f64 {
     trades.iter().filter(|t| t.is_buy && t.recv_ms >= from && t.recv_ms < to).map(|t| t.sol).sum()
 }
@@ -97,13 +100,13 @@ pub fn evaluate(pos: &mut Position, m: &Market, cfg: &Config) -> Option<ExitActi
 
     // 3. Two-layer stop. Hard stop sells at once. Soft stop starts a recovery timer; if the price is still under
     //    the soft level when the timer ends, sell.
-    if pct <= ex.hard_stop_pct {
+    if pct <= ex.hard_stop_pct + EPS {
         return Some(ExitAction::all("hard-stop"));
     }
     if ex.sell_below_average_entry && pos.tranches_done > 0 && price < pos.entry_price {
         return Some(ExitAction::all("stop-at-entry"));
     }
-    if pct <= ex.soft_stop_pct {
+    if pct <= ex.soft_stop_pct + EPS {
         let started = *pos.soft_since_ms.get_or_insert(m.now_ms);
         if m.now_ms - started >= ex.soft_stop_recovery_seconds as i64 * 1000 {
             return Some(ExitAction::all("soft-stop"));
@@ -116,7 +119,7 @@ pub fn evaluate(pos: &mut Position, m: &Market, cfg: &Config) -> Option<ExitActi
     let done = pos.tranches_done as usize;
     if done < ex.tranches.len() {
         let t = &ex.tranches[done];
-        if pct >= t.at_pct {
+        if pct >= t.at_pct - EPS {
             return Some(ExitAction { reason: format!("take-profit-{}", done + 1), sell_all: false, fraction: t.sell_pct / 100.0, of_remaining: false, tranche: Some(done), taper: false });
         }
     } else if pos.peak_price > 0.0 && price <= pos.peak_price * (1.0 - ex.trailing_stop_pct / 100.0) {
@@ -278,8 +281,8 @@ mod tests {
         p.tranches_done = 3;
         // last 10%: trailing stop 10% from the peak
         assert_eq!(run(&mut p, 15.0, 80.0, &tr), None); // new peak at +80%
-        assert_eq!(run(&mut p, 16.0, 73.0, &tr), None); // -8.9% from the peak
-        let a = run(&mut p, 17.0, 70.0, &tr).unwrap(); // 1.8/1.7 -> -10.5% from the peak
+        assert_eq!(run(&mut p, 16.0, 73.0, &tr), None); // -3.9% from the peak
+        let a = run(&mut p, 17.0, 60.0, &tr).unwrap(); // 1.6/1.8 = -11.1% from the peak
         assert_eq!(a.reason, "trailing-stop");
         assert!(a.sell_all);
         // the ladder sums to 90%, leaving 10% for the trailing stop

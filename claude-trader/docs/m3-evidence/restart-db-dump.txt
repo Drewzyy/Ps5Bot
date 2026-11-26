@@ -1,0 +1,6 @@
+T+82s before kill:
+BEFORE {"id": 1, "lane": "momentum", "symbol": "RHOT", "state": "SELLING", "entry_ms": 1795664162331, "size_sol": 0.1, "entry_price": 5.9323116262815846e-08, "tokens_initial": 1656184.067686677, "tokens_remaining": 1656184.067686677, "realized_sol": 0.0, "tranches_done": 0, "pnl_sol": 0.0, "exit_reason": "", "stages": []}
+killed 11748 with SIGKILL at 03:36:27
+AFTER_KILL {"id": 1, "lane": "momentum", "symbol": "RHOT", "state": "SELLING", "entry_ms": 1795664162331, "size_sol": 0.1, "entry_price": 5.9323116262815846e-08, "tokens_initial": 1656184.067686677, "tokens_remaining": 1656184.067686677, "realized_sol": 0.0, "tranches_done": 0, "pnl_sol": 0.0, "exit_reason": "", "stages": []}
+AFTER_RESTART {"id": 1, "lane": "momentum", "symbol": "RHOT", "state": "CLOSED", "entry_ms": 1795664162331, "size_sol": 0.1, "entry_price": 5.9323116262815846e-08, "tokens_initial": 1656184.067686677, "tokens_remaining": 0.0, "realized_sol": 0.14909647511988242, "tranches_done": 3, "pnl_sol": 0.04859147511988241, "exit_reason": "trailing-stop", "stages": ["take-profit-1", "take-profit-2", "take-profit-3", "trailing-stop"]}
+done

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { source } from "./source";
-import type { ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, Pulse, ShieldSummary, WatchRow } from "./types";
+import type { ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
 
 export interface EngineState {
   agents: Record<string, AgentState>;
@@ -12,11 +12,14 @@ export interface EngineState {
   shield: ShieldSummary | null;
   /** Newest first, last 12 stage results with evidence links. */
   verdicts: LatestVerdict[];
+  /** Open positions plus the last closed ones (for the chart). */
+  positions: PositionView[];
+  stats: StatsState | null;
   /** True once real engine events (not the browser mock) have arrived. */
   live: boolean;
 }
 
-const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], live: false };
+const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, live: false };
 const WATCH_MAX = 300;
 const FLUSH_MS = 300; // UI updates throttled to about 3 per second
 
@@ -40,6 +43,8 @@ export function useEngine(): EngineState {
           watchlist: prev.watchlist,
           shield: prev.shield,
           verdicts: prev.verdicts,
+          positions: prev.positions,
+          stats: prev.stats,
           live: prev.live,
         };
         let watch: Map<string, WatchRow> | null = null;
@@ -81,6 +86,10 @@ export function useEngine(): EngineState {
             } else if (row && keepBlocked) {
               w().set(e.mint, { ...row, score: e.score });
             }
+          } else if (e.type === "positions") {
+            next.positions = e.positions;
+          } else if (e.type === "stats") {
+            next.stats = { balanceSol: e.balanceSol, bankrollSol: e.bankrollSol, solUsd: e.solUsd, replay: e.replay, lanes: e.lanes };
           } else if (e.type === "shield-summary") {
             next.shield = { checked: e.checked, blocked: e.blocked, passed: e.passed, byReason: e.byReason };
           } else if (e.type === "pulse") {

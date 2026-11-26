@@ -48,7 +48,86 @@ export type EngineEvent =
       mcapSol: number;
       gates: string[];
     }
-  | { type: "shield-summary"; ts: number; checked: number; blocked: number; passed: number; byReason: { reason: string; count: number }[] };
+  | { type: "shield-summary"; ts: number; checked: number; blocked: number; passed: number; byReason: { reason: string; count: number }[] }
+  | { type: "positions"; ts: number; positions: PositionView[] }
+  | { type: "stats"; ts: number; balanceSol: number; bankrollSol: number; solUsd: number; replay: boolean; lanes: LaneStats[] };
+
+export interface ExitMark {
+  ts: number;
+  price: number;
+  reason: string;
+}
+
+/** Mirrors engine/src/events.rs PositionView */
+export interface PositionView {
+  id: number;
+  lane: string;
+  mint: string;
+  symbol: string;
+  state: "OPEN" | "SELLING" | "CLOSED";
+  entryTs: number;
+  entryPrice: number;
+  currentPrice: number;
+  sizeSol: number;
+  tokensRemaining: number;
+  pnlSol: number;
+  pnlPct: number;
+  pricePct: number;
+  holdSeconds: number;
+  nextAction: string;
+  softStop: number;
+  hardStop: number;
+  takeProfits: number[];
+  tranchesDone: number;
+  exits: ExitMark[];
+  exitReason: string;
+  ticks: [number, number][];
+  replay: boolean;
+}
+
+export interface FeeBreakdown {
+  pumpFun: number;
+  pumpPortal: number;
+  tx: number;
+  priority: number;
+  jito: number;
+}
+
+export interface LaneStats {
+  lane: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  winRatePct: number;
+  avgWinSol: number;
+  avgLossSol: number;
+  profitFactor: number | null;
+  maxDrawdownSol: number;
+  totalPnlSol: number;
+  bestSol: number;
+  worstSol: number;
+  tradesPerDay: number;
+  equity: [number, number][];
+  feesToday: FeeBreakdown;
+  feesAll: FeeBreakdown;
+  feePerTrade: number;
+  pnlToday: number;
+  tradesToday: number;
+  buysToday: number;
+  sellsToday: number;
+  failedBuys: number;
+  open: number;
+  halted: string | null;
+  paused: boolean;
+}
+
+export interface StatsState {
+  balanceSol: number;
+  bankrollSol: number;
+  solUsd: number;
+  replay: boolean;
+  lanes: LaneStats[];
+}
 
 export type RiskVerdict = "LOW_SIGNAL" | "ELEVATED" | "HIGH";
 

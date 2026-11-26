@@ -15,6 +15,8 @@ const HISTORY: usize = 1500;
 struct History {
     statuses: HashMap<AgentId, EngineEvent>,
     summary: Option<EngineEvent>,
+    positions: Option<EngineEvent>,
+    stats: Option<EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
 
@@ -49,6 +51,8 @@ impl Hub {
                     h.statuses.insert(s.agent, e.clone());
                 }
                 EngineEvent::ShieldSummary { .. } => h.summary = Some(e.clone()),
+                EngineEvent::Positions { .. } => h.positions = Some(e.clone()),
+                EngineEvent::Stats { .. } => h.stats = Some(e.clone()),
                 EngineEvent::Pulse { .. } => {}
                 _ => {
                     h.events.push_back(e.clone());
@@ -73,6 +77,8 @@ impl Hub {
         if let Some(s) = &h.summary {
             out.push(s.clone());
         }
+        out.extend(h.positions.iter().cloned());
+        out.extend(h.stats.iter().cloned());
         out
     }
 

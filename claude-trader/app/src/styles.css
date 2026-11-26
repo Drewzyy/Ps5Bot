@@ -205,3 +205,47 @@ h1, h2, h3, p { margin: 0; }
 .erow { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
 .erow .el { grid-column: 2; display: flex; gap: 10px; }
 .erow a { color: var(--green); font-weight: 600; }
+
+/* M3 trading widgets */
+.replaytag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1.5px solid var(--green-dark); color: var(--green-dark); background: var(--tint-2); font-size: 10px; font-weight: 800; letter-spacing: .08em; vertical-align: middle; }
+.poslist { display: flex; flex-direction: column; gap: 10px; max-height: 330px; overflow: auto; }
+.pos { border: 1px solid var(--tint-3); border-radius: 12px; padding: 10px 12px; background: var(--tint-1); }
+.pos .ph { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pos .ph .pl { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pos .pg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.pos .pg b { color: var(--green-dark); font-variant-numeric: tabular-nums; }
+.pos .pn { margin-top: 6px; font-size: 12px; color: var(--green-dark); }
+.chip.lane { background: #fff; border: 1px solid var(--tint-3); color: var(--green-dark); }
+.card h3 select { font-size: 12px; border: 1px solid var(--tint-3); border-radius: 8px; padding: 3px 6px; color: var(--green-dark); background: #fff; }
+.chartwrap { border: 1px solid var(--tint-3); border-radius: 10px; background: #fff; padding: 6px; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart .grid, svg.equity .grid { stroke: var(--line); stroke-width: 1; }
+svg.chart .tick, svg.equity .tick { font-size: 10px; fill: var(--muted); }
+svg.chart .lbl { font-size: 10px; font-weight: 600; }
+svg.chart line.sl { stroke: var(--red); stroke-width: 1.4; stroke-dasharray: 6 4; }
+svg.chart line.sl.soft { opacity: .55; }
+svg.chart line.tp { stroke: var(--green); stroke-width: 1.4; stroke-dasharray: 6 4; }
+svg.chart line.tp.hit { opacity: .4; }
+svg.chart line.entryline { stroke: var(--green); stroke-width: 1; stroke-dasharray: 2 3; opacity: .7; }
+svg.chart line.live { stroke: var(--green-dark); stroke-width: 1.6; }
+svg.chart text.lbl.sl { fill: var(--red); }
+svg.chart text.lbl.tp { fill: var(--green); }
+svg.chart text.lbl.entryline { fill: var(--green); }
+svg.chart text.lbl.live { fill: var(--green-dark); font-weight: 800; }
+svg.chart .cu line { stroke: var(--green); } svg.chart .cu rect { fill: var(--green); }
+svg.chart .cd line { stroke: var(--red); } svg.chart .cd rect { fill: var(--red); }
+svg.chart .entrymark polygon { fill: var(--green); stroke: #fff; stroke-width: 1.5; }
+svg.chart .entrymark text { fill: var(--green); font-size: 10px; font-weight: 800; }
+svg.chart .exitmark polygon { fill: var(--red); stroke: #fff; stroke-width: 1.5; }
+svg.chart .exitmark text { fill: var(--red); font-size: 10px; font-weight: 800; }
+.chartnote { font-size: 12px; color: var(--muted); padding: 4px 6px 0; }
+.rc.fee { font-variant-numeric: tabular-nums; min-width: 62px; text-align: right; }
+svg.equity { width: 100%; height: 100px; background: var(--tint-1); border-radius: 10px; }
+svg.equity .eqline { fill: none; stroke: var(--green); stroke-width: 2; }
+svg.equity .eqline.down { stroke: var(--red); }
+svg.equity .eqdot { fill: var(--green); } svg.equity .eqdot.down { fill: var(--red); }
+.haltbar { background: #fef2f2; border: 1px solid var(--red); color: var(--red); border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+.variant { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.rbar.feebar { grid-template-columns: 1fr 70px 62px; }
+.rbar.feebar .rt i { background: var(--green); }
+.pos .ph .pl { white-space: nowrap; }
