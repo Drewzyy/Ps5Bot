@@ -60,6 +60,7 @@ export default function TopBar({ page, go, mode, bankroll, stats }: { page: Page
       <div className="spacer" />
       <nav className="nav">
         <button className={page === "dashboard" ? "active" : ""} onClick={() => go("dashboard")}>Dashboard</button>
+        <button className={page === "tips" ? "active" : ""} onClick={() => go("tips")}>Tips</button>
         <button className={page === "settings" ? "active" : ""} onClick={() => go("settings")}>Settings</button>
       </nav>
       <span className={`badge ${mode === "live" ? "live" : ""}`}>{mode === "live" ? "LIVE" : "PAPER"}</span>

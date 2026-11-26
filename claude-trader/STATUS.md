@@ -1,5 +1,11 @@
 # Claude Trader — STATUS
 
+## Tips and first-run walkthrough: DONE (UI only, no trading or live code touched)
+
+- `app/src/tips/content.ts` holds all text. Exit ladder, stops, hold time, fees, risk limits, score bar and curve SOL range are read from `config.json`. `app/src/tips/Tips.tsx` has the 10-step skippable walkthrough (highlights the real dashboard cards, docks on the side away from the highlight) and the Tips tab (5 topics, 24-term glossary, search, Replay walkthrough button). Top bar has a new Tips button (`#/tips`).
+- "Seen" flag is in localStorage key `claudeTrader.walkthroughSeen.v1`, read and written inside try/catch. If storage fails the tour just shows again on next launch.
+- Verified: `npm run build` ok, `cargo test --workspace` 108 passed, `scripts/check-live-gate.sh` ok. Screenshots `docs/screenshots/tips-*.png` (viewed; fixed the tour card covering the highlighted card and a lowercase sentence start). Sources and doubts: `docs/tips-sources.md`.
+
 ## M3 — Paper trader + widgets: DONE for the engine and UI; live market produced no pick (see below). Paper only, no keys.
 
 ### What was built (engine/src)

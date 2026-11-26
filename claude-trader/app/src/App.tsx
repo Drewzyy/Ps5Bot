@@ -8,15 +8,21 @@ import Graph from "./components/Graph";
 import Feed from "./components/Feed";
 import Widgets from "./components/Widgets";
 import SettingsPage from "./components/SettingsPage";
+import { TipsPage, Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
 
-export type Page = "dashboard" | "settings";
+export type Page = "dashboard" | "settings" | "tips";
 
-const pageFromHash = (): Page => (window.location.hash === "#/settings" ? "settings" : "dashboard");
+const pageFromHash = (): Page => (window.location.hash === "#/settings" ? "settings" : window.location.hash === "#/tips" ? "tips" : "dashboard");
 
 export default function App() {
   const [page, setPage] = useState<Page>(pageFromHash());
   const [config, setConfig] = useState<Config>(defaultConfig as Config);
   const engine = useEngine();
+  const [tour, setTour] = useState(() => !walkthroughSeen());
+  const closeTour = () => {
+    markWalkthroughSeen();
+    setTour(false);
+  };
 
   useEffect(() => {
     source.getConfig().then(setConfig).catch(() => {});
@@ -26,7 +32,7 @@ export default function App() {
   }, []);
 
   const go = (p: Page) => {
-    window.location.hash = p === "settings" ? "#/settings" : "#/";
+    window.location.hash = p === "settings" ? "#/settings" : p === "tips" ? "#/tips" : "#/";
     setPage(p);
   };
 
@@ -42,10 +48,13 @@ export default function App() {
             <div className="section-title">Widgets</div>
             <Widgets config={config} openSettings={() => go("settings")} engine={engine} />
           </>
+        ) : page === "tips" ? (
+          <TipsPage config={config} replay={() => { go("dashboard"); setTour(true); }} />
         ) : (
           <SettingsPage config={config} />
         )}
       </main>
+      {tour && page === "dashboard" && <Walkthrough config={config} onClose={closeTour} />}
     </>
   );
 }
