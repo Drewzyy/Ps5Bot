@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AGENTS, BOT_ICON, CX, CY } from "../agents";
+import { AGENTS, BOT_ICON, CX, CY, HUES } from "../agents";
 import type { AgentDef } from "../agents";
 import type { EngineState } from "../useEngine";
 import type { AgentId, Config, Pulse } from "../types";
@@ -45,7 +46,7 @@ function PulseLines({ pulse }: { pulse: Pulse }) {
 function Node({ def, state, selected, glow, onClick }: { def: AgentDef; state?: { color: string; line: string }; selected: boolean; glow: boolean; onClick: () => void }) {
   const color = state?.color ?? "grey";
   return (
-    <button className={`node ${selected ? "selected" : ""} ${glow ? "glow" : ""}`} style={{ left: def.x, top: def.y }} onClick={onClick} aria-label={`${def.name}: open details`}>
+    <button className={`node ${selected ? "selected" : ""} ${glow ? "glow" : ""}`} style={{ left: def.x, top: def.y, "--ac": `var(--c-${HUES[def.id]})` } as CSSProperties} onClick={onClick} aria-label={`${def.name}: open details`}>
       <span className="ico">{def.icon}</span>
       <span className="txt">
         <span className="nm"><span className={`sdot ${color}`} />{def.name}</span>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Logo from "../Logo";
 import type { Page } from "../App";
 import type { StatsState } from "../types";
 
@@ -28,7 +29,7 @@ export default function TopBar({ page, go, mode, bankroll, stats }: { page: Page
     <header className="topbar">
       <div className="brand">
         <span className="logo">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="8" width="16" height="12" rx="4" /><path d="M12 8V4" /><circle cx="9" cy="14" r="1" fill="currentColor" /><circle cx="15" cy="14" r="1" fill="currentColor" /></svg>
+          <Logo size={30} />
         </span>
         Claude Trader
       </div>

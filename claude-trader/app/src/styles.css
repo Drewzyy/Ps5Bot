@@ -24,6 +24,9 @@
   --shadow: rgba(17, 24, 39, .10);
   --shadow-lg: rgba(17, 24, 39, .18);
   --overlay: rgba(17, 24, 39, .35);
+  --c-blue: #2563eb; --c-purple: #7c3aed; --c-orange: #c2410c; --c-teal: #0f766e; --c-amber: #b45309;
+  --c-pink: #be185d; --c-slate: #475569; --c-indigo: #4f46e5; --c-green: #15803d;
+  --brand: #D97757;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -51,6 +54,8 @@
   --shadow: rgba(0, 0, 0, .5);
   --shadow-lg: rgba(0, 0, 0, .6);
   --overlay: rgba(0, 0, 0, .6);
+  --c-blue: #60a5fa; --c-purple: #a78bfa; --c-orange: #fb923c; --c-teal: #2dd4bf; --c-amber: #fbbf24;
+  --c-pink: #f472b6; --c-slate: #94a3b8; --c-indigo: #818cf8; --c-green: #4ade80;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -335,3 +340,38 @@ svg.equity .eqdot { fill: var(--green); } svg.equity .eqdot.down { fill: var(--r
 .seg button:last-child { border-right: none; }
 .seg button:hover { background: var(--surface); }
 .seg button[aria-checked="true"] { background: var(--green); color: var(--on-green); }
+
+/* accent palette: colored icon tiles, tiles, pills. Tints are small and sit on neutral cards. */
+.brand .logo { width: 30px; height: 22px; color: inherit; }
+.brand { color: var(--heading); }
+.node { --ac: var(--c-slate); }
+.node .ico { background: color-mix(in srgb, var(--ac) 15%, var(--card)); color: var(--ac); }
+.node:hover { border-color: var(--ac); }
+.center .orb { border-color: var(--brand); box-shadow: 0 0 0 8px var(--surface), 0 6px 20px var(--shadow); }
+.center.glow .orb { box-shadow: 0 0 0 8px var(--surface), 0 0 24px var(--glow); }
+.center.selected .orb { box-shadow: 0 0 0 8px var(--surface), 0 0 0 10px var(--brand); }
+.center .orb svg { width: 72px; height: auto; }
+.btn.ghost { color: var(--green-dark); }
+
+.stats4 > div { border-top: 3px solid var(--tc, var(--line)); background: var(--surface); }
+.stats4 > div:nth-child(8n+1) { --tc: var(--c-blue); } .stats4 > div:nth-child(8n+2) { --tc: var(--c-purple); }
+.stats4 > div:nth-child(8n+3) { --tc: var(--brand); } .stats4 > div:nth-child(8n+4) { --tc: var(--c-teal); }
+.stats4 > div:nth-child(8n+5) { --tc: var(--c-pink); } .stats4 > div:nth-child(8n+6) { --tc: var(--c-amber); }
+.stats4 > div:nth-child(8n+7) { --tc: var(--c-indigo); } .stats4 > div:nth-child(8n+8) { --tc: var(--c-slate); }
+.rbar.feebar:nth-child(5n+1) .rt i { background: var(--c-blue); } .rbar.feebar:nth-child(5n+2) .rt i { background: var(--c-purple); }
+.rbar.feebar:nth-child(5n+3) .rt i { background: var(--brand); } .rbar.feebar:nth-child(5n+4) .rt i { background: var(--c-teal); }
+.rbar.feebar:nth-child(5n+5) .rt i { background: var(--c-pink); }
+.rbar .rt { background: var(--surface-2); }
+
+.vbadge.LOW_SIGNAL, .verdict { background: color-mix(in srgb, var(--green) 14%, var(--card)); border-color: color-mix(in srgb, var(--green) 40%, var(--card)); color: var(--c-green); }
+.vbadge.ELEVATED { color: var(--amber-text); }
+.vbadge.HIGH { color: var(--red); }
+.chip.observing { background: color-mix(in srgb, var(--c-blue) 14%, var(--card)); border-color: color-mix(in srgb, var(--c-blue) 40%, var(--card)); color: var(--c-blue); }
+.chip.scored { background: color-mix(in srgb, var(--c-purple) 14%, var(--card)); border-color: color-mix(in srgb, var(--c-purple) 40%, var(--card)); color: var(--c-purple); }
+.chip.lane { background: color-mix(in srgb, var(--brand) 14%, var(--card)); border-color: color-mix(in srgb, var(--brand) 45%, var(--card)); color: var(--c-orange); }
+.chip.checking { background: var(--surface); color: var(--muted); }
+.replaytag { background: color-mix(in srgb, var(--c-amber) 14%, var(--card)); border-color: var(--c-amber); color: var(--c-amber); }
+.card h3 { border-left: 3px solid var(--brand); padding-left: 8px; }
+.tips-grid .card:nth-child(4n+1) h3 { border-left-color: var(--c-blue); } .tips-grid .card:nth-child(4n+2) h3 { border-left-color: var(--c-purple); }
+.tips-grid .card:nth-child(4n+3) h3 { border-left-color: var(--c-teal); } .tips-grid .card:nth-child(4n+4) h3 { border-left-color: var(--c-pink); }
+.tips-toc a { color: var(--heading); }

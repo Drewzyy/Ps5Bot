@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import type { AgentId } from "./types";
+import Logo from "./Logo";
 
 export interface AgentDef {
   id: AgentId;
@@ -50,14 +51,9 @@ export const AGENTS: AgentDef[] = [
   { id: "top-gainers", name: "Top Gainers", role: "Tracks which coins are rising fastest right now, to learn what winners look like.", icon: ICONS.trend, settingsPrefix: [], note: "Starts working in a later version.", ...ring(8) },
 ];
 
-export const BOT_ICON = (
-  <svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="9" y="15" width="30" height="22" rx="7" />
-    <path d="M24 15V9" />
-    <circle cx="24" cy="7" r="2.2" />
-    <circle cx="18" cy="26" r="2.6" fill="currentColor" stroke="none" />
-    <circle cx="30" cy="26" r="2.6" fill="currentColor" stroke="none" />
-    <path d="M19 32h10" />
-    <path d="M5 24v6M43 24v6" />
-  </svg>
-);
+export const BOT_ICON = <Logo size={72} />;
+
+export const HUES: Record<AgentId, string> = {
+  "scam-shield": "blue", "token-picker": "purple", executor: "orange", "hold-timer": "teal", "thesis-finder": "amber",
+  "memecoin-monitor": "pink", "x-monitor": "slate", "top-trader-monitor": "indigo", "top-gainers": "green", "claude-bot": "orange",
+};
