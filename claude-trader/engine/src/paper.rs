@@ -243,10 +243,10 @@ mod tests {
         let e = exec(1, &c);
         let cv = curve();
         let f = e.buy(0.1, cv.price(), &|| Some(cv)).await.unwrap();
-        // 1.75% of 0.1 goes to fees, the rest into the curve
-        assert!((f.fees.pump_fun - 0.00125).abs() < 1e-12 && (f.fees.pump_portal - 0.0005).abs() < 1e-12);
+        // 2.25% of 0.1 goes to fees (protocol 0.95, creator 0.30, PumpPortal 1.0), the rest into the curve
+        assert!((f.fees.pump_fun - 0.00095).abs() < 1e-12 && (f.fees.creator - 0.0003).abs() < 1e-12 && (f.fees.pump_portal - 0.001).abs() < 1e-12);
         assert!((f.fees.priority - 0.0005).abs() < 1e-12 && (f.fees.tx - 0.000005).abs() < 1e-12);
-        let into = 0.1 * (1.0 - 0.0175);
+        let into = 0.1 * (1.0 - 0.0225);
         assert!((f.entry_price - into / f.tokens).abs() < 1e-18);
         // never the mid price: the fill is worse than spot
         assert!(f.entry_price > cv.price());
@@ -325,8 +325,79 @@ mod tests {
         let (gross, _) = cv.sell(2_000_000.0);
         assert!((s.gross_sol - gross).abs() < 1e-12);
         assert!(s.gross_sol < cv.price() * 2_000_000.0, "sells below spot");
-        assert!((fees.pump_fun - gross * 0.0125).abs() < 1e-12);
+        assert!((fees.pump_fun - gross * 0.0095).abs() < 1e-12 && (fees.creator - gross * 0.003).abs() < 1e-12 && (fees.pump_portal - gross * 0.01).abs() < 1e-12);
         assert!((s.net_sol - (gross - fees.total())).abs() < 1e-12);
         assert_eq!(s.ts, 77);
+    }
+
+    /// Lamports: round to 1e-9 SOL.
+    fn lam(x: f64) -> i64 {
+        (x * 1e9).round() as i64
+    }
+
+    #[tokio::test]
+    async fn round_trip_balance_change_equals_proceeds_minus_every_cost_to_the_lamport() {
+        use crate::position::{PosState, Position};
+        let mut c = cfg();
+        c.paper_fill.buy_fail_pct = 0.0;
+        c.paper_fill.sell_fail_pct = 0.0;
+        c.fees.jito_tip_sol = 0.0003; // prove a Jito tip is charged on both sides when set
+        let e = exec(5, &c);
+        let cv = curve();
+        let size = 0.1;
+        let b = e.buy(size, cv.price(), &|| Some(cv)).await.unwrap();
+        let mut p = Position::new_buying("momentum", "M", "T", "C", "CV", size, 0, 150.0);
+        p.fill_buy(b.entry_price, b.tokens, 1.0, &b.fees, b.slippage_pct).unwrap();
+        // while open: spend + fixed buy fees + locked rent are out of the wallet
+        let fixed_buy = b.fees.tx + b.fees.priority + b.fees.jito;
+        assert_eq!(lam(p.balance_delta()), lam(-(size + fixed_buy + crate::curve::TOKEN_ACCOUNT_RENT_SOL)));
+        assert_eq!(lam(p.rent_locked()), lam(0.00203928));
+        p.begin_sell().unwrap();
+        let now = || 1i64;
+        let o = e.sell(b.tokens, "take-profit-1", 0, &now, &|| Some(b.curve_after)).await;
+        let (stage, sfees) = o.fill.clone().unwrap();
+        let (gross, _) = b.curve_after.sell(b.tokens);
+        // independent recompute of the sell-side cost: 0.95 + 0.30 + 1.0 percent of the SOL actually received, tx, priority, jito
+        let expect_sell_fees = gross * 0.0225 + 0.000005 + 0.0005 + 0.0003;
+        assert_eq!(lam(sfees.total()), lam(expect_sell_fees));
+        assert_eq!(lam(stage.net_sol), lam(gross - expect_sell_fees));
+        p.end_sell(o.fill, &o.failed_fees, 2, "take-profit-1").unwrap();
+        assert_eq!(p.state, PosState::Closed);
+        // rent is back once the account is closed
+        assert_eq!(p.rent_locked(), 0.0);
+        let expected = (gross - expect_sell_fees) - (size + 0.000005 + 0.0005 + 0.0003);
+        assert_eq!(lam(p.balance_delta()), lam(expected));
+        assert_eq!(lam(p.pnl_sol), lam(expected));
+        // the fee components on the position add up to every cost except the price impact already inside the curve fill
+        let all_fees = size * 0.0225 + 0.000005 + 0.0005 + 0.0003 + expect_sell_fees;
+        assert_eq!(lam(p.fees.total()), lam(all_fees));
+        assert_eq!(lam(p.fees.creator), lam(size * 0.003 + gross * 0.003));
+        assert_eq!(lam(p.fees.jito), lam(0.0006));
+    }
+
+    #[tokio::test]
+    async fn failed_or_reverted_transactions_still_cost_fees() {
+        use crate::position::Position;
+        let mut c = cfg();
+        c.paper_fill.buy_fail_pct = 100.0;
+        c.fees.jito_tip_sol = 0.0003;
+        let cv = curve();
+        // find a seed whose failure is an on-chain revert (paid), then check the cost lands in the balance
+        let mut paid = None;
+        for seed in 1..200u64 {
+            let e = exec(seed, &c);
+            if let Err(f) = e.buy(0.1, cv.price(), &|| Some(cv)).await {
+                if f.kind == FailKind::Reverted {
+                    paid = Some(f);
+                    break;
+                }
+            }
+        }
+        let f = paid.expect("a reverted buy shows up within 200 seeds");
+        assert_eq!(lam(f.fees.total()), lam(0.000005 + 0.0005 + 0.0003), "base fee + priority + jito, no percent fee");
+        let mut p = Position::new_buying("momentum", "M", "T", "C", "CV", 0.1, 0, 150.0);
+        p.fail_buy(&f.fees, 1, "buy-failed");
+        assert_eq!(lam(p.pnl_sol), lam(-(0.000005 + 0.0005 + 0.0003)));
+        assert_eq!(p.rent_locked(), 0.0, "no token account was opened");
     }
 }

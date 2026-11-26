@@ -113,11 +113,13 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
   },
   "fees": {
     "modelPumpFunPctPerSide": 1.25,
-    "pumpPortalPctPerSide": 0.5,
+    "pumpFunCreatorPctPerSide": 0.30,
+    "pumpPortalPctPerSide": 1.0,
     "priorityMicroLamports": 150000,
     "computeUnits": 150000,
     "pumpPortalPriorityFeeSol": 0.0005,
-    "pumpPortalPriorityFeeCapSol": 0.005
+    "pumpPortalPriorityFeeCapSol": 0.005,
+    "jitoTipSol": 0
   },
   "paperFill": {
     "buyFailPct": 10, "sellFailPct": 15,
@@ -138,7 +140,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
 ```
 
 Rules:
-- Stop-loss [Claude, 2026-11-25, replaces the earlier -20/-25 choice]: soft stop -10% starts a 15 s recovery wait; hard stop -15% sells at once (checked every 1 s). Tightened because fees model at ~3.5% per round trip and the user asked for minimal losses; -15% hard stops are used by gmgn-screener (high-risk entries), OilFront and the Capital repo config.
+- Stop-loss [Claude, 2026-11-25, replaces the earlier -20/-25 choice]: soft stop -10% starts a 15 s recovery wait; hard stop -15% sells at once (checked every 1 s). Tightened because fees model at ~4.5% per round trip (Fee model rule) and the user asked for minimal losses; -15% hard stops are used by gmgn-screener (high-risk entries), OilFront and the Capital repo config.
 - Style [user, 2026-11-25]: quick scalps. Every position is closed within 5 minutes, no exceptions.
 - Take-profit [user]: 40% at +20%, 30% at +40%, 20% at +60%, last 10% on a 10% trailing stop from the peak.
 - Holder concentration [user]: single holder ≤5%, top holders combined ≤15%, with bonding-curve and pool accounts excluded from both numbers.
@@ -146,7 +148,7 @@ Rules:
 - Fade exits [user] (from the Capital repo's smart_exit.py, untested there since its engine is never called): stall (under +3% between 60 and 90 s: sell all); bleeder (past 120 s, below -20%, peak never above +20%: sell all); volume taper (3 falling 10 s buy-volume windows and the last under 50% of baseline: sell 50%); momentum death (after 90 s, fewer than 0.5 buys/min over 45 s: sell all); whale sell of 3% or more of the curve, or any dev sell: sell all at once.
 - Exit loop runs every 1 s on curve-account WebSocket pushes, RPC fallback.
 - Market-cap entry gate [user approved 2026-11-26, replaces the USD gate]: `feed.minMarketCapSol` = 30 SOL, compared with market cap in SOL straight from the curve. Reasoning: the old $7000 gate depended on the SOL price. At SOL ~$71 it meant ~98.5 SOL, which can never pass together with the chase rule (block above 3x launch within 60 s; a launch starts near 28 SOL, so 3x is ~84 SOL), and a 55 minute live run made zero picks. A SOL-denominated gate does not move when SOL/USD moves. 30 SOL still skips brand-new coins nobody has bought (they sit near 28 SOL) and leaves a passing band of about 30-84 SOL. No entry gate reads the SOL/USD price; USD is only used for display and the JSONL `entryMcapUsd` field.
-- Fees: pump.fun 1.25% per side (conservative paper model, see the Fees [Claude] rule below) plus PumpPortal 0.5% per side plus priority fee. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
+- Fees: all fees per side are listed once in the Fee model rule; TP1 must clear their sum. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
 - Size: 1% of bankroll per trade, clamped to 0.05–0.25 SOL. Fixed size, no doubling after a loss, never add to a loser.
 - `entry.style` options: `momentum`, `snipe`, `confirmation`, `dip-40pct`, `graduation-dip`. Default `momentum` [Claude]: the only entry with any track record found (Capital repo: 458 self-reported live trades, buy/sell ratio and volume slope were the strongest predictors; score gate gave 41.9% win rate). `dip-40pct` runs as a parallel paper-only variant so the two can be compared; live uses whichever wins in paper. The observation-window gate applies to every style.
 - Break-even check: before a buy, compute break-even % for the trade size (fees, tips, slippage). Reject the buy if TP1 is not above break-even with margin.
@@ -154,7 +156,14 @@ Rules:
 - Scam blocks are automatic with no override: honeypot, creator holding over the limit, dev-snipe in first block, live mint/freeze authority, bundled/fake holders.
 - Top-trader wallets: off in v1 (no free, verified smart-money source exists). `minProTraders` is dropped. Later version may build a local list from wallets with 3+ early buys on graduated tokens. Never copy-trade.
 - Community check [Claude]: at least one social link and an image in metadata. Weak hard filter only, not a score driver (link presence is easy to fake). All metadata fields logged so their predictive value can be measured in paper.
-- Fees [Claude]: model pump.fun at 1.25% per side (conservative end of conflicting sources; this is the only pump.fun figure used by code and config, `fees.modelPumpFunPctPerSide`), PumpPortal 0.5% per side, so ~3.5% per round trip plus priority fee. The real pump.fun rate (one source says 0.30%) must be verified against live docs before M4; paper stays conservative until then.
+- Fee model [Claude, research 2026-11-26; where sources disagree the higher value is used]. Each component is its own line in the Fees widget and in the JSONL `feeBreakdown`:
+  - pump.fun bonding curve: 1.25% per side, flat, no tiers on the curve = 0.95% protocol + 0.30% creator (`modelPumpFunPctPerSide` 1.25 and `pumpFunCreatorPctPerSide` 0.30; code and config use only these). Sources: pump.fun help article "Transaction fees on pump.fun" (intercom.help/pumpfun-web, article 11002413); coinpaprika.com/education/launchpad-fees (cites pump.fun fee docs; says the dynamic market-cap tiers, from 1.25% down to 0.30%, apply AFTER graduation on PumpSwap, which this bot never holds into). Project Ascend / Dynamic Fees V1 (blockworks.co/news/pumpdotfun-fee-model, dextools.io Ascend guide) scaled creator fees by market cap; Cointelegraph reports a revamp (fee sharing across up to 10 wallets) is planned. A coin on the curve at 30-84 SOL market cap is below the cheapest tier cut either way, so 1.25% is the upper bound. One source quotes 0.30% alone: that is the creator part.
+  - PumpPortal: 1.0% per side (`pumpPortalPctPerSide`). Sources disagree: Solana Compass (Oct 2026) lists 1% for the Lightning (hosted wallet) API and 0.5% for the Local API, older write-ups say 0.5% flat. Higher value used. M4 uses trade-local, so the real rate may be 0.5%.
+  - Solana base fee: 5000 lamports per signature (0.000005 SOL), charged per transaction including reverted ones.
+  - Priority fee: 0.0005 SOL per trade (PumpPortal default per its MCP wrapper docs), x2 then x4 on retries, cap 0.005 SOL.
+  - Jito tip: `jitoTipSol` 0 (the bot lands trades with PumpPortal and the priority fee; Jito is only for M4 launch atomicity). If set, charged on every transaction including failed ones. Typical tips are 0.001-0.01 SOL [est].
+  - Token-account rent 0.00203928 SOL: out of the balance while a position is open, back on close; it is not a fee and not in `feesSol`, but it is in the break-even gate.
+  - About 4.5% per round trip in percent fees, plus ~0.00101 SOL fixed per round trip. Verify every rate above against live docs before M4; the creator fee and fee tiers have changed several times in 2025-2026.
 - Volume [Claude]: the bot scans every launch nonstop but only buys what clears every gate. Up to 5 positions at once, 300 s cooldown per token.
 
 ## 7. Scam Shield
@@ -168,11 +177,11 @@ Rules:
 ## 8. Paper mode
 
 - Same rules engine as live; only the executor differs.
-- Fills: bonding-curve constant-product formula, plus 0.5% PumpPortal fee, SOL tx fee, priority-fee estimate, price impact, a fill delay, and a failed-fill rate. Never mark at mid-price.
-- One JSONL line per closed trade in `paper-logs/YYYY-MM-DD.jsonl`, exactly this shape:
+- Fills: bonding-curve constant-product formula, plus every cost in the Fee model (section 6), price impact, a fill delay, and a failed-fill rate. Never mark at mid-price. All costs come out of the paper SOL balance: buy spend (holds the buy-side percent fees), fixed fees, fees of reverted/retried transactions, token-account rent 0.00203928 SOL taken on the buy fill and returned only when a full sell closes the account (while open it is shown as "rent locked"), sell-side percent fees on the SOL actually received. The balance change of a closed trade equals `pnlSol` to the lamport (unit test).
+- One JSONL line per closed trade in `paper-logs/YYYY-MM-DD.jsonl`, exactly this shape (`feeBreakdown` is the last key; its parts sum to `feesSol`; rent is not a fee):
 
 ```json
-{"ts":"2026-11-25T15:02:11-08:00","mint":"7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHR","symbol":"MOON","side":"buy","sizeSol":0.2,"entryPrice":0.00042,"entryMcapUsd":12400,"exitPrice":0.00081,"exitReason":"take-profit-1","pnlSol":0.176,"pnlPct":88.0,"holdSeconds":112,"feesSol":0.0042,"mode":"paper"}
+{"ts":"2026-11-25T15:02:11-08:00","mint":"7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHR","symbol":"MOON","side":"buy","sizeSol":0.2,"entryPrice":0.00042,"entryMcapUsd":12400,"exitPrice":0.00081,"exitReason":"take-profit-1","pnlSol":0.176,"pnlPct":88.0,"holdSeconds":112,"feesSol":0.00551,"mode":"paper","feeBreakdown":{"pumpFun":0.0019,"creator":0.0006,"pumpPortal":0.002,"tx":0.00001,"priority":0.001,"jito":0.0}}
 ```
 
 - Daily summary: win rate, avg win, avg loss, profit factor, max drawdown, total PnL, trades per day.

@@ -243,7 +243,7 @@ export const META: Record<string, Explain> = {
   "exits.hardStopPct": e(
     "Hard stop (%)",
     "The last line of defense. If the loss reaches this, the position is sold immediately with no waiting.",
-    "-15 percent. Fees take about 3.5 percent per round trip, so tighter stops would trigger too often.",
+    "-15 percent. Fees take about 4.5 percent per round trip, so tighter stops would trigger too often.",
     "Type a negative percentage. It must be at or below the soft stop."
   ),
   "exits.sellBelowAverageEntry": e(
@@ -363,14 +363,26 @@ export const META: Record<string, Explain> = {
   "fees.modelPumpFunPctPerSide": e(
     "pump.fun fee per side (%)",
     "The fee the app assumes pump.fun takes on each buy and each sell. It is set on the cautious side so results are not too rosy.",
-    "1.25 percent.",
+    "1.25 percent (0.95 to pump.fun and 0.30 to the coin's creator).",
     "Type a percentage. We will check it against the official docs before any live trading."
+  ),
+  "fees.pumpFunCreatorPctPerSide": e(
+    "Creator share of the pump.fun fee (%)",
+    "Part of the pump.fun fee above that is paid to the person who made the coin. You still pay it, so it is shown as its own line in Fees paid.",
+    "0.30 percent.",
+    "Type a percentage. It must not be more than the pump.fun fee above."
+  ),
+  "fees.jitoTipSol": e(
+    "Jito tip per trade (SOL)",
+    "An optional extra tip some traders pay so a trade lands first. The app does not use it today, but if you set a number it is charged on every trade, including failed ones.",
+    "0 SOL. Trades go through PumpPortal, which lands them with the priority fee alone.",
+    "Leave at 0 unless trades keep missing. Typical tips are 0.001 to 0.01 SOL."
   ),
   "fees.pumpPortalPctPerSide": e(
     "PumpPortal fee per side (%)",
     "The fee charged by the service that builds the trades, on each buy and each sell.",
-    "0.5 percent.",
-    "Type a percentage."
+    "1.0 percent. This is the higher of the two published rates, so results are not too rosy.",
+    "Type a percentage. PumpPortal lists 0.5 percent for trades you sign yourself and 1 percent for its hosted wallet. We use 1 until checked."
   ),
   "fees.priorityMicroLamports": e(
     "Priority fee rate",

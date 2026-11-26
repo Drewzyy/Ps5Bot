@@ -48,7 +48,11 @@ impl Curve {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeeBreakdown {
+    /// pump.fun protocol fee.
     pub pump_fun: f64,
+    /// pump.fun creator fee (paid to the token creator, still a cost to us).
+    #[serde(default)]
+    pub creator: f64,
     pub pump_portal: f64,
     pub tx: f64,
     pub priority: f64,
@@ -57,10 +61,11 @@ pub struct FeeBreakdown {
 
 impl FeeBreakdown {
     pub fn total(&self) -> f64 {
-        self.pump_fun + self.pump_portal + self.tx + self.priority + self.jito
+        self.pump_fun + self.creator + self.pump_portal + self.tx + self.priority + self.jito
     }
     pub fn add(&mut self, o: &FeeBreakdown) {
         self.pump_fun += o.pump_fun;
+        self.creator += o.creator;
         self.pump_portal += o.pump_portal;
         self.tx += o.tx;
         self.priority += o.priority;
@@ -70,7 +75,10 @@ impl FeeBreakdown {
 
 #[derive(Debug, Clone)]
 pub struct FeeModel {
+    /// pump.fun total per side (protocol + creator).
     pub pump_pct: f64,
+    pub creator_pct: f64,
+    pub jito_sol: f64,
     pub portal_pct: f64,
     pub priority_sol: f64,
     pub priority_cap_sol: f64,
@@ -81,6 +89,8 @@ impl FeeModel {
     pub fn from_config(c: &Config) -> Self {
         FeeModel {
             pump_pct: c.fees.model_pump_fun_pct_per_side,
+            creator_pct: c.fees.pump_fun_creator_pct_per_side,
+            jito_sol: c.fees.jito_tip_sol,
             portal_pct: c.fees.pump_portal_pct_per_side,
             priority_sol: c.fees.pump_portal_priority_fee_sol,
             priority_cap_sol: c.fees.pump_portal_priority_fee_cap_sol,
@@ -97,16 +107,17 @@ impl FeeModel {
     /// Fees of a landed trade of `gross_sol` (percent fees on that amount) plus one transaction.
     pub fn trade_fees(&self, gross_sol: f64, priority: f64) -> FeeBreakdown {
         FeeBreakdown {
-            pump_fun: gross_sol * self.pump_pct / 100.0,
+            pump_fun: gross_sol * (self.pump_pct - self.creator_pct) / 100.0,
+            creator: gross_sol * self.creator_pct / 100.0,
             pump_portal: gross_sol * self.portal_pct / 100.0,
             tx: self.base_tx_sol,
             priority,
-            jito: 0.0,
+            jito: self.jito_sol,
         }
     }
     /// Fees of a transaction that was paid for but did not trade (reverted on chain).
     pub fn failed_tx_fees(&self, priority: f64) -> FeeBreakdown {
-        FeeBreakdown { tx: self.base_tx_sol, priority, ..Default::default() }
+        FeeBreakdown { tx: self.base_tx_sol, priority, jito: self.jito_sol, ..Default::default() }
     }
 }
 
@@ -118,7 +129,8 @@ pub fn break_even_pct(size_sol: f64, fees: &FeeModel, impact_pct: f64) -> f64 {
         return f64::INFINITY;
     }
     let percent = 2.0 * fees.pct_per_side();
-    let fixed = 2.0 * (fees.base_tx_sol + fees.priority_sol) + TOKEN_ACCOUNT_RENT_SOL;
+    // rent is returned when the account closes, but it is locked (and unavailable) while the position is open
+    let fixed = 2.0 * (fees.base_tx_sol + fees.priority_sol + fees.jito_sol) + TOKEN_ACCOUNT_RENT_SOL;
     percent + fixed / size_sol * 100.0 + impact_pct
 }
 
@@ -183,9 +195,11 @@ mod tests {
     fn fee_model_matches_spec_and_escalates_with_cap() {
         let cfg = crate::Config::from_json(include_str!("../../config.json")).unwrap();
         let f = FeeModel::from_config(&cfg);
-        assert!((f.pct_per_side() - 1.75).abs() < 1e-12);
+        assert!((f.pct_per_side() - 2.25).abs() < 1e-12);
         let t = f.trade_fees(0.2, 0.0005);
-        assert!((t.pump_fun - 0.0025).abs() < 1e-12 && (t.pump_portal - 0.001).abs() < 1e-12);
+        // 1.25% pump.fun = 0.95% protocol + 0.30% creator; PumpPortal 1.0%
+        assert!((t.pump_fun - 0.0019).abs() < 1e-12 && (t.creator - 0.0006).abs() < 1e-12 && (t.pump_portal - 0.002).abs() < 1e-12);
+        assert!((t.total() - (0.0045 + 0.000005 + 0.0005)).abs() < 1e-12);
         assert!((f.priority_for_attempt(0) - 0.0005).abs() < 1e-12);
         assert!((f.priority_for_attempt(1) - 0.001).abs() < 1e-12);
         assert!((f.priority_for_attempt(2) - 0.002).abs() < 1e-12);

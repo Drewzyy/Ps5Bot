@@ -7,7 +7,7 @@ use crate::events::*;
 use crate::hub::Hub;
 use crate::monitor::{self, Incoming, MonitorState};
 use crate::picker;
-use crate::pump::{mcap_sol, solscan_token, FeedMsg, Trade};
+use crate::pump::{solscan_token, FeedMsg, Trade};
 use crate::rpc::{now_ms, Rpc, TradeFeed};
 use crate::shield::rules::{ev, should_blacklist_creator, Outcome};
 use crate::trader::{Pick, Trader};

@@ -87,6 +87,7 @@ export interface PositionView {
 
 export interface FeeBreakdown {
   pumpFun: number;
+  creator: number;
   pumpPortal: number;
   tx: number;
   priority: number;
@@ -110,6 +111,7 @@ export interface LaneStats {
   equity: [number, number][];
   feesToday: FeeBreakdown;
   feesAll: FeeBreakdown;
+  rentLockedSol: number;
   feePerTrade: number;
   pnlToday: number;
   tradesToday: number;

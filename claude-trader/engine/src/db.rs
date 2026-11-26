@@ -42,7 +42,7 @@ impl Db {
                 id INTEGER PRIMARY KEY AUTOINCREMENT, lane TEXT NOT NULL, mint TEXT NOT NULL, symbol TEXT, creator TEXT, curve TEXT,
                 state TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'trade', entry_ms INTEGER NOT NULL, size_sol REAL, entry_price REAL,
                 entry_mcap_usd REAL, sol_usd REAL, tokens_initial REAL, tokens_remaining REAL, realized_sol REAL, gross_exit_sol REAL,
-                tokens_sold REAL, fee_pump_fun REAL, fee_pump_portal REAL, fee_tx REAL, fee_priority REAL, fee_jito REAL,
+                tokens_sold REAL, fee_pump_fun REAL, fee_pump_portal REAL, fee_tx REAL, fee_priority REAL, fee_jito REAL, fee_creator REAL,
                 buy_fixed_sol REAL, failed_sol REAL, peak_price REAL, tranches_done INTEGER, soft_since_ms INTEGER, taper_done INTEGER,
                 last_price REAL, sell_fails INTEGER, exit_ms INTEGER, exit_reason TEXT, stages TEXT, pnl_sol REAL, pnl_pct REAL, slippage_pct REAL);
              CREATE INDEX IF NOT EXISTS positions_state ON positions(state);
@@ -50,6 +50,8 @@ impl Db {
              CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT);",
         )
         .map_err(|e| format!("db schema: {e}"))?;
+        // older databases were created before the creator fee column existed
+        let _ = conn.execute("ALTER TABLE positions ADD COLUMN fee_creator REAL", []);
         Ok(Db { conn: Mutex::new(conn) })
     }
 
@@ -167,12 +169,12 @@ impl Db {
             "UPDATE positions SET lane=?,mint=?,symbol=?,creator=?,curve=?,state=?,kind=?,entry_ms=?,size_sol=?,entry_price=?,entry_mcap_usd=?,sol_usd=?,
              tokens_initial=?,tokens_remaining=?,realized_sol=?,gross_exit_sol=?,tokens_sold=?,fee_pump_fun=?,fee_pump_portal=?,fee_tx=?,fee_priority=?,fee_jito=?,
              buy_fixed_sol=?,failed_sol=?,peak_price=?,tranches_done=?,soft_since_ms=?,taper_done=?,last_price=?,sell_fails=?,exit_ms=?,exit_reason=?,stages=?,
-             pnl_sol=?,pnl_pct=?,slippage_pct=? WHERE id=?",
+             pnl_sol=?,pnl_pct=?,slippage_pct=?,fee_creator=? WHERE id=?",
             params![
                 p.lane, p.mint, p.symbol, p.creator, p.curve, p.state.as_str(), p.kind, p.entry_ms, p.size_sol, p.entry_price, p.entry_mcap_usd, p.sol_usd,
                 p.tokens_initial, p.tokens_remaining, p.realized_sol, p.gross_exit_sol, p.tokens_sold, p.fees.pump_fun, p.fees.pump_portal, p.fees.tx,
                 p.fees.priority, p.fees.jito, p.buy_fixed_sol, p.failed_sol, p.peak_price, p.tranches_done, p.soft_since_ms, p.taper_done as i64,
-                p.last_price, p.sell_fails, p.exit_ms, p.exit_reason, stages, p.pnl_sol, p.pnl_pct, p.slippage_pct, p.id
+                p.last_price, p.sell_fails, p.exit_ms, p.exit_reason, stages, p.pnl_sol, p.pnl_pct, p.slippage_pct, p.fees.creator, p.id
             ],
         );
     }
@@ -182,7 +184,7 @@ impl Db {
         let sql = format!(
             "SELECT id,lane,mint,symbol,creator,curve,state,kind,entry_ms,size_sol,entry_price,entry_mcap_usd,sol_usd,tokens_initial,tokens_remaining,realized_sol,
              gross_exit_sol,tokens_sold,fee_pump_fun,fee_pump_portal,fee_tx,fee_priority,fee_jito,buy_fixed_sol,failed_sol,peak_price,tranches_done,soft_since_ms,
-             taper_done,last_price,sell_fails,exit_ms,exit_reason,stages,pnl_sol,pnl_pct,slippage_pct FROM positions WHERE {where_sql}"
+             taper_done,last_price,sell_fails,exit_ms,exit_reason,stages,pnl_sol,pnl_pct,slippage_pct,fee_creator FROM positions WHERE {where_sql}"
         );
         let Ok(mut st) = c.prepare(&sql) else { return vec![] };
         let rows = st.query_map(args, |r| {
@@ -207,7 +209,7 @@ impl Db {
                 realized_sol: f(15)?,
                 gross_exit_sol: f(16)?,
                 tokens_sold: f(17)?,
-                fees: FeeBreakdown { pump_fun: f(18)?, pump_portal: f(19)?, tx: f(20)?, priority: f(21)?, jito: f(22)? },
+                fees: FeeBreakdown { pump_fun: f(18)?, pump_portal: f(19)?, tx: f(20)?, priority: f(21)?, jito: f(22)?, creator: f(37)? },
                 buy_fixed_sol: f(23)?,
                 failed_sol: f(24)?,
                 peak_price: f(25)?,
@@ -292,7 +294,7 @@ mod tests {
             id = db.insert_position(&p);
             assert_eq!(db.load_buying_positions().len(), 1, "written before the buy");
             p.id = id;
-            p.fill_buy(1.5e-7, 600_000.0, 8000.0, &FeeBreakdown { pump_fun: 0.00125, pump_portal: 0.0005, tx: 0.000005, priority: 0.0005, jito: 0.0 }, 1.5).unwrap();
+            p.fill_buy(1.5e-7, 600_000.0, 8000.0, &FeeBreakdown { pump_fun: 0.00095, creator: 0.0003, pump_portal: 0.0005, tx: 0.000005, priority: 0.0005, jito: 0.0 }, 1.5).unwrap();
             p.tranches_done = 1;
             p.soft_since_ms = Some(77);
             db.save_position(&p);

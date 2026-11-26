@@ -165,7 +165,7 @@ impl Position {
         self.tokens_remaining = tokens;
         self.entry_mcap_usd = mcap_usd;
         self.fees.add(fees);
-        self.buy_fixed_sol = fees.tx + fees.priority;
+        self.buy_fixed_sol = fees.tx + fees.priority + fees.jito;
         self.slippage_pct = slippage_pct;
         self.peak_price = entry_price;
         self.last_price = entry_price;
@@ -233,6 +233,22 @@ impl Position {
         self.exit_reason = why.to_string();
         self.pnl_sol = -self.failed_sol;
         self.pnl_pct = 0.0;
+    }
+
+    /// Token-account rent that is out of the wallet right now: taken on the buy fill, returned only once the
+    /// position is fully sold and the account closed (SPEC 11b #15).
+    pub fn rent_locked(&self) -> f64 {
+        if matches!(self.state, PosState::Open | PosState::Selling) { crate::curve::TOKEN_ACCOUNT_RENT_SOL } else { 0.0 }
+    }
+
+    /// Exact change of the paper wallet balance caused by this position so far: sell proceeds (already net of
+    /// the sell-side fees) minus the buy spend (which holds the buy-side percent fees), the fixed buy fees, every
+    /// failed attempt and the rent that is still locked. Once CLOSED this equals `pnl_sol`.
+    pub fn balance_delta(&self) -> f64 {
+        match self.state {
+            PosState::Buying => 0.0,
+            _ => self.realized_sol - self.size_sol - self.buy_fixed_sol - self.failed_sol - self.rent_locked(),
+        }
     }
 
     /// Unrealized net P/L if the remaining tokens were sold for `net_sol_if_sold_now` (fees already deducted).

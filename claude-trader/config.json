@@ -50,11 +50,13 @@
   },
   "fees": {
     "modelPumpFunPctPerSide": 1.25,
-    "pumpPortalPctPerSide": 0.5,
+    "pumpFunCreatorPctPerSide": 0.30,
+    "pumpPortalPctPerSide": 1.0,
     "priorityMicroLamports": 150000,
     "computeUnits": 150000,
     "pumpPortalPriorityFeeSol": 0.0005,
-    "pumpPortalPriorityFeeCapSol": 0.005
+    "pumpPortalPriorityFeeCapSol": 0.005,
+    "jitoTipSol": 0
   },
   "paperFill": {
     "buyFailPct": 10, "sellFailPct": 15,

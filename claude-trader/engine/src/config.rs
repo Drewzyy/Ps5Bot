@@ -153,11 +153,15 @@ pub struct Exits {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Fees {
     pub model_pump_fun_pct_per_side: f64,
+    /// Part of `model_pump_fun_pct_per_side` that goes to the token creator (the rest is the protocol fee).
+    pub pump_fun_creator_pct_per_side: f64,
     pub pump_portal_pct_per_side: f64,
     pub priority_micro_lamports: u64,
     pub compute_units: u64,
     pub pump_portal_priority_fee_sol: f64,
     pub pump_portal_priority_fee_cap_sol: f64,
+    /// Jito bundle tip per transaction. 0 = not used (PumpPortal local trades land with the priority fee only).
+    pub jito_tip_sol: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -202,6 +206,9 @@ impl Config {
     pub fn validate(&self) -> Result<(), String> {
         if self.paper.bankroll_sol <= 0.0 {
             return Err("paper.bankrollSol must be above 0".into());
+        }
+        if self.fees.pump_fun_creator_pct_per_side < 0.0 || self.fees.pump_fun_creator_pct_per_side > self.fees.model_pump_fun_pct_per_side {
+            return Err("fees.pumpFunCreatorPctPerSide must be between 0 and fees.modelPumpFunPctPerSide".into());
         }
         if self.risk.min_trade_sol > self.risk.max_trade_sol {
             return Err("risk.minTradeSol cannot be above risk.maxTradeSol".into());

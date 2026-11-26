@@ -485,7 +485,7 @@ impl Trader {
         match self.current_curve(&p.mint) {
             Some(c) if p.tokens_remaining > 0.0 => {
                 let (g, _) = c.sell(p.tokens_remaining);
-                let net = g * (1.0 - self.fees.pct_per_side() / 100.0) - self.fees.base_tx_sol - self.fees.priority_sol;
+                let net = g * (1.0 - self.fees.pct_per_side() / 100.0) - self.fees.base_tx_sol - self.fees.priority_sol - self.fees.jito_sol;
                 (p.open_pnl(net), if g > 0.0 { g / p.tokens_remaining } else { price })
             }
             _ => (p.open_pnl(0.0).max(-p.size_sol), price),
@@ -510,6 +510,7 @@ impl Trader {
         let today = day_of(now);
         let mut lanes = vec![];
         let mut unrealized = 0.0;
+        let mut rent_locked = 0.0;
         for (i, l) in self.lanes.iter().enumerate() {
             let closed = self.db.load_closed(&l.style, true);
             let live: Vec<Position> = l.live.lock().unwrap().values().filter(|p| p.state != PosState::Buying).cloned().collect();
@@ -552,8 +553,10 @@ impl Trader {
                 st.sells_today += p.stages.iter().filter(|s| day_of(s.ts) == today).count() as u32;
                 if i == 0 {
                     unrealized += self.open_pnl(p).0;
+                    rent_locked += p.rent_locked();
                 }
             }
+            st.rent_locked_sol = live.iter().map(|p| p.rent_locked()).sum();
             let s = report::summarize("all", &lines, days.len().max(1) as f64);
             st.trades = s.trades;
             st.wins = s.wins;
@@ -576,7 +579,7 @@ impl Trader {
             lanes.push(st);
         }
         let main = lanes.first().map(|l| l.total_pnl_sol).unwrap_or(0.0);
-        EngineEvent::Stats { ts: now, balance_sol: self.cfg.paper.bankroll_sol + main + unrealized, bankroll_sol: self.cfg.paper.bankroll_sol, sol_usd: self.sol_usd, replay: self.replay, lanes }
+        EngineEvent::Stats { ts: now, balance_sol: self.cfg.paper.bankroll_sol + main + unrealized - rent_locked, bankroll_sol: self.cfg.paper.bankroll_sol, sol_usd: self.sol_usd, replay: self.replay, lanes }
     }
 
     /// 1 s publisher: positions every tick, stats every 2nd tick, agent statuses.

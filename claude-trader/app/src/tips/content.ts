@@ -26,7 +26,7 @@ const secs = (s: number) => (s % 60 === 0 ? `${s / 60} minutes` : `${s} seconds`
 
 export function derive(c: Config) {
   const t = c.exits.tranches;
-  const roundTrip = (c.fees.modelPumpFunPctPerSide + c.fees.pumpPortalPctPerSide) * 2;
+  const roundTrip = (c.fees.modelPumpFunPctPerSide + c.fees.pumpPortalPctPerSide) * 2; // % of size, before network and priority fees
   const ladder0 = t.map((x) => `sell ${x.sellPct}% at +${x.atPct}%`).join(", then ");
   const ladder = ladder0.charAt(0).toUpperCase() + ladder0.slice(1);
   const tail = 100 - t.reduce((a, x) => a + x.sellPct, 0);

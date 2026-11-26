@@ -165,7 +165,7 @@ impl RiskState {
         if self.slippages.len() >= SLIPPAGE_WINDOW && self.slippages.iter().sum::<f64>() / self.slippages.len() as f64 > SLIPPAGE_PAUSE_PCT {
             return Err(GateBlock::SlippagePause);
         }
-        let fee_sol = fees.priority_sol; // no Jito tip in paper
+        let fee_sol = fees.priority_sol + fees.jito_sol;
         if fee_sol > size * 0.01 + 1e-12 {
             return Err(GateBlock::FeeGate(fee_sol, size * 0.01));
         }

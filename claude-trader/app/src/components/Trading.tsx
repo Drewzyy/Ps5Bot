@@ -169,15 +169,16 @@ function Chart({ p }: { p: PositionView }) {
 
 const feeRows = (f: FeeBreakdown): [string, number][] => [
   ["pump.fun fee", f.pumpFun],
+  ["Creator fee", f.creator],
   ["PumpPortal fee", f.pumpPortal],
   ["Network fee", f.tx],
   ["Priority fee", f.priority],
   ["Jito tip", f.jito],
 ];
-const sumFees = (f: FeeBreakdown) => f.pumpFun + f.pumpPortal + f.tx + f.priority + f.jito;
+const sumFees = (f: FeeBreakdown) => f.pumpFun + f.creator + f.pumpPortal + f.tx + f.priority + f.jito;
 
 export function FeesCard({ lane }: { lane: LaneStats | undefined }) {
-  const z: FeeBreakdown = { pumpFun: 0, pumpPortal: 0, tx: 0, priority: 0, jito: 0 };
+  const z: FeeBreakdown = { pumpFun: 0, creator: 0, pumpPortal: 0, tx: 0, priority: 0, jito: 0 };
   const all = lane?.feesAll ?? z;
   const today = lane?.feesToday ?? z;
   const max = Math.max(1e-9, ...feeRows(all).map((r) => r[1]));
@@ -195,6 +196,7 @@ export function FeesCard({ lane }: { lane: LaneStats | undefined }) {
           </div>
         ))}
       </div>
+      <div className="row"><span className="l">Rent locked now (returned on close)</span><span className="r">{(lane?.rentLockedSol ?? 0).toFixed(5)}</span></div>
       <div className="row"><span className="l">Average per trade</span><span className="r">{lane && lane.trades > 0 ? f4(lane.feePerTrade) : "none yet"}</span></div>
       {lane && lane.failedBuys > 0 && <div className="row"><span className="l">Buys that failed</span><span className="r">{lane.failedBuys}</span></div>}
     </section>

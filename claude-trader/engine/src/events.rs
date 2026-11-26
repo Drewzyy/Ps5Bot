@@ -169,6 +169,8 @@ pub struct LaneStats {
     pub equity: Vec<[f64; 2]>,
     pub fees_today: crate::curve::FeeBreakdown,
     pub fees_all: crate::curve::FeeBreakdown,
+    /// Token-account rent out of the wallet for open positions (returned when each account closes).
+    pub rent_locked_sol: f64,
     pub fee_per_trade: f64,
     pub pnl_today: f64,
     pub trades_today: u32,
