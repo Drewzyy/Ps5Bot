@@ -17,6 +17,7 @@ struct History {
     summary: Option<EngineEvent>,
     positions: Option<EngineEvent>,
     stats: Option<EngineEvent>,
+    kill: Option<EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
 
@@ -24,16 +25,29 @@ pub struct Hub {
     tx: broadcast::Sender<EngineEvent>,
     hist: Mutex<History>,
     logger: Mutex<Option<Arc<dyn Fn(&str) + Send + Sync>>>,
+    commands: Mutex<Option<Arc<dyn Fn(&str) -> String + Send + Sync>>>,
 }
 
 impl Hub {
     pub fn new() -> Arc<Hub> {
         let (tx, _) = broadcast::channel(4096);
-        Arc::new(Hub { tx, hist: Mutex::new(History::default()), logger: Mutex::new(None) })
+        Arc::new(Hub { tx, hist: Mutex::new(History::default()), logger: Mutex::new(None), commands: Mutex::new(None) })
     }
 
     pub fn set_logger(&self, f: Arc<dyn Fn(&str) + Send + Sync>) {
         *self.logger.lock().unwrap() = Some(f);
+    }
+
+    /// Control commands from the UI ("kill", "resume", "kill-state"). Returns a one-line answer.
+    pub fn set_command_handler(&self, f: Arc<dyn Fn(&str) -> String + Send + Sync>) {
+        *self.commands.lock().unwrap() = Some(f);
+    }
+
+    pub fn command(&self, cmd: &str) -> String {
+        match self.commands.lock().unwrap().as_ref() {
+            Some(f) => f(cmd),
+            None => "engine not ready".into(),
+        }
     }
 
     /// Plain log line (reconnects, errors). Goes to the CLI's stdout; never contains keys (callers mask).
@@ -53,6 +67,7 @@ impl Hub {
                 EngineEvent::ShieldSummary { .. } => h.summary = Some(e.clone()),
                 EngineEvent::Positions { .. } => h.positions = Some(e.clone()),
                 EngineEvent::Stats { .. } => h.stats = Some(e.clone()),
+                EngineEvent::Kill(_) => h.kill = Some(e.clone()),
                 EngineEvent::Pulse { .. } => {}
                 _ => {
                     h.events.push_back(e.clone());
@@ -79,6 +94,7 @@ impl Hub {
         }
         out.extend(h.positions.iter().cloned());
         out.extend(h.stats.iter().cloned());
+        out.extend(h.kill.iter().cloned());
         out
     }
 
@@ -91,7 +107,15 @@ impl Hub {
                 let Ok((sock, _)) = l.accept().await else { continue };
                 let hub = self.clone();
                 tokio::spawn(async move {
-                    let Ok(mut ws) = tokio_tungstenite::accept_async(sock).await else { return };
+                    // only pages served from this machine may talk to the engine (the kill switch lives on this socket)
+                    let check = |req: &tokio_tungstenite::tungstenite::handshake::server::Request, resp| {
+                        let ok = match req.headers().get("origin").and_then(|v| v.to_str().ok()) {
+                            None => true,
+                            Some(o) => o.starts_with("http://127.0.0.1") || o.starts_with("http://localhost") || o.starts_with("tauri://") || o.starts_with("http://tauri.localhost") || o == "null",
+                        };
+                        if ok { Ok(resp) } else { Err(tokio_tungstenite::tungstenite::http::Response::builder().status(403).body(None).unwrap()) }
+                    };
+                    let Ok(mut ws) = tokio_tungstenite::accept_hdr_async(sock, check).await else { return };
                     let mut rx = hub.subscribe();
                     for e in hub.snapshot() {
                         if ws.send(Message::Text(serde_json::to_string(&e).unwrap_or_default())).await.is_err() {
@@ -105,7 +129,17 @@ impl Hub {
                                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
                                 Err(_) => return,
                             },
-                            m = ws.next() => { if matches!(m, None | Some(Err(_)) | Some(Ok(Message::Close(_)))) { return; } }
+                            m = ws.next() => match m {
+                                None | Some(Err(_)) | Some(Ok(Message::Close(_))) => return,
+                                Some(Ok(Message::Text(t))) => {
+                                    let cmd = serde_json::from_str::<serde_json::Value>(&t).ok().and_then(|v| v["cmd"].as_str().map(String::from)).unwrap_or_default();
+                                    if !cmd.is_empty() {
+                                        let ans = hub.command(&cmd);
+                                        hub.log(format!("ui command {cmd}: {ans}"));
+                                    }
+                                }
+                                _ => {}
+                            }
                         }
                     }
                 });

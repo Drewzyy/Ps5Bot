@@ -61,7 +61,6 @@ pub struct Ctx {
     hub: Arc<Hub>,
     db: Arc<Db>,
     mon: Arc<MonitorState>,
-    sol_usd: f64,
     chain_slots: Semaphore,
     checking: AtomicU32,
     observing: AtomicU32,
@@ -101,7 +100,19 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     if opts.clear_halt {
         trader.clear_halts();
     }
+    {
+        let tr = trader.clone();
+        hub.set_command_handler(Arc::new(move |cmd| match cmd {
+            "kill" => tr.kill("dashboard"),
+            "resume" => tr.resume_trading("dashboard"),
+            "kill-state" => tr.kill_state().text,
+            _ => format!("unknown command {cmd}"),
+        }));
+    }
     let resumed = trader.resume();
+    if trader.is_killed() {
+        hub.log("engine: KILL SWITCH is on (saved in SQLite): no new buys. Open positions are being sold. Resume trading needs an explicit resume.");
+    }
     if resumed > 0 {
         hub.log(format!("engine: resumed {resumed} open paper position(s) from SQLite"));
     }
@@ -115,7 +126,6 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         hub: hub.clone(),
         db: db.clone(),
         mon: mon.clone(),
-        sol_usd,
         chain_slots: Semaphore::new(6),
         checking: AtomicU32::new(0),
         observing: AtomicU32::new(0),

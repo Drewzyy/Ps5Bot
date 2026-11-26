@@ -8,6 +8,7 @@ import Graph from "./components/Graph";
 import Feed from "./components/Feed";
 import Widgets from "./components/Widgets";
 import SettingsPage from "./components/SettingsPage";
+import KillUi, { KillBanner } from "./components/Kill";
 import { TipsPage, Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
 
 export type Page = "dashboard" | "settings" | "tips";
@@ -18,6 +19,7 @@ export default function App() {
   const [page, setPage] = useState<Page>(pageFromHash());
   const [config, setConfig] = useState<Config>(defaultConfig as Config);
   const engine = useEngine();
+  const [ask, setAsk] = useState<"kill" | "resume" | null>(null);
   const [tour, setTour] = useState(() => !walkthroughSeen());
   const closeTour = () => {
     markWalkthroughSeen();
@@ -28,7 +30,17 @@ export default function App() {
     source.getConfig().then(setConfig).catch(() => {});
     const onHash = () => setPage(pageFromHash());
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setAsk("kill");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const go = (p: Page) => {
@@ -38,7 +50,9 @@ export default function App() {
 
   return (
     <>
-      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} />
+      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
+      <KillBanner kill={engine.kill} />
+      <KillUi ask={ask} close={() => setAsk(null)} killed={!!engine.kill?.killed} />
       <main className="page">
         {page === "dashboard" ? (
           <>

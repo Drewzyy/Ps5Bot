@@ -65,7 +65,9 @@ pub struct AttemptLog {
 pub struct PaperExecutor {
     fees: FeeModel,
     buy_fail_pct: f64,
-    sell_fail_pct: f64,
+    sell_fail_pct: Mutex<f64>,
+    /// Chance (percent) that an unconfirmed sell turns out to have landed after the 20 s balance check.
+    unconfirmed_landed_pct: Mutex<f64>,
     delay_min: u32,
     delay_max: u32,
     sell_slippage_cap_pct: f64,
@@ -79,13 +81,23 @@ impl PaperExecutor {
         PaperExecutor {
             fees: FeeModel::from_config(cfg),
             buy_fail_pct: cfg.paper_fill.buy_fail_pct,
-            sell_fail_pct: cfg.paper_fill.sell_fail_pct,
+            sell_fail_pct: Mutex::new(cfg.paper_fill.sell_fail_pct),
+            unconfirmed_landed_pct: Mutex::new(40.0),
             delay_min: cfg.paper_fill.delay_ms_min,
             delay_max: cfg.paper_fill.delay_ms_max,
             sell_slippage_cap_pct: cfg.paper_fill.slippage_cap_pct,
             rng: Mutex::new(rng),
             time_scale: 1.0,
         }
+    }
+
+    /// Change the simulated sell failure rate while running (tests, and a later live-vs-paper recalibration).
+    pub fn set_sell_fail_pct(&self, pct: f64) {
+        *self.sell_fail_pct.lock().unwrap() = pct;
+    }
+
+    pub fn set_unconfirmed_landed_pct(&self, pct: f64) {
+        *self.unconfirmed_landed_pct.lock().unwrap() = pct;
     }
 
     pub fn fees(&self) -> &FeeModel {
@@ -182,7 +194,7 @@ impl PaperExecutor {
                 // the price fell too far: the sell reverts on chain and costs fees
                 failed.add(&self.fees.failed_tx_fees(priority));
                 result = format!("reverted: {slip:.1}% slippage over the {:.0}% cap", self.sell_slippage_cap_pct);
-            } else if self.roll() * 100.0 < self.sell_fail_pct {
+            } else if self.roll() * 100.0 < *self.sell_fail_pct.lock().unwrap() {
                 match self.fail_kind(true) {
                     FailKind::SubmitFailed => result = "submit failed (never sent, free)".into(),
                     FailKind::Reverted => {
@@ -192,7 +204,7 @@ impl PaperExecutor {
                     FailKind::Unconfirmed => {
                         self.wait(CONFIRM_WAIT_MS).await;
                         // balance check after the wait: a coin flip whether it actually landed
-                        if self.roll() < 0.4 {
+                        if self.roll() * 100.0 < *self.unconfirmed_landed_pct.lock().unwrap() {
                             landed = true;
                             result = "unconfirmed, balance check shows it landed: not sold again".into();
                         } else {

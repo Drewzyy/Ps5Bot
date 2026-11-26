@@ -141,6 +141,11 @@ impl Db {
         let _ = c.execute("INSERT INTO kv(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", params![k, v]);
     }
 
+    /// Kill switch state: the kv key holds the time it was switched on. Survives restarts.
+    pub fn killed_at(&self) -> Option<i64> {
+        self.kv_get("killed").and_then(|v| v.parse::<i64>().ok()).filter(|t| *t > 0)
+    }
+
     pub fn kv_del(&self, k: &str) {
         let c = self.conn.lock().unwrap();
         let _ = c.execute("DELETE FROM kv WHERE k=?", params![k]);

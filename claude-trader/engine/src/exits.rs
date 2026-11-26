@@ -24,7 +24,7 @@ pub struct ExitAction {
 }
 
 impl ExitAction {
-    fn all(reason: &str) -> Self {
+    pub(crate) fn all(reason: &str) -> Self {
         ExitAction { reason: reason.into(), sell_all: true, fraction: 1.0, of_remaining: true, tranche: None, taper: false }
     }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { source } from "./source";
-import type { ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
+import type { KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
 
 export interface EngineState {
   agents: Record<string, AgentState>;
@@ -15,11 +15,12 @@ export interface EngineState {
   /** Open positions plus the last closed ones (for the chart). */
   positions: PositionView[];
   stats: StatsState | null;
+  kill: KillState | null;
   /** True once real engine events (not the browser mock) have arrived. */
   live: boolean;
 }
 
-const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, live: false };
+const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, live: false };
 const WATCH_MAX = 300;
 const FLUSH_MS = 300; // UI updates throttled to about 3 per second
 
@@ -45,6 +46,7 @@ export function useEngine(): EngineState {
           verdicts: prev.verdicts,
           positions: prev.positions,
           stats: prev.stats,
+          kill: prev.kill,
           live: prev.live,
         };
         let watch: Map<string, WatchRow> | null = null;
@@ -90,6 +92,8 @@ export function useEngine(): EngineState {
             next.positions = e.positions;
           } else if (e.type === "stats") {
             next.stats = { balanceSol: e.balanceSol, bankrollSol: e.bankrollSol, solUsd: e.solUsd, replay: e.replay, lanes: e.lanes };
+          } else if (e.type === "kill") {
+            next.kill = e;
           } else if (e.type === "shield-summary") {
             next.shield = { checked: e.checked, blocked: e.blocked, passed: e.passed, byReason: e.byReason };
           } else if (e.type === "pulse") {

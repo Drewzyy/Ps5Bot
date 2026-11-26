@@ -11,9 +11,21 @@ fn get_config() -> Result<serde_json::Value, String> {
     serde_json::to_value(c).map_err(|e| e.to_string())
 }
 
+/// Kill switch: stop all trading and sell every open position. Same code path as live mode will use.
+#[tauri::command]
+fn kill_switch(hub: tauri::State<std::sync::Arc<Hub>>) -> String {
+    hub.command("kill")
+}
+
+/// Separate explicit step that lets trading start again after a kill.
+#[tauri::command]
+fn resume_trading(hub: tauri::State<std::sync::Arc<Hub>>) -> String {
+    hub.command("resume")
+}
+
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_config])
+        .invoke_handler(tauri::generate_handler![get_config, kill_switch, resume_trading])
         .setup(|app| {
             let handle = app.handle().clone();
             // Live engine (M2): Memecoin Monitor -> Scam Shield -> Token Picker. Paper only.
@@ -25,6 +37,7 @@ pub fn run() {
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|| "claude-trader.db".to_string());
             let hub = Hub::new();
+            app.manage(hub.clone());
             let mut rx = hub.subscribe();
             let h2 = handle.clone();
             tauri::async_runtime::spawn(async move {

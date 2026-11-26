@@ -375,3 +375,19 @@ svg.equity .eqdot { fill: var(--green); } svg.equity .eqdot.down { fill: var(--r
 .tips-grid .card:nth-child(4n+1) h3 { border-left-color: var(--c-blue); } .tips-grid .card:nth-child(4n+2) h3 { border-left-color: var(--c-purple); }
 .tips-grid .card:nth-child(4n+3) h3 { border-left-color: var(--c-teal); } .tips-grid .card:nth-child(4n+4) h3 { border-left-color: var(--c-pink); }
 .tips-toc a { color: var(--heading); }
+
+/* kill switch: always red with white text in both themes */
+.kill-btn { background: #b91c1c; color: #fff; border: 2px solid #7f1d1d; border-radius: 8px; padding: 7px 14px; font-weight: 800; letter-spacing: .02em; }
+.kill-btn:hover { background: #991b1b; }
+.kill-btn.resume { background: var(--card); color: #b91c1c; border-color: #b91c1c; }
+.kill-banner { background: #b91c1c; color: #fff; padding: 8px 24px; font-size: 14px; }
+.kill-banner ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.kill-overlay { position: fixed; inset: 0; z-index: 100; background: var(--overlay); display: grid; place-items: center; padding: 16px; }
+.kill-dialog { background: var(--card); color: var(--text); border: 2px solid #b91c1c; border-radius: 12px; padding: 22px 24px; max-width: 440px; box-shadow: 0 12px 40px var(--shadow-lg); }
+.kill-dialog h2 { color: #b91c1c; font-size: 18px; margin: 0 0 8px; }
+.kill-dialog p { margin: 0 0 8px; font-size: 15px; color: var(--heading); }
+.kill-dialog p.small { font-size: 13px; color: var(--muted); }
+.kill-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.kill-cancel { background: var(--surface); color: var(--heading); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; font-weight: 600; }
+.topbar { gap: 16px; }
+.kill-btn.resume { padding: 7px 10px; }

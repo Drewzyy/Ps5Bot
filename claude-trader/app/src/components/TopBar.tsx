@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Logo from "../Logo";
 import type { Page } from "../App";
-import type { StatsState } from "../types";
+import type { KillState, StatsState } from "../types";
 
 // Demo SOL price used only until the live price feed exists.
 const DEMO_SOL_USD = 150;
@@ -9,7 +9,7 @@ const DEMO_SOL_USD = 150;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const sol = (n: number, sign = false) => `${sign && n > 0 ? "+" : ""}${Math.abs(n) < 1 && n !== 0 ? n.toFixed(4) : n.toFixed(2)} SOL`;
 
-export default function TopBar({ page, go, mode, bankroll, stats }: { page: Page; go: (p: Page) => void; mode: string; bankroll: number; stats: StatsState | null }) {
+export default function TopBar({ page, go, mode, bankroll, stats, kill, askKill, askResume }: { page: Page; go: (p: Page) => void; mode: string; bankroll: number; stats: StatsState | null; kill: KillState | null; askKill: () => void; askResume: () => void }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -64,6 +64,11 @@ export default function TopBar({ page, go, mode, bankroll, stats }: { page: Page
         <button className={page === "tips" ? "active" : ""} onClick={() => go("tips")}>Tips</button>
         <button className={page === "settings" ? "active" : ""} onClick={() => go("settings")}>Settings</button>
       </nav>
+      {kill?.killed ? (
+        <button className="kill-btn resume" onClick={askResume} title="Kill switch is on. Click to allow trading again.">Resume trading</button>
+      ) : (
+        <button className="kill-btn" onClick={askKill} title="Stop all trading and sell every open position now (Ctrl+Shift+K)">Kill switch</button>
+      )}
       <span className={`badge ${mode === "live" ? "live" : ""}`}>{mode === "live" ? "LIVE" : "PAPER"}</span>
     </header>
   );

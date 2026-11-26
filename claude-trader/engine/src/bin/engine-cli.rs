@@ -1,5 +1,6 @@
 //! engine-cli: run the Claude Trader pipeline headless.
 //!   engine-cli                       print the loaded config (M1 behaviour)
+//!   engine-cli kill|resume|kill-state --db PATH   kill switch (stops buying, sells everything; resume is separate)
 //!   engine-cli feed [--minutes N] [--ws-port P] [--db PATH] [--rpc URL] [--config PATH] [--relax-metadata-egress]
 //! Logs to stdout, writes every decision to the SQLite `decisions` table, and (with --ws-port) serves the
 //! events on ws://127.0.0.1:P for the browser dashboard.
@@ -55,6 +56,28 @@ fn line(e: &EngineEvent) -> Option<String> {
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let default_cfg = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../config.json"));
+    // kill switch from the command line: writes the persisted state; a running engine on the same db picks it up within 1 s
+    if matches!(args.get(1).map(|s| s.as_str()), Some("kill") | Some("resume") | Some("kill-state")) {
+        let db_path = arg(&args, "--db").unwrap_or_else(|| "claude-trader.db".into());
+        let db = engine::db::Db::open(&db_path).unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1)
+        });
+        match args[1].as_str() {
+            "kill" => {
+                if db.killed_at().is_none() {
+                    db.kv_set("killed", &engine::rpc::now_ms().to_string());
+                }
+                println!("kill switch ON (saved in {db_path}). A running engine stops buying and sells every open position; a restart stays stopped.");
+            }
+            "resume" => {
+                db.kv_del("killed");
+                println!("kill switch OFF: trading may resume.");
+            }
+            _ => println!("kill switch is {}", if db.killed_at().is_some() { "ON" } else { "off" }),
+        }
+        return;
+    }
     if args.get(1).map(|s| s.as_str()) != Some("feed") {
         let path = args.get(1).map(PathBuf::from).unwrap_or(default_cfg);
         println!("engine ok");

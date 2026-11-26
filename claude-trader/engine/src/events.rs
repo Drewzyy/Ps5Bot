@@ -106,6 +106,31 @@ pub enum EngineEvent {
     /// Paper account, performance, fees and equity curve per entry style (first lane is the main one).
     #[serde(rename_all = "camelCase")]
     Stats { ts: i64, balance_sol: f64, bankroll_sol: f64, sol_usd: f64, replay: bool, lanes: Vec<LaneStats> },
+    /// Kill switch state, refreshed about once a second.
+    #[serde(rename_all = "camelCase")]
+    Kill(KillState),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct KillState {
+    pub ts: i64,
+    /// True while the kill switch is on (persisted in SQLite, survives a restart).
+    pub killed: bool,
+    pub killed_at_ms: i64,
+    /// Positions still being sold, and positions already closed by the kill switch.
+    pub closing: u32,
+    pub closed: u32,
+    pub items: Vec<KillItem>,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct KillItem {
+    pub symbol: String,
+    pub lane: String,
+    pub status: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

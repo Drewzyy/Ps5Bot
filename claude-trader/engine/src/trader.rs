@@ -50,6 +50,8 @@ pub struct Trader {
     polled: Mutex<HashMap<String, (Curve, i64, bool)>>,
     migrated: Mutex<HashSet<String>>,
     poll_checks: std::sync::atomic::AtomicU32,
+    /// Kill switch (persisted in SQLite kv "killed"; this flag is refreshed from it every second).
+    killed: std::sync::atomic::AtomicBool,
 }
 
 fn pf(x: f64) -> String {
@@ -97,8 +99,12 @@ impl Trader {
                 Arc::new(Lane { style: s.clone(), risk: Mutex::new(r), live: Mutex::new(HashMap::new()), recent: Mutex::new(VecDeque::new()) })
             })
             .collect();
+        let killed = db.killed_at().is_some();
         let fees = FeeModel::from_config(&cfg);
-        let exec = PaperExecutor::new(&cfg, Rng::from_time());
+        let mut exec = PaperExecutor::new(&cfg, Rng::from_time());
+        if cfg!(test) {
+            exec.time_scale = 0.0; // unit tests never wait out the 20 s "unconfirmed" check
+        }
         Arc::new(Trader {
             cfg,
             db,
@@ -115,6 +121,7 @@ impl Trader {
             polled: Mutex::new(HashMap::new()),
             migrated: Mutex::new(HashSet::new()),
             poll_checks: std::sync::atomic::AtomicU32::new(0),
+            killed: std::sync::atomic::AtomicBool::new(killed),
         })
     }
 
@@ -133,6 +140,79 @@ impl Trader {
             self.db.kv_del(&format!("halt:{}", l.style));
             self.db.kv_set(&format!("reset:{}", l.style), &now_ms().to_string());
         }
+    }
+
+    // ------------------------------------------------------------ kill switch
+
+    pub fn is_killed(&self) -> bool {
+        self.killed.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Stop everything: no new entries in any lane, pending buys cancelled, every open position sold through the
+    /// normal sell path (fees, fail rates, escalating retries) until closed. Persisted, so a restart stays stopped.
+    pub fn kill(&self, source: &str) -> String {
+        if self.is_killed() {
+            return "kill switch already on".into();
+        }
+        let now = now_ms();
+        self.db.kv_set("killed", &now.to_string());
+        self.killed.store(true, std::sync::atomic::Ordering::SeqCst);
+        let n: usize = self.lanes.iter().map(|l| l.live.lock().unwrap().len()).sum();
+        self.hub.log(format!("TRADE KILL SWITCH ON (from {source}): no new entries, selling {n} open position(s) now"));
+        self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("KILL SWITCH ON: all trading stopped, selling {n} open position(s)"), mint: None });
+        self.hub.emit(EngineEvent::Kill(self.kill_state()));
+        format!("kill switch on, {n} position(s) closing")
+    }
+
+    /// Separate explicit step: only this clears the persisted KILLED state.
+    pub fn resume_trading(&self, source: &str) -> String {
+        if !self.is_killed() {
+            return "kill switch is not on".into();
+        }
+        self.db.kv_del("killed");
+        self.killed.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.hub.log(format!("TRADE KILL SWITCH OFF (from {source}): trading may resume"));
+        self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "Kill switch off: trading resumed".into(), mint: None });
+        self.hub.emit(EngineEvent::Kill(self.kill_state()));
+        "trading resumed".into()
+    }
+
+    /// Pick up a kill/resume written to SQLite by another process (`engine-cli kill`).
+    fn sync_kill(&self) {
+        let k = self.db.killed_at().is_some();
+        let was = self.killed.swap(k, std::sync::atomic::Ordering::SeqCst);
+        if k && !was {
+            self.hub.log("TRADE KILL SWITCH ON (from another process): no new entries, selling every open position");
+            self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "KILL SWITCH ON: all trading stopped, selling every open position".into(), mint: None });
+        } else if !k && was {
+            self.hub.log("TRADE KILL SWITCH OFF (from another process): trading may resume");
+        }
+    }
+
+    pub fn kill_state(&self) -> KillState {
+        let killed_at = self.db.killed_at().unwrap_or(0);
+        let mut items = vec![];
+        for l in &self.lanes {
+            for p in l.live.lock().unwrap().values() {
+                let status = match (p.state, p.sell_fails) {
+                    (PosState::Selling, _) => "selling now".to_string(),
+                    (_, 0) => "closing".to_string(),
+                    (_, n) => format!("retrying: {n} sell attempt(s) failed, fee escalated"),
+                };
+                items.push(KillItem { symbol: p.symbol.clone(), lane: l.style.clone(), status });
+            }
+        }
+        let closing = items.len() as u32;
+        let closed = if killed_at > 0 { self.db.scalar(&format!("SELECT COUNT(*) FROM positions WHERE exit_reason='kill-switch' AND state='CLOSED' AND exit_ms>={killed_at}")) as u32 } else { 0 };
+        let killed = self.is_killed();
+        let text = if !killed {
+            String::new()
+        } else if closing > 0 {
+            format!("Kill switch on: {closing} position(s) closing")
+        } else {
+            format!("Kill switch on: all closed ({closed} sold). No new buys until you press Resume trading.")
+        };
+        KillState { ts: now_ms(), killed, killed_at_ms: killed_at, closing, closed, items, text }
     }
 
     // ------------------------------------------------------------ market data
@@ -218,6 +298,10 @@ impl Trader {
     pub async fn try_enter(self: &Arc<Self>, style: &str, p: &Pick) -> Result<i64, String> {
         let Some(lane) = self.lane(style) else { return Err("unknown lane".into()) };
         let now = now_ms();
+        if self.is_killed() {
+            self.block(style, p, "KILLED", "Kill switch is on. No new entries.");
+            return Err("KILLED".into());
+        }
         let Some(curve) = self.current_curve(&p.mint) else {
             self.block(style, p, "NO_CURVE_DATA", "No curve data for this coin yet.");
             return Err("no curve data".into());
@@ -243,6 +327,16 @@ impl Trader {
         self.hold_feed(&p.mint, &p.curve_key);
         self.hub.log(format!("TRADE[{style}] SIGNAL {} mint={} score={:.1} size={size} SOL quote={} impactRoundTrip={impact:.2}%", p.symbol, p.mint, p.score, pp(quote_price)));
 
+        if self.is_killed() {
+            // switched on between the gates and the buy: cancel the pending buy
+            pos.fail_buy(&FeeBreakdown::default(), now_ms(), "buy-cancelled: kill switch");
+            self.db.save_position(&pos);
+            lane.risk.lock().unwrap().cancel_open(&p.mint);
+            lane.live.lock().unwrap().remove(&pos.id);
+            self.release_feed(&p.mint);
+            self.hub.log(format!("TRADE[{style}] BUY CANCELLED {} by the kill switch", p.symbol));
+            return Err("KILLED".into());
+        }
         let mint = p.mint.clone();
         let res = self.exec.buy(size, quote_price, &|| self.current_curve(&mint)).await;
         let now = now_ms();
@@ -346,6 +440,9 @@ impl Trader {
             let real_sol = curve.map(|c| c.real_sol).unwrap_or(0.0);
             let market = Market { now_ms: now, price, real_sol, trades: &trades, feed_ok_since_ms: ok_since, migrated };
             let action = exits::evaluate(&mut pos, &market, &self.cfg);
+            // kill switch: sell everything that is left, whatever the exit rules say. A failed sell leaves the
+            // position OPEN and this loop tries again every tick with the escalated fee (SPEC 11b #17).
+            let action = if self.is_killed() && pos.tokens_remaining > 0.0 { Some(ExitAction::all("kill-switch")) } else { action };
             lane.live.lock().unwrap().insert(id, pos.clone());
             self.db.save_position(&pos);
             if let Some(a) = action {
@@ -593,20 +690,25 @@ impl Trader {
                     _ = stop.changed() => { if *stop.borrow() { return; } }
                     _ = iv.tick() => {}
                 }
+                me.sync_kill();
                 me.hub.emit(me.positions_event());
+                me.hub.emit(EngineEvent::Kill(me.kill_state()));
                 if n % 2 == 0 {
                     me.hub.emit(me.stats_event());
                 }
                 n += 1;
                 let open: usize = me.lanes.iter().map(|l| l.live.lock().unwrap().len()).sum();
                 let halted = me.lanes.first().and_then(|l| l.risk.lock().unwrap().halt.clone());
+                let ks = me.kill_state();
                 let (c, line) = match (&halted, open) {
+                    _ if ks.killed => (StatusColor::Red, ks.text.clone()),
                     (Some(h), _) => (StatusColor::Red, format!("Trading halted: {h}")),
                     (None, 0) => (StatusColor::Grey, "No open positions".to_string()),
                     (None, n) => (StatusColor::Green, format!("Managing {n} open position(s), checking every {} ms", me.cfg.exits.exit_loop_ms)),
                 };
                 me.hub.emit(EngineEvent::Status(AgentStatus { agent: AgentId::HoldTimer, color: c, line }));
                 let (c, line) = match &halted {
+                    _ if ks.killed => (StatusColor::Red, ks.text.clone()),
                     Some(h) => (StatusColor::Red, format!("Halted: {h}")),
                     None => (if open > 0 { StatusColor::Green } else { StatusColor::Amber }, format!("Paper executor ready. {open} open")),
                 };
@@ -789,6 +891,116 @@ mod tests {
         t.lane("momentum").unwrap().risk.lock().unwrap().halt = Some("test halt".into());
         assert_eq!(t.try_enter("momentum", &pick()).await.unwrap_err(), "HALTED");
         assert_eq!(db.scalar("SELECT COUNT(*) FROM decisions WHERE stage='risk-gate' AND reason='HALTED'"), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn seed_mint(t: &Trader, sim: &mut Sim, mint: &str) {
+        t.hold_feed(mint, "CURVE");
+        for i in 0..14 {
+            sim.trade(i as f64, &format!("b{i}"), true, 1.0);
+        }
+        push(t, sim);
+    }
+
+    fn pick_of(mint: &str) -> Pick {
+        Pick { mint: mint.into(), symbol: "KIL".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0 }
+    }
+
+    #[tokio::test]
+    async fn kill_switch_closes_every_position_in_every_lane_and_blocks_new_entries() {
+        let dir = std::env::temp_dir().join(format!("ct-kill1-{}", now_ms()));
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let (t, _h) = mk(test_cfg(), db.clone(), &dir);
+        let mut sim = Sim::new("TESTMINT");
+        seed(&t, &mut sim);
+        let a = t.try_enter("momentum", &pick()).await.unwrap();
+        let b = t.try_enter("dip-40pct", &pick()).await.unwrap();
+        assert!(!t.is_killed());
+        t.kill("test");
+        assert!(t.is_killed() && db.killed_at().is_some(), "persisted");
+        // no new entries, in any lane
+        assert_eq!(t.try_enter("momentum", &pick_of("OTHER")).await.unwrap_err(), "KILLED");
+        assert_eq!(t.try_enter("dip-40pct", &pick_of("OTHER")).await.unwrap_err(), "KILLED");
+        wait_closed(&t, "momentum").await;
+        wait_closed(&t, "dip-40pct").await;
+        for id in [a, b] {
+            let p = db.position_by_id(id).unwrap();
+            assert_eq!(p.state, PosState::Closed);
+            assert_eq!(p.exit_reason, "kill-switch");
+            assert!(p.tokens_remaining == 0.0 && p.stages.len() == 1);
+        }
+        let day = crate::timefmt::date_local(db.position_by_id(a).unwrap().exit_ms.unwrap());
+        let text = std::fs::read_to_string(dir.join(format!("{day}.jsonl"))).unwrap();
+        assert!(text.contains("\"exitReason\":\"kill-switch\""));
+        let ks = t.kill_state();
+        assert!(ks.killed && ks.closing == 0 && ks.closed == 2, "{ks:?}");
+        assert!(ks.text.contains("all closed"), "{}", ks.text);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn killed_state_survives_a_restart_and_resume_needs_its_own_step() {
+        let dir = std::env::temp_dir().join(format!("ct-kill2-{}", now_ms()));
+        let dbp = std::env::temp_dir().join(format!("ct-kill2-{}.db", now_ms()));
+        let id;
+        {
+            let db = Arc::new(Db::open(dbp.to_str().unwrap()).unwrap());
+            let (t, _h) = mk(test_cfg(), db.clone(), &dir);
+            let mut sim = Sim::new("TESTMINT");
+            seed(&t, &mut sim);
+            id = t.try_enter("momentum", &pick()).await.unwrap();
+            db.kv_set("killed", &now_ms().to_string()); // what `engine-cli kill` / the button writes
+        }
+        // restart: still killed, the open position is picked up and sold, nothing is bought
+        let db2 = Arc::new(Db::open(dbp.to_str().unwrap()).unwrap());
+        let (t2, _h2) = mk(test_cfg(), db2.clone(), &dir);
+        assert!(t2.is_killed(), "restart stays stopped");
+        let mut sim2 = Sim::new("TESTMINT");
+        seed(&t2, &mut sim2);
+        assert_eq!(t2.resume(), 1);
+        wait_closed(&t2, "momentum").await;
+        assert_eq!(db2.position_by_id(id).unwrap().exit_reason, "kill-switch");
+        assert_eq!(t2.try_enter("momentum", &pick_of("M2")).await.unwrap_err(), "KILLED");
+        // a third start is still killed
+        let db3 = Arc::new(Db::open(dbp.to_str().unwrap()).unwrap());
+        let (t3, _h3) = mk(test_cfg(), db3.clone(), &dir);
+        assert!(t3.is_killed());
+        // resume is explicit
+        assert_eq!(t3.resume_trading("test"), "trading resumed");
+        assert!(!t3.is_killed() && db3.killed_at().is_none());
+        let mut sim3 = Sim::new("M3");
+        seed_mint(&t3, &mut sim3, "M3");
+        assert!(t3.try_enter("momentum", &pick_of("M3")).await.is_ok(), "buying works again after resume");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_file(dbp);
+    }
+
+    #[tokio::test]
+    async fn kill_switch_keeps_retrying_failed_sells_until_the_position_is_closed() {
+        let dir = std::env::temp_dir().join(format!("ct-kill3-{}", now_ms()));
+        let mut c = test_cfg();
+        c.paper_fill.sell_fail_pct = 100.0; // every sell attempt fails
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let (t, _h) = mk(c, db.clone(), &dir);
+        t.exec.set_unconfirmed_landed_pct(0.0); // a failed sell really failed
+        let mut sim = Sim::new("TESTMINT");
+        seed(&t, &mut sim);
+        let id = t.try_enter("momentum", &pick()).await.unwrap();
+        t.kill("test");
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        let p = db.position_by_id(id).unwrap();
+        assert_ne!(p.state, PosState::Closed, "still open while every sell fails");
+        assert!(p.sell_fails >= 6 && p.tokens_remaining > 0.0, "retried: sell_fails={}", p.sell_fails);
+        let ks = t.kill_state();
+        assert_eq!(ks.closing, 1);
+        assert!(ks.items[0].status.contains("retrying") || ks.items[0].status.contains("selling"), "{:?}", ks.items);
+        assert!(ks.text.contains("1 position(s) closing"));
+        // the market lets the sell through again: the loop closes it without any new command
+        t.exec.set_sell_fail_pct(0.0);
+        wait_closed(&t, "momentum").await;
+        let p = db.position_by_id(id).unwrap();
+        assert_eq!((p.state, p.exit_reason.as_str()), (PosState::Closed, "kill-switch"));
+        assert!(p.failed_sol >= 0.0 && p.sell_fails == 0);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

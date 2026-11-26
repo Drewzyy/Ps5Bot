@@ -50,7 +50,24 @@ export type EngineEvent =
     }
   | { type: "shield-summary"; ts: number; checked: number; blocked: number; passed: number; byReason: { reason: string; count: number }[] }
   | { type: "positions"; ts: number; positions: PositionView[] }
-  | { type: "stats"; ts: number; balanceSol: number; bankrollSol: number; solUsd: number; replay: boolean; lanes: LaneStats[] };
+  | { type: "stats"; ts: number; balanceSol: number; bankrollSol: number; solUsd: number; replay: boolean; lanes: LaneStats[] }
+  | ({ type: "kill" } & KillState);
+
+export interface KillItem {
+  symbol: string;
+  lane: string;
+  status: string;
+}
+
+export interface KillState {
+  ts: number;
+  killed: boolean;
+  killedAtMs: number;
+  closing: number;
+  closed: number;
+  items: KillItem[];
+  text: string;
+}
 
 export interface ExitMark {
   ts: number;
