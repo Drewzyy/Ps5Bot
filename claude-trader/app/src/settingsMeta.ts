@@ -165,7 +165,7 @@ export const META: Record<string, Explain> = {
   "entry.curveSolMin": e(
     "Pool size minimum (SOL)",
     "Each new coin has a pool that fills up as people buy. A pool that is too empty means the coin has not caught on yet. Coins below this are skipped.",
-    "About 12 SOL.",
+    "About 4 SOL. That still needs real money paid in, and the other entry rules still apply.",
     "Type a number of SOL. Lower lets in earlier, riskier coins."
   ),
   "entry.curveSolMax": e(

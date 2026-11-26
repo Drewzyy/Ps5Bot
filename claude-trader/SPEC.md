@@ -85,7 +85,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
     "minBuySellRatio": 2.0,
     "minUniqueBuyers30s": 5,
     "requireRisingVolumeSlope": true,
-    "curveSolMin": 12, "curveSolMax": 40,
+    "curveSolMin": 4, "curveSolMax": 40,
     "minHolders": 15,
     "minAgeSeconds": 60,
     "paperVariant": { "style": "dip-40pct", "minDipPct": 40, "maxDipPct": 50, "confirmVolumeExpanding": true }
@@ -147,6 +147,8 @@ Rules:
 - Max hold [user]: 5 minutes (300 s). Anything still open is sold in full.
 - Fade exits [user] (from the Capital repo's smart_exit.py, untested there since its engine is never called): stall (under +3% between 60 and 90 s: sell all); bleeder (past 120 s, below -20%, peak never above +20%: sell all); volume taper (3 falling 10 s buy-volume windows and the last under 50% of baseline: sell 50%); momentum death (after 90 s, fewer than 0.5 buys/min over 45 s: sell all); whale sell of 3% or more of the curve, or any dev sell: sell all at once.
 - Exit loop runs every 1 s on curve-account WebSocket pushes, RPC fallback.
+- Curve SOL minimum [Claude, user-delegated, 2026-11-26]: `entry.curveSolMin` 12 -> 4 (max stays 40). Data from 345 min of live paper (2024 coins, 567 scored, 10 with score >= 80, 0 entries): the 12 SOL gate failed 8 of those 10 (HOMER 5.2, CHLOWIE 9.9, FCAT 11.2, most others 0-5), because real SOL in the curve at 60 s is almost always under 12. 4 SOL still needs real buys, and the 30 SOL market-cap gate, 5 buyers in 30 s, buy/sell >= 2.0 (unchanged), rising volume and Scam Shield still apply.
+- Chase rule fix [Claude, 2026-11-26]: block if the price at decision time is more than 3x the launch price (initial curve), whatever the age. The old rule only applied at age <= 60 s, but the decision comes after the 60 s window, so it never fired. Falling knife: block entry (pre-buy reason `DUMPED_FROM_PEAK`) if the price is more than 40% below its peak of the observation window. Both apply to the momentum lane only; the dip-40pct paper variant has its own logic and is not affected.
 - Market-cap entry gate [user approved 2026-11-26, replaces the USD gate]: `feed.minMarketCapSol` = 30 SOL, compared with market cap in SOL straight from the curve. Reasoning: the old $7000 gate depended on the SOL price. At SOL ~$71 it meant ~98.5 SOL, which can never pass together with the chase rule (block above 3x launch within 60 s; a launch starts near 28 SOL, so 3x is ~84 SOL), and a 55 minute live run made zero picks. A SOL-denominated gate does not move when SOL/USD moves. 30 SOL still skips brand-new coins nobody has bought (they sit near 28 SOL) and leaves a passing band of about 30-84 SOL. No entry gate reads the SOL/USD price; USD is only used for display and the JSONL `entryMcapUsd` field.
 - Fees: all fees per side are listed once in the Fee model rule; TP1 must clear their sum. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
 - Size: 1% of bankroll per trade, clamped to 0.05–0.25 SOL. Fixed size, no doubling after a loss, never add to a loser.
@@ -230,7 +232,7 @@ Token scams (pre-buy, all required):
 4. Serial ruggers: local SQLite of creator wallets and outcomes. Blacklist a creator after 1 token that fell more than 70% within 5 min [est], and wallets that funded a blacklisted creator.
 5. Wash volume: at least 15 distinct buyer wallets in the last 60 s, and the top 3 wallets under 40% of trades [est].
 6. Copycats: skip if name or symbol is within Levenshtein 2 of a token seen trending in the last 24 h [est]; skip if the metadata URI is missing or doesn't resolve within 2 s.
-7. Chase risk: no entry if market cap already rose more than 3x from launch within 60 s [est].
+7. Chase risk: no entry if the price at decision time is more than 3x the launch price (any age) [est]. 7b. Falling knife: no entry if the price is more than 40% below the observation-window peak [est] (`DUMPED_FROM_PEAK`). Momentum lane only.
 8. Bot-bait: never buy in the first 60 s (minAgeSeconds), dev-snipe-first-block block stays on.
 9. Graduation: sell everything when market cap reaches 90% of the graduation target [est]. Never hold through migration.
 10. Cabal dump: 3 or more sells each above 3% of supply within 10 s means sell all at once [est].

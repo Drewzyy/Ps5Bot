@@ -162,7 +162,7 @@ impl Shield {
     }
 
     /// Pre-buy checks on the full observation data: wash volume, chase risk, bundle patterns on real payers.
-    pub fn pre_buy(&self, t: &FeedMsg, trades: &[Trade], facts: &ChainFacts, now_mcap_sol: f64, age_secs: f64) -> Vec<CheckResult> {
+    pub fn pre_buy(&self, trades: &[Trade], facts: &ChainFacts) -> Vec<CheckResult> {
         let now = now_ms();
         let slot_txs: Vec<SlotTx> = trades.iter().map(|x| SlotTx { slot: x.slot, payer: x.user.clone(), recv_ms: x.recv_ms }).collect();
         let ex = if self.cfg.filters.exclude_curve_and_pool_accounts { facts.excluded.clone() } else { HashSet::new() };
@@ -171,8 +171,13 @@ impl Shield {
         vec![
             bundle_check(hit, self.cfg.filters.reject_bundle, &sigs),
             wash_volume_rule(trades, now),
-            chase_rule(crate::pump::mcap_sol(t.v_sol_in_bonding_curve, t.v_tokens_in_bonding_curve), now_mcap_sol, age_secs),
         ]
+    }
+
+    /// Momentum-lane only pre-buy checks (the dip-40pct variant waits for a dip and has its own logic):
+    /// chase risk (price now more than 3x launch) and falling knife (more than 40% below the window's peak).
+    pub fn pre_buy_momentum(&self, t: &FeedMsg, now_mcap_sol: f64, peak_mcap_sol: f64) -> Vec<CheckResult> {
+        momentum_pre_buy(crate::pump::mcap_sol(t.v_sol_in_bonding_curve, t.v_tokens_in_bonding_curve), now_mcap_sol, peak_mcap_sol)
     }
 }
 

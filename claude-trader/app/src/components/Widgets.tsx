@@ -27,6 +27,7 @@ export const REASON_LABEL: Record<string, string> = {
   NO_IMAGE: "No image",
   NO_SOCIALS: "No social links",
   CHASE_RISK: "Price already spiked 3x",
+  DUMPED_FROM_PEAK: "Price fell over 40% from its peak",
   BACKLOG: "Skipped: too busy",
   LOW_SCORE: "Score too low",
   GATE: "Entry rules not met",

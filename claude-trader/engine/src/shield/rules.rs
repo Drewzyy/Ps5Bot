@@ -560,13 +560,29 @@ pub fn wash_volume_rule(trades: &[Trade], now_ms: i64) -> CheckResult {
 
 // ---------------------------------------------------------------- 7. chase risk (SPEC 11b #7)
 
-/// No entry if market cap already rose more than 3x from launch within 60 s [est].
-pub fn chase_rule(launch_mcap: f64, now_mcap: f64, age_secs: f64) -> CheckResult {
+/// No entry if the price at decision time is already more than 3x the launch price [est]. Not tied to the age:
+/// the decision is taken after the 60 s observation window, so an age limit would never fire.
+pub fn chase_rule(launch_mcap: f64, now_mcap: f64) -> CheckResult {
     let name = "chase_risk";
-    if launch_mcap > 0.0 && age_secs <= 60.0 && now_mcap / launch_mcap > 3.0 {
-        CheckResult::block(name, "CHASE_RISK", format!("Market cap already rose {:.1}x in {age_secs:.0} s. Chasing a spike.", now_mcap / launch_mcap))
+    if launch_mcap > 0.0 && now_mcap / launch_mcap > 3.0 {
+        CheckResult::block(name, "CHASE_RISK", format!("Market cap already rose {:.1}x from launch. Chasing a spike.", now_mcap / launch_mcap))
     } else {
         CheckResult::pass(name, "Price has not spiked more than 3x from launch.")
+    }
+}
+
+/// The momentum-lane pre-buy rules in one place: (launch market cap, market cap now, peak of the window), all in SOL.
+pub fn momentum_pre_buy(launch_mcap: f64, now_mcap: f64, peak_mcap: f64) -> Vec<CheckResult> {
+    vec![chase_rule(launch_mcap, now_mcap), dumped_from_peak_rule(peak_mcap, now_mcap)]
+}
+
+/// No entry into a falling knife: the price is more than 40% below its peak of the observation window [est].
+pub fn dumped_from_peak_rule(peak_mcap: f64, now_mcap: f64) -> CheckResult {
+    let name = "dumped_from_peak";
+    if peak_mcap > 0.0 && now_mcap > 0.0 && now_mcap < peak_mcap * 0.60 {
+        CheckResult::block(name, "DUMPED_FROM_PEAK", format!("Price is {:.0}% below its peak of the last minute. Falling knife.", (1.0 - now_mcap / peak_mcap) * 100.0))
+    } else {
+        CheckResult::pass(name, "Price is not more than 40% below its recent peak.")
     }
 }
 
@@ -885,9 +901,31 @@ mod tests {
 
     #[test]
     fn chase_over_3x_blocks() {
-        assert_eq!(chase_rule(30.0, 100.0, 50.0).code, "CHASE_RISK");
-        assert_eq!(chase_rule(30.0, 80.0, 50.0).outcome, Outcome::Pass);
-        assert_eq!(chase_rule(30.0, 100.0, 120.0).outcome, Outcome::Pass); // beyond the 60 s window
+        assert_eq!(chase_rule(30.0, 100.0).code, "CHASE_RISK");
+        assert_eq!(chase_rule(30.0, 100.0).outcome, Outcome::Block);
+        assert_eq!(chase_rule(30.0, 80.0).outcome, Outcome::Pass);
+        assert_eq!(chase_rule(30.0, 90.0).outcome, Outcome::Pass); // exactly 3x is allowed
+    }
+
+    #[test]
+    fn coin_that_pumped_over_3x_during_observation_is_blocked_by_the_momentum_checks() {
+        // launched at 28 SOL, peaked at 95 and is at 92 when the decision is taken after 60 s
+        let c = momentum_pre_buy(28.0, 92.0, 95.0);
+        assert!(c.iter().any(|r| r.code == "CHASE_RISK" && r.outcome == Outcome::Block));
+        // a healthy coin passes both
+        assert!(momentum_pre_buy(28.0, 45.0, 47.0).iter().all(|r| r.outcome == Outcome::Pass));
+        // pumped to 3x, then dumped 45% from the peak: falling knife (and no longer a chase at 52 SOL)
+        let c = momentum_pre_buy(28.0, 52.0, 95.0);
+        assert!(c.iter().any(|r| r.code == "DUMPED_FROM_PEAK" && r.outcome == Outcome::Block));
+        assert!(c.iter().all(|r| r.code != "CHASE_RISK"));
+    }
+
+    #[test]
+    fn dumped_from_peak_blocks_a_falling_knife() {
+        assert_eq!(dumped_from_peak_rule(60.0, 35.0).code, "DUMPED_FROM_PEAK"); // -41.7%
+        assert_eq!(dumped_from_peak_rule(60.0, 40.0).outcome, Outcome::Pass); // -33%
+        assert_eq!(dumped_from_peak_rule(60.0, 36.0).outcome, Outcome::Pass); // exactly -40% is allowed
+        assert_eq!(dumped_from_peak_rule(0.0, 0.0).outcome, Outcome::Pass); // no trades, nothing to compare
     }
 
     #[test]

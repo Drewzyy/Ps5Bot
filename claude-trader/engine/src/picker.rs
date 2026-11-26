@@ -190,7 +190,7 @@ mod tests {
         o.mcap_sol = 45.0;
         let s = score(&o, &c);
         assert!(!s.gates.iter().any(|g| g.contains("market cap")), "{:?}", s.gates);
-        assert_eq!(chase_rule(launch, o.mcap_sol, 55.0).outcome, Outcome::Pass);
+        assert_eq!(chase_rule(launch, o.mcap_sol).outcome, Outcome::Pass);
         // Below the minimum is gated, and the number never depends on any dollar price.
         o.mcap_sol = 29.9;
         assert!(score(&o, &c).gates.iter().any(|g| g.contains("market cap")));
@@ -199,7 +199,7 @@ mod tests {
         // And the gate is the same at any SOL price: score() takes no price argument.
         o.mcap_sol = 30.0;
         assert!(!score(&o, &c).gates.iter().any(|g| g.contains("market cap")));
-        assert_eq!(chase_rule(launch, 30.0, 55.0).outcome, Outcome::Pass);
+        assert_eq!(chase_rule(launch, 30.0).outcome, Outcome::Pass);
     }
 
     #[test]

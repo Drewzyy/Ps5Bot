@@ -22,7 +22,7 @@
     "minBuySellRatio": 2.0,
     "minUniqueBuyers30s": 5,
     "requireRisingVolumeSlope": true,
-    "curveSolMin": 12, "curveSolMax": 40,
+    "curveSolMin": 4, "curveSolMax": 40,
     "minHolders": 15,
     "minAgeSeconds": 60,
     "paperVariant": { "style": "dip-40pct", "minDipPct": 40, "maxDipPct": 50, "confirmVolumeExpanding": true }

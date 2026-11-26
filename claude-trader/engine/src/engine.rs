@@ -297,12 +297,22 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainF
         dip_eligible = false;
     }
     if picked || dip_eligible {
-        let d = decide(ctx.shield.pre_buy(&t, &trades, &facts, obs.mcap_sol, age).into_iter().collect());
+        let d = decide(ctx.shield.pre_buy(&trades, &facts).into_iter().collect());
         record(&ctx, &t, "pre-buy", &d);
         if d.block.is_some() {
             picked = false;
             dip_eligible = false;
             gates.push(format!("Scam Shield pre-buy: {}", d.block.as_ref().map(|b| b.code.clone()).unwrap_or_default()));
+        }
+    }
+
+    if picked {
+        // momentum lane only: chase risk and falling knife (the dip-40pct lane is not affected)
+        let d = decide(ctx.shield.pre_buy_momentum(&t, obs.mcap_sol, peak).into_iter().collect());
+        record(&ctx, &t, "pre-buy", &d);
+        if let Some(b) = &d.block {
+            picked = false;
+            gates.push(format!("Scam Shield pre-buy: {}", b.code));
         }
     }
 
