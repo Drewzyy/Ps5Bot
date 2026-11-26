@@ -76,7 +76,7 @@ fn frac(v: f64, target: f64) -> f64 {
     if target <= 0.0 { 1.0 } else { (v / target).clamp(0.0, 1.0) }
 }
 
-pub fn score(o: &Observation, cfg: &Config, sol_usd: f64) -> Scored {
+pub fn score(o: &Observation, cfg: &Config) -> Scored {
     let ob = &cfg.observation;
     let en = &cfg.entry;
     let slope_ratio = if o.buys_first_half == 0 { if o.buys_second_half > 0 { 1.0 } else { 0.0 } } else { o.buys_second_half as f64 / o.buys_first_half as f64 };
@@ -104,8 +104,8 @@ pub fn score(o: &Observation, cfg: &Config, sol_usd: f64) -> Scored {
     if en.require_rising_volume_slope && o.buys_second_half <= o.buys_first_half {
         gates.push("volume not rising".into());
     }
-    if o.mcap_sol * sol_usd < cfg.feed.min_market_cap_usd {
-        gates.push(format!("market cap ${:.0} below ${:.0}", o.mcap_sol * sol_usd, cfg.feed.min_market_cap_usd));
+    if o.mcap_sol < cfg.feed.min_market_cap_sol {
+        gates.push(format!("market cap {:.1} SOL below {:.1} SOL", o.mcap_sol, cfg.feed.min_market_cap_sol));
     }
     if o.dev_sold_pct > 0.0 {
         gates.push("creator is selling".into());
@@ -172,16 +172,40 @@ mod tests {
         let launch_price = 30.0 / 1.073e9;
         let o = observe(&t, "creator", launch_price, 0.0, 60.0, 61_000);
         assert!(o.unique_buyers >= 12 && o.ratio >= 2.0 && o.price_change_pct > 5.0);
-        let s = score(&o, &cfg(), 150.0);
+        let s = score(&o, &cfg());
         assert!(s.score >= 80.0, "score {} parts {:?}", s.score, s.parts);
         assert!(s.gates.is_empty(), "{:?}", s.gates);
         assert!(s.picked);
     }
 
     #[test]
+    fn market_cap_gate_is_in_sol_and_fits_under_the_chase_rule() {
+        use crate::shield::rules::chase_rule;
+        use crate::shield::rules::Outcome;
+        let c = cfg();
+        assert_eq!(c.feed.min_market_cap_sol, 30.0);
+        // A fresh launch starts near 28 SOL. A coin at 45 SOL after 60 s (1.6x) clears both rules.
+        let launch = 27.96;
+        let mut o = observe(&hot_trades(), "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
+        o.mcap_sol = 45.0;
+        let s = score(&o, &c);
+        assert!(!s.gates.iter().any(|g| g.contains("market cap")), "{:?}", s.gates);
+        assert_eq!(chase_rule(launch, o.mcap_sol, 55.0).outcome, Outcome::Pass);
+        // Below the minimum is gated, and the number never depends on any dollar price.
+        o.mcap_sol = 29.9;
+        assert!(score(&o, &c).gates.iter().any(|g| g.contains("market cap")));
+        // The whole passing band (30 to 3x launch) is non-empty.
+        assert!(c.feed.min_market_cap_sol < 3.0 * launch);
+        // And the gate is the same at any SOL price: score() takes no price argument.
+        o.mcap_sol = 30.0;
+        assert!(!score(&o, &c).gates.iter().any(|g| g.contains("market cap")));
+        assert_eq!(chase_rule(launch, 30.0, 55.0).outcome, Outcome::Pass);
+    }
+
+    #[test]
     fn dead_token_scores_low() {
         let o = observe(&[], "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
-        let s = score(&o, &cfg(), 150.0);
+        let s = score(&o, &cfg());
         assert!(s.score < 10.0);
         assert!(!s.picked);
         assert!(!s.gates.is_empty());
@@ -191,7 +215,7 @@ mod tests {
     fn young_token_fails_age_gate_even_with_high_score() {
         let t = hot_trades();
         let o = observe(&t, "creator", 30.0 / 1.073e9, 0.0, 30.0, 61_000);
-        let s = score(&o, &cfg(), 150.0);
+        let s = score(&o, &cfg());
         assert!(s.gates.iter().any(|g| g.contains("younger")));
         assert!(!s.picked);
     }
@@ -202,7 +226,7 @@ mod tests {
         t.push(tr("creator", false, 45_000, 50.0, 20.0));
         let o = observe(&t, "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
         assert!(o.dev_sold_pct > 0.0);
-        let s = score(&o, &cfg(), 150.0);
+        let s = score(&o, &cfg());
         assert!(s.gates.iter().any(|g| g.contains("creator is selling")));
         assert!(!s.picked);
     }
@@ -210,7 +234,7 @@ mod tests {
     #[test]
     fn score_parts_sum_to_total_and_cap_at_100() {
         let o = Observation { age_secs: 60.0, buys: 100, sells: 1, unique_buyers: 100, buyers_30s: 50, wallets: 100, ratio: 100.0, price_change_pct: 500.0, curve_sol: 20.0, mcap_sol: 100.0, buys_first_half: 10, buys_second_half: 90, dev_sold_pct: 0.0 };
-        let s = score(&o, &cfg(), 150.0);
+        let s = score(&o, &cfg());
         assert_eq!(s.score, 100.0);
         assert!((s.parts.iter().map(|p| p.1).sum::<f64>() - 100.0).abs() < 1e-9);
     }

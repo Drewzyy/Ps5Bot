@@ -36,11 +36,11 @@ export const META: Record<string, Explain> = {
     "10 SOL is a good round number. Use roughly what you would really put in later, so the practice results mean something.",
     "Type the amount of SOL you would be comfortable risking. Nothing real is used."
   ),
-  "feed.minMarketCapUsd": e(
-    "Minimum market cap (USD)",
-    "Coins worth less than this are ignored. Market cap is the price of the coin times how many exist.",
-    "About 7,000 dollars. Lower means more junk. Higher means you arrive later.",
-    "Raise it if you see too many dead coins. Lower it only if you want to see even earlier launches."
+  "feed.minMarketCapSol": e(
+    "Minimum market cap (SOL)",
+    "Coins worth less than this many SOL are ignored. Market cap is the price of the coin times how many exist, counted in SOL so it does not shift when the dollar price of SOL moves.",
+    "30 SOL. Every new coin starts near 28 SOL, so this skips coins nobody has bought yet. Do not go far above it: the chase rule blocks coins that already tripled (about 84 SOL).",
+    "Raise it a little if you see too many dead coins. Keep it well under 84 SOL or no coin can pass both rules."
   ),
   "feed.launchpads": e(
     "Launchpads",

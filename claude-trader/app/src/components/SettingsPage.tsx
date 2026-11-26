@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { readThemePref, saveThemePref } from "../theme";
+import type { ThemePref } from "../theme";
 import type { Config } from "../types";
 import { SECTIONS, flatten } from "../settingsMeta";
 import type { Row } from "../settingsMeta";
@@ -41,6 +43,22 @@ function SettingRow({ row }: { row: Row }) {
   );
 }
 
+function Appearance() {
+  const [pref, setPref] = useState<ThemePref>(readThemePref);
+  const opts: [ThemePref, string][] = [["light", "Light"], ["dark", "Dark"], ["system", "System"]];
+  return (
+    <section className="set-sec">
+      <h2>Appearance</h2>
+      <p>Choose how the app looks. This only changes colors on this device and does not affect trading.</p>
+      <div className="seg" role="radiogroup" aria-label="Appearance">
+        {opts.map(([v, label]) => (
+          <button key={v} role="radio" aria-checked={pref === v} onClick={() => { setPref(v); saveThemePref(v); }}>{label}</button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsPage({ config }: { config: Config }) {
   const rows = flatten(config as unknown as Record<string, unknown>);
   return (
@@ -49,6 +67,7 @@ export default function SettingsPage({ config }: { config: Config }) {
       <p className="set-sub">
         Every setting the app uses, in plain words. Press the i next to any line to see what it does, a good value, and how to set it. For now these values are read only and come from config.json.
       </p>
+      <Appearance />
       {SECTIONS.map((s) => {
         const sr = rows.filter((r) => r.section === s.key);
         if (!sr.length) return null;

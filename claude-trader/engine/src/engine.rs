@@ -266,14 +266,14 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainF
     let trades = ctx.trader.feed.store.snapshot(&t.mint);
     let launch_price = if t.v_tokens_in_bonding_curve > 0.0 { t.v_sol_in_bonding_curve / t.v_tokens_in_bonding_curve } else { 0.0 };
     let obs = picker::observe(&trades, &t.trader_public_key, launch_price, (t.v_sol_in_bonding_curve - 30.0).max(0.0), age, now);
-    let sc = picker::score(&obs, &ctx.cfg, ctx.sol_usd);
+    let sc = picker::score(&obs, &ctx.cfg);
 
     // serial rugger bookkeeping and "seen trending"
     let peak = trades.iter().map(|x| x.mcap_sol()).fold(0.0, f64::max);
     if should_blacklist_creator(peak, obs.mcap_sol, age) && obs.mcap_sol > 0.0 {
         ctx.db.blacklist_creator(&t.trader_public_key, &format!("{} fell over 70% from its peak within {age:.0} s", t.symbol), now);
     }
-    if obs.mcap_sol * ctx.sol_usd >= ctx.cfg.feed.min_market_cap_usd {
+    if obs.mcap_sol >= ctx.cfg.feed.min_market_cap_sol {
         ctx.db.mark_trending(&t.mint);
     }
 

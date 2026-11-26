@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        var t = "light";
+        try {
+          var p = localStorage.getItem("claude-trader.theme");
+          if (p === "dark") t = "dark";
+          else if (p === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches) t = "dark";
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", t);
+      })();
+    </script>
     <title>Claude Trader</title>
   </head>
   <body>

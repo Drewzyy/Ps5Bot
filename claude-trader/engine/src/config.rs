@@ -31,7 +31,7 @@ pub struct Paper {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Feed {
-    pub min_market_cap_usd: f64,
+    pub min_market_cap_sol: f64,
     pub launchpads: Vec<String>,
 }
 

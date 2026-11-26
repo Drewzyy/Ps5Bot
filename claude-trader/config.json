@@ -1,7 +1,7 @@
 {
   "mode": "paper",
   "paper": { "bankrollSol": 10 },
-  "feed": { "minMarketCapUsd": 7000, "launchpads": ["pumpfun"] },
+  "feed": { "minMarketCapSol": 30, "launchpads": ["pumpfun"] },
   "filters": {
     "mintAuthorityRevoked": true,
     "freezeAuthorityRevoked": true,

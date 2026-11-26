@@ -11,6 +11,6 @@ Web research run 2026-11-26 (search results only; several sites such as arxiv.or
 Not found by search: a source on paper results overstating live results. That tip is reasoning (fills, failures, speed, fees) and the app's own SPEC 11b item 28, not a cited study.
 
 Accuracy doubts:
-- Fee numbers (pump.fun 1.25%, PumpPortal 0.5%) are the SPEC's conservative model. Sources disagree (0.3% to 1%, one says 0.95%). SPEC section 6 rules text also says 0.30%. Tips say "assumed, check before live".
+- Fee numbers (pump.fun 1.25%, PumpPortal 0.5%) are the SPEC's conservative model. Sources disagree (0.3% to 1%, one says 0.95%). Tips say "assumed, check before live".
 - The Tips text says dev sell and honeypot checks exist; the honeypot sell simulation is NOT run in paper mode (STATUS M2). The Tips say so.
 - Share of coins that graduate is not stated, because no source could be opened to confirm a number.

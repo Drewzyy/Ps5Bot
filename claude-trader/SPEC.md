@@ -64,7 +64,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
 {
   "mode": "paper",
   "paper": { "bankrollSol": 10 },
-  "feed": { "minMarketCapUsd": 7000, "launchpads": ["pumpfun"] },
+  "feed": { "minMarketCapSol": 30, "launchpads": ["pumpfun"] },
   "filters": {
     "mintAuthorityRevoked": true,
     "freezeAuthorityRevoked": true,
@@ -145,7 +145,8 @@ Rules:
 - Max hold [user]: 5 minutes (300 s). Anything still open is sold in full.
 - Fade exits [user] (from the Capital repo's smart_exit.py, untested there since its engine is never called): stall (under +3% between 60 and 90 s: sell all); bleeder (past 120 s, below -20%, peak never above +20%: sell all); volume taper (3 falling 10 s buy-volume windows and the last under 50% of baseline: sell 50%); momentum death (after 90 s, fewer than 0.5 buys/min over 45 s: sell all); whale sell of 3% or more of the curve, or any dev sell: sell all at once.
 - Exit loop runs every 1 s on curve-account WebSocket pushes, RPC fallback.
-- Fees: pump.fun 0.30% per side plus PumpPortal 0.5% per side plus priority fee. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
+- Market-cap entry gate [user approved 2026-11-26, replaces the USD gate]: `feed.minMarketCapSol` = 30 SOL, compared with market cap in SOL straight from the curve. Reasoning: the old $7000 gate depended on the SOL price. At SOL ~$71 it meant ~98.5 SOL, which can never pass together with the chase rule (block above 3x launch within 60 s; a launch starts near 28 SOL, so 3x is ~84 SOL), and a 55 minute live run made zero picks. A SOL-denominated gate does not move when SOL/USD moves. 30 SOL still skips brand-new coins nobody has bought (they sit near 28 SOL) and leaves a passing band of about 30-84 SOL. No entry gate reads the SOL/USD price; USD is only used for display and the JSONL `entryMcapUsd` field.
+- Fees: pump.fun 1.25% per side (conservative paper model, see the Fees [Claude] rule below) plus PumpPortal 0.5% per side plus priority fee. TP1 at +20% must still clear break-even at the chosen size; the break-even gate rejects the buy if not.
 - Size: 1% of bankroll per trade, clamped to 0.05–0.25 SOL. Fixed size, no doubling after a loss, never add to a loser.
 - `entry.style` options: `momentum`, `snipe`, `confirmation`, `dip-40pct`, `graduation-dip`. Default `momentum` [Claude]: the only entry with any track record found (Capital repo: 458 self-reported live trades, buy/sell ratio and volume slope were the strongest predictors; score gate gave 41.9% win rate). `dip-40pct` runs as a parallel paper-only variant so the two can be compared; live uses whichever wins in paper. The observation-window gate applies to every style.
 - Break-even check: before a buy, compute break-even % for the trade size (fees, tips, slippage). Reject the buy if TP1 is not above break-even with margin.
@@ -153,7 +154,7 @@ Rules:
 - Scam blocks are automatic with no override: honeypot, creator holding over the limit, dev-snipe in first block, live mint/freeze authority, bundled/fake holders.
 - Top-trader wallets: off in v1 (no free, verified smart-money source exists). `minProTraders` is dropped. Later version may build a local list from wallets with 3+ early buys on graduated tokens. Never copy-trade.
 - Community check [Claude]: at least one social link and an image in metadata. Weak hard filter only, not a score driver (link presence is easy to fake). All metadata fields logged so their predictive value can be measured in paper.
-- Fees [Claude]: model pump.fun at 1.25% per side (conservative end of conflicting sources), PumpPortal 0.5% per side, so ~3.5% per round trip plus priority fee. Verify both against live docs before M4.
+- Fees [Claude]: model pump.fun at 1.25% per side (conservative end of conflicting sources; this is the only pump.fun figure used by code and config, `fees.modelPumpFunPctPerSide`), PumpPortal 0.5% per side, so ~3.5% per round trip plus priority fee. The real pump.fun rate (one source says 0.30%) must be verified against live docs before M4; paper stays conservative until then.
 - Volume [Claude]: the bot scans every launch nonstop but only buys what clears every gate. Up to 5 positions at once, 300 s cooldown per token.
 
 ## 7. Scam Shield
