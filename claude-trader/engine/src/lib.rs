@@ -1,6 +1,10 @@
 //! Claude Trader engine. M2: live feed, Scam Shield, Token Picker. Paper only: no signing, no wallet code.
 
 pub mod config;
+pub mod curve;
+pub mod paper;
+pub mod exits;
+pub mod position;
 pub mod demo;
 pub mod db;
 pub mod engine;
