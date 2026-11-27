@@ -137,7 +137,7 @@ mod tests {
         let t0 = 1_000_000;
         let trades = upto(&sc, 59, t0);
         let launch = 30.0 / 1.073e9;
-        let o = picker::observe(&trades, &sc.create.trader_public_key, launch, 0.0, 60.0, t0 + 60_000);
+        let o = picker::observe(&trades, &sc.create.trader_public_key, 0.0, launch, 0.0, 60.0, t0 + 60_000);
         let s = picker::score(&o, &cfg());
         assert!(s.picked, "score {} parts {:?} gates {:?} obs {:?}", s.score, s.parts, s.gates, o);
         assert!(s.score >= 80.0);
@@ -168,7 +168,7 @@ mod tests {
         let sc = scenario("dump").unwrap();
         let t0 = 5_000;
         let trades = upto(&sc, 59, t0);
-        let o = picker::observe(&trades, &sc.create.trader_public_key, 30.0 / 1.073e9, 0.0, 60.0, t0 + 60_000);
+        let o = picker::observe(&trades, &sc.create.trader_public_key, 0.0, 30.0 / 1.073e9, 0.0, 60.0, t0 + 60_000);
         assert!(picker::score(&o, &cfg()).picked);
         let entry = upto(&sc, 62, 0).last().unwrap().price();
         let low = sc.events.iter().map(|e| e.1.price()).fold(f64::MAX, f64::min);

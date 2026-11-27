@@ -23,7 +23,10 @@ pub struct Observation {
     pub mcap_sol: f64,
     pub buys_first_half: u32,
     pub buys_second_half: u32,
+    /// Creator sales in the window as % of total supply.
     pub dev_sold_pct: f64,
+    /// Creator sales as % of what the creator held (launch buy plus buys in the window). 100 if they sold with nothing known to sell.
+    pub dev_sold_pct_of_holding: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +39,7 @@ pub struct Scored {
 }
 
 /// Summarise the trades seen for one token. `launch_price` and `launch_curve_sol` come from the create message.
-pub fn observe(trades: &[Trade], creator: &str, launch_price: f64, launch_real_sol: f64, age_secs: f64, now_ms: i64) -> Observation {
+pub fn observe(trades: &[Trade], creator: &str, creator_initial_tokens: f64, launch_price: f64, launch_real_sol: f64, age_secs: f64, now_ms: i64) -> Observation {
     let buys: Vec<&Trade> = trades.iter().filter(|t| t.is_buy).collect();
     let sells: Vec<&Trade> = trades.iter().filter(|t| !t.is_buy).collect();
     let uniq: HashSet<&str> = buys.iter().map(|t| t.user.as_str()).collect();
@@ -55,6 +58,9 @@ pub fn observe(trades: &[Trade], creator: &str, launch_price: f64, launch_real_s
     let ratio = if sells.is_empty() { buys.len() as f64 } else { buys.len() as f64 / sells.len() as f64 };
     // creator sells, as % of the tokens they bought in the window is unknown; use share of supply sold
     let dev_sold: f64 = sells.iter().filter(|t| t.user == creator).map(|t| t.tokens).sum::<f64>() / crate::pump::SUPPLY_TOKENS * 100.0;
+    let dev_sold_tokens: f64 = sells.iter().filter(|t| t.user == creator).map(|t| t.tokens).sum();
+    let dev_held: f64 = creator_initial_tokens + buys.iter().filter(|t| t.user == creator).map(|t| t.tokens).sum::<f64>();
+    let dev_of_holding = if dev_sold_tokens <= 0.0 { 0.0 } else if dev_held <= 0.0 { 100.0 } else { (dev_sold_tokens / dev_held * 100.0).min(100.0) };
     Observation {
         age_secs,
         buys: buys.len() as u32,
@@ -69,6 +75,7 @@ pub fn observe(trades: &[Trade], creator: &str, launch_price: f64, launch_real_s
         buys_first_half: first,
         buys_second_half: second,
         dev_sold_pct: dev_sold,
+        dev_sold_pct_of_holding: dev_of_holding,
     }
 }
 
@@ -117,8 +124,9 @@ pub fn score_with(o: &Observation, cfg: &Config, w: &[f64; 5]) -> Scored {
     if o.mcap_sol < cfg.feed.min_market_cap_sol {
         gates.push(format!("market cap {:.1} SOL below {:.1} SOL", o.mcap_sol, cfg.feed.min_market_cap_sol));
     }
-    if o.dev_sold_pct > 0.0 {
-        gates.push("creator is selling".into());
+    // Tiered: small creator sales are tolerated (SPEC 6). Allowed when sold <= 1% of supply AND < 25% of their own holding.
+    if o.dev_sold_pct > en.max_creator_sold_pct_of_supply || o.dev_sold_pct_of_holding >= en.max_creator_sold_pct_of_holding {
+        gates.push(format!("creator is selling ({:.2}% of supply, {:.0}% of their holding)", o.dev_sold_pct, o.dev_sold_pct_of_holding));
     }
     let picked = total >= ob.min_score && gates.is_empty();
     Scored { score: (total * 10.0).round() / 10.0, parts, gates, picked }
@@ -180,7 +188,7 @@ mod tests {
     fn hot_token_scores_high_and_is_picked() {
         let t = hot_trades();
         let launch_price = 30.0 / 1.073e9;
-        let o = observe(&t, "creator", launch_price, 0.0, 60.0, 61_000);
+        let o = observe(&t, "creator", 0.0, launch_price, 0.0, 60.0, 61_000);
         assert!(o.unique_buyers >= 12 && o.ratio >= 2.0 && o.price_change_pct > 5.0);
         let s = score(&o, &cfg());
         assert!(s.score >= 80.0, "score {} parts {:?}", s.score, s.parts);
@@ -196,7 +204,7 @@ mod tests {
         assert_eq!(c.feed.min_market_cap_sol, 30.0);
         // A fresh launch starts near 28 SOL. A coin at 45 SOL after 60 s (1.6x) clears both rules.
         let launch = 27.96;
-        let mut o = observe(&hot_trades(), "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
+        let mut o = observe(&hot_trades(), "creator", 0.0, 30.0 / 1.073e9, 0.0, 60.0, 61_000);
         o.mcap_sol = 45.0;
         let s = score(&o, &c);
         assert!(!s.gates.iter().any(|g| g.contains("market cap")), "{:?}", s.gates);
@@ -214,7 +222,7 @@ mod tests {
 
     #[test]
     fn dead_token_scores_low() {
-        let o = observe(&[], "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
+        let o = observe(&[], "creator", 0.0, 30.0 / 1.073e9, 0.0, 60.0, 61_000);
         let s = score(&o, &cfg());
         assert!(s.score < 10.0);
         assert!(!s.picked);
@@ -224,7 +232,7 @@ mod tests {
     #[test]
     fn young_token_fails_age_gate_even_with_high_score() {
         let t = hot_trades();
-        let o = observe(&t, "creator", 30.0 / 1.073e9, 0.0, 30.0, 61_000);
+        let o = observe(&t, "creator", 0.0, 30.0 / 1.073e9, 0.0, 30.0, 61_000);
         let s = score(&o, &cfg());
         assert!(s.gates.iter().any(|g| g.contains("younger")));
         assert!(!s.picked);
@@ -234,7 +242,7 @@ mod tests {
     fn creator_selling_blocks_pick() {
         let mut t = hot_trades();
         t.push(tr("creator", false, 45_000, 50.0, 20.0));
-        let o = observe(&t, "creator", 30.0 / 1.073e9, 0.0, 60.0, 61_000);
+        let o = observe(&t, "creator", 0.0, 30.0 / 1.073e9, 0.0, 60.0, 61_000);
         assert!(o.dev_sold_pct > 0.0);
         let s = score(&o, &cfg());
         assert!(s.gates.iter().any(|g| g.contains("creator is selling")));
@@ -243,7 +251,7 @@ mod tests {
 
     #[test]
     fn score_parts_sum_to_total_and_cap_at_100() {
-        let o = Observation { age_secs: 60.0, buys: 100, sells: 1, unique_buyers: 100, buyers_30s: 50, wallets: 100, ratio: 100.0, price_change_pct: 500.0, curve_sol: 20.0, mcap_sol: 100.0, buys_first_half: 10, buys_second_half: 90, dev_sold_pct: 0.0 };
+        let o = Observation { age_secs: 60.0, buys: 100, sells: 1, unique_buyers: 100, buyers_30s: 50, wallets: 100, ratio: 100.0, price_change_pct: 500.0, curve_sol: 20.0, mcap_sol: 100.0, buys_first_half: 10, buys_second_half: 90, dev_sold_pct: 0.0, dev_sold_pct_of_holding: 0.0 };
         let s = score(&o, &cfg());
         assert_eq!(s.score, 100.0);
         assert!((s.parts.iter().map(|p| p.1).sum::<f64>() - 100.0).abs() < 1e-9);
@@ -274,5 +282,44 @@ mod tests {
         let last = shallow.last_mut().unwrap();
         last.v_tokens = last.v_sol / (peak * 0.9);
         assert_eq!(dip_signal(&shallow, 61_000, &cfg()), None);
+    }
+
+    fn dev_obs(sold_tokens: f64, initial_tokens: f64) -> Observation {
+        let mut t = hot_trades();
+        if sold_tokens > 0.0 {
+            let mut x = tr("creator", false, 45_000, 50.0, 20.0);
+            x.tokens = sold_tokens;
+            t.push(x);
+        }
+        observe(&t, "creator", initial_tokens, 30.0 / 1.073e9, 0.0, 60.0, 61_000)
+    }
+
+    fn creator_gate(o: &Observation) -> bool {
+        score(o, &cfg()).gates.iter().any(|g| g.contains("creator is selling"))
+    }
+
+    #[test]
+    fn creator_selling_is_tiered_one_percent_of_supply_and_under_25_percent_of_holding() {
+        let c = cfg();
+        assert_eq!((c.entry.max_creator_sold_pct_of_supply, c.entry.max_creator_sold_pct_of_holding), (1.0, 25.0));
+        let supply = crate::pump::SUPPLY_TOKENS;
+        let init = supply * 0.08; // creator launched with 8% of supply
+        // no sale: passes
+        assert!(!creator_gate(&dev_obs(0.0, init)));
+        // 10% of their bag = 0.8% of supply: passes both limits
+        assert!(!creator_gate(&dev_obs(init * 0.10, init)));
+        // 24.9% of the bag = 1.99% of supply: over the 1% of supply limit, blocked
+        assert!(creator_gate(&dev_obs(init * 0.249, init)));
+        // small bag: 3% of supply launch, sells 0.9% of supply = 30% of bag: blocked by the holding limit
+        assert!(creator_gate(&dev_obs(supply * 0.009, supply * 0.03)));
+        // small bag, small sale: 3% of supply launch, sells 0.5% of supply = 16.7% of bag: passes
+        assert!(!creator_gate(&dev_obs(supply * 0.005, supply * 0.03)));
+        // boundaries: exactly 1.0% of supply passes (needs a big enough bag), exactly 25% of the bag is blocked
+        assert!(!creator_gate(&dev_obs(supply * 0.01, supply * 0.10)));
+        assert!(creator_gate(&dev_obs(supply * 0.0100001, supply * 0.10)));
+        assert!(creator_gate(&dev_obs(supply * 0.0075, supply * 0.03)));
+        assert!(!creator_gate(&dev_obs(supply * 0.0074, supply * 0.03)));
+        // sold with nothing known to sell (holding unknown): treated as 100% of the bag, blocked
+        assert!(creator_gate(&dev_obs(1_000_000.0, 0.0)));
     }
 }

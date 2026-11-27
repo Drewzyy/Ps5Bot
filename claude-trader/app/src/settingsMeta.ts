@@ -181,6 +181,18 @@ export const META: Record<string, Explain> = {
     "15 or more.",
     "Type a whole number. Higher is stricter."
   ),
+  "entry.maxCreatorSoldPctOfSupply": e(
+    "Creator sale limit, share of all coins (%)",
+    "The person who made the coin may sell a little without scaring the app off. This is the most they may have sold in the first minute, as a share of ALL coins that exist.",
+    "1 percent.",
+    "Type a percentage. Lower is stricter. Both creator limits must hold or the coin is skipped. Open positions are still sold at once if the creator sells."
+  ),
+  "entry.maxCreatorSoldPctOfHolding": e(
+    "Creator sale limit, share of their own bag (%)",
+    "The most of their OWN coins the creator may have sold in the first minute. Selling a big part of their own bag is a warning sign, selling a small part is usually fine.",
+    "Under 25 percent.",
+    "Type a percentage. Lower is stricter. Both creator limits must hold or the coin is skipped."
+  ),
   "entry.minAgeSeconds": e(
     "Minimum coin age (seconds)",
     "The app never buys a coin in its first moments, because that is when bots and creators play tricks. It waits at least this long.",

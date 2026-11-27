@@ -907,7 +907,7 @@ mod tests {
         seed(&t, &mut sim);
         let mut out = vec![];
         // the picker's own verdict on what the market looks like (pure code, same for any executor)
-        let obs = picker::observe(&t.feed.store.snapshot("TESTMINT"), "CREATOR", 3.0e-8, 0.0, 60.0, now_ms());
+        let obs = picker::observe(&t.feed.store.snapshot("TESTMINT"), "CREATOR", 0.0, 3.0e-8, 0.0, 60.0, now_ms());
         let sc = picker::score(&obs, &t.cfg);
         out.push(format!("picker score={:.1} picked={} gates={:?}", sc.score, sc.picked, sc.gates));
         let id = t.try_enter("momentum", &pick()).await.expect("entry");

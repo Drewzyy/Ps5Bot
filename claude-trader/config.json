@@ -24,6 +24,8 @@
     "requireRisingVolumeSlope": true,
     "curveSolMin": 4, "curveSolMax": 40,
     "minHolders": 15,
+    "maxCreatorSoldPctOfSupply": 1.0,
+    "maxCreatorSoldPctOfHolding": 25.0,
     "minAgeSeconds": 60,
     "paperVariant": { "style": "dip-40pct", "minDipPct": 40, "maxDipPct": 50, "confirmVolumeExpanding": true }
   },

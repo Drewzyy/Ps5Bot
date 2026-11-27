@@ -89,6 +89,10 @@ pub struct Entry {
     pub curve_sol_min: f64,
     pub curve_sol_max: f64,
     pub min_holders: u32,
+    /// Entry gate: the creator may have sold at most this share of the total supply during the observation window.
+    pub max_creator_sold_pct_of_supply: f64,
+    /// Entry gate: and must have sold less than this share of their own holding (launch buy plus window buys).
+    pub max_creator_sold_pct_of_holding: f64,
     pub min_age_seconds: u32,
     pub paper_variant: PaperVariant,
 }

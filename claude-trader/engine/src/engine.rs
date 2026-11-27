@@ -411,7 +411,7 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainF
     let age = (now - t0) as f64 / 1000.0;
     let trades = ctx.trader.feed.store.snapshot(&t.mint);
     let launch_price = if t.v_tokens_in_bonding_curve > 0.0 { t.v_sol_in_bonding_curve / t.v_tokens_in_bonding_curve } else { 0.0 };
-    let obs = picker::observe(&trades, &t.trader_public_key, launch_price, (t.v_sol_in_bonding_curve - 30.0).max(0.0), age, now);
+    let obs = picker::observe(&trades, &t.trader_public_key, t.initial_buy, launch_price, (t.v_sol_in_bonding_curve - 30.0).max(0.0), age, now);
     // The main lane may run on learned thresholds (applied changes). The shadow lane runs a candidate change, if a test is on.
     let main_t = ctx.trader.lane_tuned("momentum");
     let mcfg = &main_t.cfg;
