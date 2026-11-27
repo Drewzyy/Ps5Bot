@@ -75,10 +75,22 @@ export function buildSteps(c: Config): Step[] {
         "Scam Shield looks for tricks: the creator still holding a lot, hidden fees, bundled wallets, a creator who rugged before.",
         "Most coins fail a check. A high blocked count is normal and good. It is not a bug.",
         "A check that cannot finish in time also blocks the coin. The app prefers to miss a good coin than to buy a bad one.",
+        "The one exception is RugCheck, a free outside website that rates coins. It is often busy or has not seen a brand new coin yet, so the app keeps asking it while it watches the coin. If it still has no answer, the app runs its own checks on the blockchain and, if every one passes, may buy at half the normal size. A RugCheck danger flag always blocks.",
       ],
       good: "Many blocks, with clear reasons listed.",
       bad: "Zero blocks over a long time, or every coin passing. That would be suspicious.",
       todo: "Nothing. Read the reasons if you are curious. Verdicts: LOW SIGNAL means no red flags found, ELEVATED means some, HIGH means serious.",
+    },
+    {
+      id: "funnel", title: "Why no trades? Where coins drop off", target: ".card", card: "Why no trades?",
+      what: [
+        "This card counts today's real coins at each step: seen, blocked by Scam Shield (with the top reasons), watched and scored, best score, and picked or bought.",
+        "It also shows which rule stopped the best-scoring coins, so you can see whether the app is too strict, the market is quiet, or something is broken.",
+        "If it says coins were watched but not one buy or sell was seen, the buy/sell data is not arriving. Look at the red bar at the top and at Settings > Connections.",
+      ],
+      good: "Most coins stop at Scam Shield, a few reach scoring, and the best ones are stopped by a clear rule.",
+      bad: "A red warning that no buy/sell data is arriving. Every coin scores 0 until that is fixed.",
+      todo: "Add a free Helius key if the warning appears. Do not loosen the rules to force trades.",
     },
     {
       id: "picker", title: "Watchlist and the Token Picker score", target: ".card", card: "Watchlist",
@@ -194,6 +206,7 @@ export function buildTopics(c: Config): Topic[] {
         { q: "Dev sell", a: ["The creator sells their share. It is a strong warning. The app exits at once if it sees one."] },
         { q: "Bundles", a: ["The creator uses many wallets to buy at launch so the coin looks popular and spread out. In fact one person controls much of the supply. Blocked automatically."] },
         { q: "Snipers", a: ["Bots that buy in the first moments after launch, often with insider knowledge. They sell to later buyers. The app blocks coins sniped in the first block and never buys in the first minute."] },
+        { q: "RugCheck", a: ["A free website that rates coins and lists the biggest holders. It is often down (HTTP 502), slow, or has not indexed a new coin yet. That says nothing about the coin, so the app retries after 3, 8 and 15 seconds while it keeps watching, and never treats an outage as a scam sign.", "If it still has no answer when a coin would be bought, the app uses its own blockchain checks: mint and freeze authority gone, no hidden Token-2022 tricks, no big holders, creator holding small, no first-block sniping, creator not on the blacklist. All must pass, and the trade is half size. A danger flag from RugCheck always blocks. Switch on Settings > Scam Shield filters > requireRugcheck to block every coin RugCheck cannot rate."] },
         { q: "Why is most of it blocked?", a: ["One security firm (Solidus Labs) flagged about 98.7% of pump.fun coins as showing pump and dump or rug patterns. pump.fun disputes the figure. Either way, most coins are bad, so blocking most is correct."] },
       ],
     },
@@ -223,6 +236,8 @@ export function buildTopics(c: Config): Topic[] {
         { q: "Token Picker score", a: [`0 to 100. The app wants ${c.observation.minScore} or more. It rewards more buyers than sellers, many different buyers, rising price and rising volume.`] },
         { q: "Exit rules", a: [`${d.ladder}. The last ${d.tail}% uses a ${c.exits.trailingStopPct}% trailing stop. Soft stop ${c.exits.softStopPct}%, hard stop ${c.exits.hardStopPct}%, maximum hold ${d.hold}.`] },
         { q: "Win rate, profit factor, drawdown", a: ["Win rate: share of winning trades. Profit factor: total wins divided by total losses, above 1 is good. Drawdown: the biggest fall from a high point."] },
+        { q: "What is the 'Why no trades?' card?", a: ["A funnel of today's real counts: coins seen, blocked by Scam Shield, scored, best score, picked, bought. It shows where coins drop off and which rule stopped the best ones."] },
+        { q: "The red 'No buy/sell data is arriving' bar", a: ["The app learns how a coin trades from the buys and sells it reads from the Solana network. If none arrive for 2 minutes while coins are being watched, every coin scores 0 and nothing can be bought. Settings > Connections shows trades read in the last minute, how many watched coins the server confirmed, the last trade and the last error. A free Helius key usually fixes it."] },
         { q: "Why 0 trades for a long time?", a: ["Strict rules. It is normal and safe. Do not loosen rules to get action."] },
         { q: "The i icons", a: ["Open Settings, open a section, and click i beside any value for a plain explanation."] },
         { q: "How do I add my Helius key?", a: ["Get a free key at helius.dev, then Dashboard > API Keys. In the app open Settings > Connections, paste the key, press Save, then Test connection.", "It is stored in your computer's secure storage and shown only as 'saved, ends in ...ab12'. Remove key deletes it."] },
@@ -235,6 +250,8 @@ export function buildTopics(c: Config): Topic[] {
 }
 
 export const GLOSSARY: Term[] = [
+  { term: "RugCheck", def: "A free website that rates new coins. When it is busy or has no report yet, the app checks the coin on the blockchain itself and buys at half size." },
+  { term: "X post / X profile", def: "A link to one post on X (Twitter) or to a coin's X account page. The app labels each link so you know which." },
   { term: "Helius", def: "A free service that gives the app a steadier line to the Solana network. You add a free key in Settings." },
   { term: "Test lane", def: "A separate pretend lane that tries a proposed change next to the normal one. The change is used only if the test lane wins." },
   { term: "Bankroll", def: "The pretend money the app trades with." },

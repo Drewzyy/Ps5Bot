@@ -6,6 +6,23 @@ use crate::position::{PosState, Position};
 use rusqlite::{params, Connection};
 use std::sync::Mutex;
 
+/// Real counts for the dashboard's "Why no trades" card.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct FunnelCounts {
+    pub seen: u32,
+    pub blocked: u32,
+    pub blocked_reasons: Vec<ReasonCount>,
+    pub scored: u32,
+    pub scored_no_trades: u32,
+    pub best_score: f64,
+    pub best_symbol: String,
+    pub best_blocked_by: Vec<ReasonCount>,
+    pub picked: u32,
+    pub bought: u32,
+    pub rug_fallback_passed: u32,
+    pub rug_fallback_blocked: u32,
+}
+
 pub struct Db {
     conn: Mutex<Connection>,
 }
@@ -47,7 +64,11 @@ impl Db {
                 last_price REAL, sell_fails INTEGER, exit_ms INTEGER, exit_reason TEXT, stages TEXT, pnl_sol REAL, pnl_pct REAL, slippage_pct REAL);
              CREATE INDEX IF NOT EXISTS positions_state ON positions(state);
              CREATE INDEX IF NOT EXISTS positions_mint ON positions(mint);
-             CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT);",
+             CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT);
+             CREATE TABLE IF NOT EXISTS scores(
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, mint TEXT NOT NULL, symbol TEXT, score REAL NOT NULL,
+                picked INTEGER NOT NULL, gates TEXT, trades INTEGER NOT NULL DEFAULT 0, buyers INTEGER NOT NULL DEFAULT 0);
+             CREATE INDEX IF NOT EXISTS scores_ts ON scores(ts);",
         )
         .map_err(|e| format!("db schema: {e}"))?;
         // older databases were created before the creator fee column existed
@@ -67,6 +88,68 @@ impl Db {
             "INSERT INTO decisions(ts,mint,symbol,stage,outcome,reason,detail,verdict) VALUES(?,?,?,?,?,?,?,?)",
             params![d.ts, d.mint, d.symbol, d.stage, d.outcome, d.reason, d.detail, d.verdict],
         );
+    }
+
+    /// One scored coin (end of the 60 s watch). `gates` are the plain labels of every entry gate that failed.
+    pub fn insert_score(&self, ts: i64, mint: &str, symbol: &str, score: f64, picked: bool, gates: &[String], trades: u32, buyers: u32) {
+        let c = self.conn.lock().unwrap();
+        let _ = c.execute(
+            "INSERT INTO scores(ts,mint,symbol,score,picked,gates,trades,buyers) VALUES(?,?,?,?,?,?,?,?)",
+            params![ts, mint, symbol, score, picked as i64, gates.join("|"), trades, buyers],
+        );
+    }
+
+    /// Where coins dropped off since `since_ms`, from real rows only (SPEC 9, "Why no trades").
+    pub fn funnel(&self, since_ms: i64, top_n: u32) -> FunnelCounts {
+        let c = self.conn.lock().unwrap();
+        let n = |sql: &str| -> u32 { c.query_row(sql, params![since_ms], |r| r.get::<_, i64>(0)).unwrap_or(0).max(0) as u32 };
+        let shield = "stage IN ('cheap-prefilter','chain','rugcheck','rugcheck-fallback') AND outcome='block'";
+        let seen = n("SELECT COUNT(*) FROM tokens_seen WHERE ts>=?");
+        let blocked = n(&format!("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND {shield}"));
+        let scored = n("SELECT COUNT(*) FROM scores WHERE ts>=?");
+        let scored_no_trades = n("SELECT COUNT(*) FROM scores WHERE ts>=? AND trades=0");
+        let picked = n("SELECT COUNT(*) FROM scores WHERE ts>=? AND picked=1");
+        let bought = n("SELECT COUNT(*) FROM positions WHERE entry_ms>=? AND kind='trade'");
+        let rug_fb_pass = n("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage='rugcheck-fallback' AND outcome='pass'");
+        let rug_fb_block = n("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage='rugcheck-fallback' AND outcome='block'");
+        let mut blocked_reasons = vec![];
+        if let Ok(mut st) = c.prepare(&format!("SELECT reason, COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND {shield} GROUP BY reason ORDER BY COUNT(DISTINCT mint) DESC, reason LIMIT 8")) {
+            if let Ok(rows) = st.query_map(params![since_ms], |r| Ok(ReasonCount { reason: r.get(0)?, count: r.get(1)? })) {
+                blocked_reasons = rows.flatten().collect();
+            }
+        }
+        let best: Option<(f64, String)> = c
+            .query_row("SELECT score, COALESCE(symbol,'') FROM scores WHERE ts>=? ORDER BY score DESC, id DESC LIMIT 1", params![since_ms], |r| Ok((r.get(0)?, r.get(1)?)))
+            .ok();
+        // which gates stopped the highest-scoring coins that were not picked
+        let mut gate_counts: std::collections::BTreeMap<String, u32> = Default::default();
+        if let Ok(mut st) = c.prepare("SELECT COALESCE(gates,''), picked FROM scores WHERE ts>=? ORDER BY score DESC, id DESC LIMIT ?") {
+            if let Ok(rows) = st.query_map(params![since_ms, top_n], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))) {
+                for (g, picked) in rows.flatten() {
+                    if picked == 0 {
+                        for label in g.split('|').filter(|x| !x.is_empty()) {
+                            *gate_counts.entry(label.to_string()).or_default() += 1;
+                        }
+                    }
+                }
+            }
+        }
+        let mut best_blocked_by: Vec<ReasonCount> = gate_counts.into_iter().map(|(reason, count)| ReasonCount { reason, count }).collect();
+        best_blocked_by.sort_by(|a, b| b.count.cmp(&a.count).then(a.reason.cmp(&b.reason)));
+        FunnelCounts {
+            seen,
+            blocked,
+            blocked_reasons,
+            scored,
+            scored_no_trades,
+            best_score: best.as_ref().map(|b| b.0).unwrap_or(0.0),
+            best_symbol: best.map(|b| b.1).unwrap_or_default(),
+            best_blocked_by,
+            picked,
+            bought,
+            rug_fallback_passed: rug_fb_pass,
+            rug_fallback_blocked: rug_fb_block,
+        }
     }
 
     pub fn upsert_token(&self, mint: &str, ts: i64, name: &str, symbol: &str, creator: &str, mcap_sol: f64) {
@@ -301,6 +384,38 @@ mod tests {
 
     fn row(mint: &str, outcome: &str, reason: &str) -> DecisionRow {
         DecisionRow { ts: 1000, mint: mint.into(), symbol: "S".into(), stage: "chain".into(), outcome: outcome.into(), reason: reason.into(), detail: "d".into(), verdict: "HIGH".into() }
+    }
+
+    #[test]
+    fn funnel_counts_where_coins_dropped_off_from_real_rows() {
+        let db = Db::open(":memory:").unwrap();
+        let t = 1_000_000i64;
+        for m in ["A", "B", "C", "D", "E", "F"] {
+            db.upsert_token(m, t, m, m, "cr", 28.0);
+        }
+        let row = |mint: &str, stage: &str, outcome: &str, reason: &str| DecisionRow { ts: t, mint: mint.into(), symbol: mint.into(), stage: stage.into(), outcome: outcome.into(), reason: reason.into(), detail: String::new(), verdict: String::new() };
+        db.insert_decision(&row("A", "cheap-prefilter", "block", "NO_IMAGE"));
+        db.insert_decision(&row("B", "chain", "block", "DEV_SNIPE"));
+        db.insert_decision(&row("C", "rugcheck", "block", "RUGCHECK_DANGER"));
+        db.insert_decision(&row("D", "chain", "pass", ""));
+        db.insert_decision(&row("E", "chain", "pass", ""));
+        db.insert_decision(&row("E", "rugcheck-fallback", "pass", ""));
+        db.insert_decision(&row("F", "chain", "pass", ""));
+        db.insert_decision(&row("F", "pre-buy", "block", "WASH_VOLUME")); // a pre-buy block is after scoring, not a shield drop
+        db.insert_score(t, "D", "D", 12.5, false, &["Not enough SOL in the curve".into(), "Too few buyers in the last 30 s".into()], 0, 0);
+        db.insert_score(t, "E", "E", 91.0, false, &["Not enough SOL in the curve".into()], 14, 9);
+        db.insert_score(t, "F", "F", 88.0, true, &[], 20, 11);
+        let f = db.funnel(0, 10);
+        assert_eq!((f.seen, f.blocked, f.scored, f.scored_no_trades, f.picked), (6, 3, 3, 1, 1));
+        assert_eq!(f.best_score, 91.0);
+        assert_eq!(f.best_symbol, "E");
+        assert_eq!(f.rug_fallback_passed, 1);
+        assert_eq!(f.blocked_reasons.len(), 3);
+        // the gates behind the best coins that were NOT picked
+        assert_eq!(f.best_blocked_by[0], ReasonCount { reason: "Not enough SOL in the curve".into(), count: 2 });
+        assert_eq!(f.best_blocked_by[1].count, 1);
+        // a later day starts from zero
+        assert_eq!(db.funnel(t + 1, 10), FunnelCounts::default());
     }
 
     #[test]

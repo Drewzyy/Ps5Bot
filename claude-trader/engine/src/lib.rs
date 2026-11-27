@@ -27,6 +27,7 @@ pub mod exec;
 pub mod learning;
 pub mod startup;
 pub mod bridge;
+pub mod health;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};

@@ -127,5 +127,22 @@ export function demoEvents(): EngineEvent[] {
     { name: "Other buyers racing you", why: "In paper your buy does not move the price for anyone else and nobody beats you to a fill." },
   ] });
   ev.push({ type: "learning", ...demoLearning });
+  // ?nodata=1 shows the "no buy/sell data" warning, otherwise a healthy feed. Both are DEMO numbers.
+  const nodata = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("nodata") === "1";
+  ev.push(nodata
+    ? { type: "status", agent: "memecoin-monitor", color: "red", line: "No buy/sell data arriving: every coin scores 0" }
+    : { type: "status", agent: "memecoin-monitor", color: "green", line: "Live. 142 trades/min on 6 coins" });
+  ev.push(nodata
+    ? { type: "feed-health", ts: NOW, coinsConnected: true, tradesConnected: true, watched: 6, subsActive: 0, tradesLastMin: 0, tradesTotal: 0, lastTradeMs: 0, lastError: "DEMO: the node answered that this subscription is not allowed on the plan", warn: "No buy/sell data is arriving, so every coin scores 0.", rugRequests: 40, rugFailures: 17 }
+    : { type: "feed-health", ts: NOW, coinsConnected: true, tradesConnected: true, watched: 6, subsActive: 6, tradesLastMin: 142, tradesTotal: 5310, lastTradeMs: NOW - 2000, lastError: "", warn: "", rugRequests: 40, rugFailures: 17 });
+  ev.push({
+    type: "funnel", ts: NOW, demo: true, seen: 321, blocked: 292, inProgress: 3, scored: 26, scoredNoTrades: 9, bestScore: 91, bestSymbol: "MOONCAT", minScore: 80,
+    blockedReasons: [
+      { reason: "UNDECIDED_RUGCHECK", count: 31 }, { reason: "RUGCHECK_DANGER", count: 80 }, { reason: "CREATOR_HOLDING", count: 49 },
+      { reason: "NO_IMAGE", count: 42 }, { reason: "METADATA_MISSING", count: 13 }, { reason: "DEV_SNIPE", count: 5 },
+    ],
+    bestBlockedBy: [{ reason: "Not enough SOL in the curve", count: 5 }, { reason: "Too few buyers in the last 30 s", count: 3 }, { reason: "Buy/sell ratio too low", count: 2 }],
+    picked: 1, bought: 1, rugFallbackPassed: 12, rugFallbackBlocked: 6,
+  });
   return ev;
 }

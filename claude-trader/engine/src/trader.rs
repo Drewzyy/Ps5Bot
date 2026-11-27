@@ -29,6 +29,14 @@ pub struct Pick {
     pub score: f64,
     /// What the picker saw (kept with the position for the learning journal).
     pub features: EntryFeatures,
+    /// 1.0 normally; 0.5 when RugCheck gave no answer and the coin was judged on our own on-chain checks (SPEC 11b #29).
+    pub size_factor: f64,
+}
+
+/// Trade size after the pick's size factor (half for a coin that skipped RugCheck), rounded like `RiskState::size`.
+pub fn scaled_size(size: f64, factor: f64) -> f64 {
+    let f = if factor.is_finite() && factor > 0.0 { factor.min(1.0) } else { 1.0 };
+    (size * f * 1e9).round() / 1e9
 }
 
 pub struct Lane {
@@ -374,7 +382,7 @@ impl Trader {
             self.block(style, p, "NO_CURVE_DATA", "No curve data for this coin yet.");
             return Err("no curve data".into());
         };
-        let size = lane.risk.lock().unwrap().size();
+        let size = scaled_size(lane.risk.lock().unwrap().size(), p.size_factor);
         let (tokens, quote_price, after) = self.exec.quote_buy(&curve, size);
         let sell_impact = if tokens > 0.0 { (1.0 - after.sell(tokens).0 / (after.price() * tokens)) * 100.0 } else { 0.0 };
         let impact = self.exec.buy_impact_pct(&curve, size) + sell_impact;
@@ -820,7 +828,7 @@ mod tests {
     }
 
     fn pick() -> Pick {
-        Pick { mint: "TESTMINT".into(), symbol: "TST".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default() }
+        Pick { mint: "TESTMINT".into(), symbol: "TST".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default(), size_factor: 1.0 }
     }
 
     /// Put a hot-looking curve into the store (14 SOL in the curve, price up).
@@ -848,6 +856,31 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
         panic!("position did not close");
+    }
+
+    #[test]
+    fn size_factor_halves_a_trade_and_never_raises_it() {
+        assert_eq!(scaled_size(0.2, 1.0), 0.2);
+        assert_eq!(scaled_size(0.2, 0.5), 0.1);
+        assert_eq!(scaled_size(0.1, 0.5), 0.05);
+        assert_eq!(scaled_size(0.2, 2.0), 0.2, "a factor above 1 is ignored");
+        assert_eq!(scaled_size(0.2, 0.0), 0.2, "a bad factor falls back to normal size");
+        assert_eq!(scaled_size(0.2, f64::NAN), 0.2);
+    }
+
+    #[tokio::test]
+    async fn a_coin_that_skipped_rugcheck_is_bought_at_half_the_normal_size() {
+        let dir = std::env::temp_dir().join(format!("ct-half-{}", now_ms()));
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let (t, _hub) = mk(test_cfg(), db.clone(), &dir);
+        let mut sim = Sim::new("TESTMINT");
+        seed(&t, &mut sim);
+        let normal = t.lane("momentum").unwrap().risk.lock().unwrap().size();
+        let half = Pick { size_factor: 0.5, ..pick() };
+        let id = t.try_enter("momentum", &half).await.expect("a half-size entry passes the risk gates");
+        let p = db.position_by_id(id).unwrap();
+        assert!((p.size_sol - normal * 0.5).abs() < 1e-9, "size {} vs normal {normal}", p.size_sol);
+        assert!(normal > 0.0 && p.size_sol < normal);
     }
 
     #[tokio::test]
@@ -1055,7 +1088,7 @@ mod tests {
     }
 
     fn pick_of(mint: &str) -> Pick {
-        Pick { mint: mint.into(), symbol: "KIL".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default() }
+        Pick { mint: mint.into(), symbol: "KIL".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default(), size_factor: 1.0 }
     }
 
     #[tokio::test]

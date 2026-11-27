@@ -9,6 +9,7 @@ import Feed from "./components/Feed";
 import Widgets from "./components/Widgets";
 import SettingsPage from "./components/SettingsPage";
 import KillUi, { KillBanner } from "./components/Kill";
+import { FeedWarningBar } from "./components/Health";
 import { TipsPage, Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
 
 export type Page = "dashboard" | "settings" | "tips";
@@ -52,6 +53,7 @@ export default function App() {
     <>
       <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
       <KillBanner kill={engine.kill} />
+      <FeedWarningBar feed={engine.feed} />
       <KillUi ask={ask} close={() => setAsk(null)} killed={!!engine.kill?.killed} />
       <main className="page">
         {page === "dashboard" ? (

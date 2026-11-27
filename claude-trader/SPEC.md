@@ -61,7 +61,7 @@ Things paper cannot run are listed in the UI as "skipped in paper", never silent
 - **Helius key** (`engine/src/secrets.rs`): kept in the OS vault (Windows Credential Manager through the `keyring` crate), encrypted file fallback (ChaCha20-Poly1305, key from a random salt plus user and computer name; weaker than the vault, so only a fallback). Never in config.json, logs, git or the page after saving; the UI gets only "saved, ends in ...ab12". The engine reads it at start and on save (`reload-rpc` hot swaps the RPC and the trade feed WebSocket); `HELIUS_API_KEY` and `CT_RPC_URL` override it. URLs in logs are masked.
 - **Updates** (`engine/src/update.rs`): the app embeds the git SHA and build time at build time (`GITHUB_SHA`, else `git rev-parse`). "Check for updates" asks the public GitHub API for the newest successful `windows-build` run on the app's branch (else the latest release), compares with GitHub's compare endpoint (falls back to timestamps), and opens the run page in the browser. No token.
 - **Learning journal** (`engine/src/learning.rs`): every lesson comes from recorded numbers; nothing is invented. A journal entry per closed trade; a review every 30 closed main-lane trades (groups by curve SOL, buy/sell ratio, buyers, score, exit reason; a pattern needs at least 10 trades in the group and 10 in the rest and a win-rate gap of at least 25 points); the proposal runs in a shadow paper lane for the next 30 main-lane trades and is applied only if it beats the main lane on net P/L and profit factor with at least 10 shadow trades. Allowed changes: a whitelist of entry/exit thresholds and the five score weights, never more than 20% from the shipped value. Never Scam Shield, trade size, fees or loss limits. Every change is logged with before/after, evidence and result and has Undo. In live mode a winning change waits for the user's approval. Efficiency notes: pick-to-fill time, failed-transaction cost, fee share of gross profit, missed coins (score 80 or more but blocked, with the next 5 minutes of price when seen).
-- **Source links**: wherever the app shows a reason or signal from outside, it stores and shows a clickable `sourceUrl`. Today that is the coin's own website, X and Telegram from its metadata. X Monitor and Thesis Finder are not built (the X API is not free), so the UI only has the slot ("Source: post link"); no data is faked.
+- **Source links**: wherever the app shows a reason or signal from outside, it stores and shows a clickable `sourceUrl`. Today that is the coin's own website, X and Telegram from its metadata. X Monitor and Thesis Finder are not built (the X API is not free), so the UI only has the slot ("Source: X post"; an account page is "X profile"); no data is faked.
 
 ## 4d. Chrome extension and browser startup (added 2026-11-27)
 
@@ -83,6 +83,8 @@ discovery → cheap prefilters (no RPC) → Scam Shield chain checks → observa
 
 Every rejection at any stage is written to the decisions table with stage + reason, and shown in the Watchlist.
 
+Timing [2026-11-27]: the coin's trade subscription (`logsSubscribe {mentions:[bondingCurve]}` on the RPC WebSocket, commitment `processed`) starts right after the cheap prefilter, BEFORE the chain checks, so the 60 s window holds the coin's first trades. RugCheck runs in parallel with the watch (11b #29), not before it. A subscribe the node never confirms is re-sent after 8 s (3 times); a subscribe the node refuses is shown as the last error in Settings > Connections. The trade event decoder is pinned to the pump.fun IDL `TradeEvent` layout by a test (`engine/tests/fixtures/pump_trade_event_layout.json`; a moved field or a new discriminator fails the test), and a replay test pushes `logsNotification` messages through the same function the live feed uses, into the picker.
+
 ## 6. Strategy config (contract)
 
 Confirmed values. User decisions from 2026-11-25 are marked [user].
@@ -102,6 +104,7 @@ Confirmed values. User decisions from 2026-11-25 are marked [user].
     "excludeCurveAndPoolAccounts": true,
     "rejectDevSnipeFirstBlock": true,
     "rejectBundle": true,
+    "requireRugcheck": false,
     "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true }
   },
   "observation": {
@@ -226,6 +229,8 @@ Theme: white background, white cards, green accents (#16a34a primary, #14532d te
 - Top bar: local clock; trades today (hover: buys/sells); SOL balance + USD portfolio value; P/L today and total (SOL + USD, green/red); mode badge `PAPER` (green outline) or `LIVE` (solid red).
 - Network graph: central Claude bot node (larger, app name under it) with 9 agent nodes: Scam Shield, Token Picker, Executor, Hold Timer, Thesis Finder, Memecoin Monitor, X Monitor, Top Trader Monitor, Top Gainers. Each has icon, name, status dot (green working / amber waiting / grey idle / red blocked), one-line live status. Idle lines thin light grey; on a message the line pulses green with a travelling dot. Click a node for a panel: current task, last 10 decisions, settings.
 - Activity feed under the graph: timestamped, newest first, clickable to token detail.
+- "Why no trades?" card (first widget): real counts for today (UTC day) from SQLite: coins seen, blocked by Scam Shield with the top reasons, passed and still being checked, watched and scored (and how many had no trade at all), best score and its coin, the entry gates that stopped the 10 best-scoring coins that were not picked, picked and bought, and how many coins skipped RugCheck (passed or blocked on-chain). Plain text above it states the biggest drop-off in one sentence. Tables: `decisions`, `scores`, `tokens_seen`, `positions`. Nothing is estimated.
+- Buy/sell data health (SPEC 6): a coin scores 0 without trades, so the Memecoin Monitor node shows "Live. N trades/min on M coins" and its panel and Settings > Connections show: both feeds connected, trades read in the last minute, coins watched and subscriptions the node confirmed, last trade seen, last error from the node (keys masked), RugCheck requests that worked. If coins have been watched for 2 minutes with 0 trades decoded, a red bar says "No buy/sell data is arriving, so every coin scores 0." (`engine/src/health.rs`).
 - Widgets: Watchlist, Open Positions, Position Chart (candles, green entry marker, red exit marker, red dashed SL line, green dashed TP lines, live price line), Scam Shield (blocked count + breakdown by reason + verdict), Fees Paid (today/all-time, split PumpPortal / tx / priority / Jito, per-trade fee), Performance (win rate, avg win/loss, profit factor, max drawdown, best/worst, trades/day, equity curve), Settings page.
 - Every setting has an ⓘ with a plain explanation: what it does, good value, how to set it up.
 - UI updates throttled to a few per second max.
@@ -291,7 +296,16 @@ Strategy:
 27. Regime pause: rolling 20-trade profit factor below 0.8, or new-token rate under half its 7-day median [est].
 28. Paper-to-live gate raised to at least 100 paper trades. Live starts at the minimum size. Halt live if realized PnL is more than 30% worse than paper over 20 trades. Recalibrate the paper fill model from the first 20 live fills.
 
-All 28 protections are acceptance items: each needs a unit test or a recorded demo before its milestone closes (token checks and execution rules in M2/M3, live-only rules in M4).
+29. RugCheck is not a single point of failure [Claude, user-reported, 2026-11-27]. A 75-minute run on a Windows PC with a working Helius key saw 321 coins and blocked 307; 114 of those blocks were `UNDECIDED_RUGCHECK` ("rugcheck http 502", "error sending request", "RugCheck has no report yet"). The checks ran 1-4 s after launch, so a third of all coins were refused only because a free website was down, rate limited or had not indexed a brand-new coin yet. That is not a scam signal. New rule:
+   - One shared RugCheck client (`shield/net.rs`): at most 2 requests in flight, 2 requests per second, a cache per mint (10 min).
+   - It runs in the background from the moment Scam Shield starts, in parallel with the 60 s watch. A 502, network error, timeout, 429 or "no report yet" is retried after 3 s, 8 s and 15 s (4 tries in about 26 s). The coin keeps being watched meanwhile. A report that arrives is judged at once: a rugged or danger flag, holder concentration or the creator's live balance end the watch early with a block.
+   - If RugCheck is still silent when the coin would otherwise be picked, the app judges it on its own chain data. ALL must pass: mint authority revoked, freeze authority revoked, no dangerous Token-2022 extensions (transfer hook, permanent delegate, transfer fee, close authority), no first-block snipe and no burst bundle, top holders (single wallet <= `maxSingleHolderPct`, top 10 <= `maxTopHoldersCombinedPct`, bonding curve excluded, read with `getTokenLargestAccounts` + `getMultipleAccounts`), creator holding (launch buy and live balance <= `maxCreatorHoldingPct`), creator not blacklisted. Any failed or unreadable check blocks. The decision is recorded as "RugCheck unavailable, passed on-chain checks" (stage `rugcheck-fallback`, verdict ELEVATED) and the trade is HALF the normal size (`Pick.size_factor = 0.5`, the risk gates still apply to the halved size).
+   - A RugCheck danger flag (or "rugged") ALWAYS blocks, whatever the switch says.
+   - `filters.requireRugcheck` (default false): true restores the old behavior (no report, no buy: `UNDECIDED_RUGCHECK`).
+   - Why this is safe enough: the on-chain checks cover what RugCheck's report adds for pump.fun coins (authorities and holders; its other "danger" flags on bonding-curve coins are mostly curve artifacts, see `parse_rugcheck`), half size limits the loss on the coins that skipped the second opinion, and the on-chain list is stricter than "no report". What is lost: RugCheck's insider-network and creator-history signals for those coins. Paper mode will show whether half-size fallback coins do worse than full-size ones (the decision rows make them countable).
+   - Image check: the coin's metadata file decides; RugCheck's copy of the image is no longer a second chance because the chain stage no longer waits for it.
+
+All 29 protections are acceptance items: each needs a unit test or a recorded demo before its milestone closes (token checks and execution rules in M2/M3, live-only rules in M4).
 
 ## 12. Out of scope
 

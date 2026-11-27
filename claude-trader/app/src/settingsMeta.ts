@@ -103,6 +103,12 @@ export const META: Record<string, Explain> = {
     "On.",
     "Leave it switched on. This block cannot be overridden by hand."
   ),
+  "filters.requireRugcheck": e(
+    "Block coins RugCheck cannot report on",
+    "RugCheck is a free outside service that rates coins. It is often down, slow, or has not seen a brand new coin yet. Off (default): the app keeps retrying it while it watches the coin, and if it still has no answer it runs its own checks on the blockchain (mint and freeze authority, hidden token tricks, biggest holders, creator holding, first-block sniping, creator blacklist). A coin that passes all of them can be bought, at half the normal size. A RugCheck danger flag always blocks, either way. On: a coin RugCheck cannot rate is blocked, which is stricter but skips about a third of all coins just because a free website was busy.",
+    "Off. The app's own on-chain checks are strict, and half size limits the risk of the coins that skip RugCheck.",
+    "Switch it on only if you want to buy nothing that RugCheck has not rated."
+  ),
   "filters.requireCommunityChecks.minSocialLinks": e(
     "Minimum social links",
     "How many social links (website, X, Telegram) the coin's page must list. It is only a weak check, because links are easy to fake.",

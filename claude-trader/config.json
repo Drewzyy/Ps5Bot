@@ -12,6 +12,7 @@
     "excludeCurveAndPoolAccounts": true,
     "rejectDevSnipeFirstBlock": true,
     "rejectBundle": true,
+    "requireRugcheck": false,
     "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true }
   },
   "observation": {

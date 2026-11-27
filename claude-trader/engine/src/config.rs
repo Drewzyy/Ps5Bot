@@ -60,6 +60,10 @@ pub struct Filters {
     pub exclude_curve_and_pool_accounts: bool,
     pub reject_dev_snipe_first_block: bool,
     pub reject_bundle: bool,
+    /// When true, a coin RugCheck cannot report on is blocked (the old behavior). When false (default), the app
+    /// falls back to its own on-chain checks and buys at half size (SPEC 11b #29). A RugCheck danger flag always blocks.
+    #[serde(default)]
+    pub require_rugcheck: bool,
     pub require_community_checks: CommunityChecks,
 }
 

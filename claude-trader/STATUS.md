@@ -1,5 +1,34 @@
 # Claude Trader — STATUS
 
+## M3e — RugCheck outages, trade-feed health, "Why no trades?" (paper only, no keys, live stays locked)
+
+### Why (from the user's 75-minute Windows run with a working Helius key)
+321 coins seen, 307 blocked, 14 passed, 0 trades. 114 blocks were `UNDECIDED_RUGCHECK` ("rugcheck http 502", "error sending request", "RugCheck has no report yet"), decided 1-4 s after launch. A free website being down is not a scam signal.
+
+### Built
+- **RugCheck** (`engine/src/shield/net.rs`, `shield/mod.rs`, SPEC 11b #29): one shared client (2 in flight, 2 req/s, cache per mint), retries after 3, 8, 15 s for 502, network error, timeout, 429 and "no report yet". It runs in the background from the start of Scam Shield, in parallel with the 60 s watch; a report that arrives is judged at once (danger flag ends the watch early). Chain stage no longer waits for it.
+- **On-chain fallback**: RugCheck still silent at pick time means our own checks must ALL pass (mint and freeze authority, Token-2022 extensions, dev snipe and bundle burst, top holders read from the chain with `getTokenLargestAccounts` + `getMultipleAccounts`, creator launch buy and live balance, creator blacklist). Recorded as "RugCheck unavailable, passed on-chain checks" (decisions stage `rugcheck-fallback`, verdict ELEVATED); trade size is half (`Pick.size_factor`). A RugCheck danger or rugged flag always blocks. `filters.requireRugcheck` (default false, ⓘ in Settings) restores "no report, no buy".
+- **Trade feed health** (`rpc.rs`, `health.rs`): counters (trades decoded, last trade, subscriptions confirmed, last node error with the key masked), a subscribe the node never confirms is re-sent after 8 s (3 times), a refused subscribe is shown. Memecoin Monitor node line "Live. N trades/min on M coins", health block in the node panel and in Settings > Connections, red bar "No buy/sell data is arriving, so every coin scores 0." after 2 minutes of watching with 0 trades decoded. Health and funnel events keep only the latest in the hub history.
+- **"Why no trades?" card** (first widget): real counts from SQLite (new `scores` table plus `decisions`, `tokens_seen`, `positions`): seen, blocked by Scam Shield with top reasons, scored (and how many had no trade at all), best score, gates behind the 10 best coins that were not picked, picked, bought, RugCheck-fallback counts.
+- **X links**: chips say "X post" (a status link), "X profile", "X community", "Telegram" or "website".
+- Tips: new walkthrough step, RugCheck and warning entries, glossary.
+
+### Root cause of "0 buyers, curve 0.0 SOL" (could NOT be confirmed)
+- Read the trade path end to end: the `logsSubscribe {mentions:[curve]}` filter, the TradeEvent decoder (offsets and discriminator now pinned to the pump.fun IDL by a test), and subscription timing (`hold_feed` runs right after the cheap prefilter, before any chain check, so the first trades are captured). No bug found. A replay test pushes Helius-shaped `logsNotification` messages through the same function the live task uses and a busy coin scores above 80 and is picked.
+- The passed coin's own numbers say trades WERE decoded: the picker reports market cap 0.0 when it has no trade, and it showed 28.0, so the coin had at least one trade at about the launch price while the curve held under 0.05 SOL. That fits a dead coin with dust trades, not a dead feed. If the feed were dead, every scored coin would show 0 trades; the new card counts those exactly ("N of M had no buy or sell at all") and the red bar fires after 2 minutes.
+- Not provable here: whether Helius's free plan limits `logsSubscribe` (this sandbox cannot reach Helius). If it does, the node's error is now shown in Settings > Connections ("The data connection says ...") and the subscription count ("confirmed by the node") will sit at 0.
+
+### Verification (commands actually run)
+- `cargo test --workspace`: 197 engine tests pass (was 166). New: RugCheck retry schedule 3/8/15 s, 502 + network error + "no report yet" retried to a report, give-up after 4 tries, cache per mint, max 2 in flight; fallback blocks on single holder, top holders, unreadable holder list, mint authority, freeze authority, transfer hook, creator live holding, blacklisted creator, missing dev snipe result; half size end to end through `observe_and_trade` (position size is half), full size with a good report, danger flag blocks and ends the watch early, `requireRugcheck` on blocks; health warning after 2 minutes, cleared by a trade, reset when nothing is watched; Helius-shaped notification replay into the picker, failed subscribe recorded with the key masked, IDL layout check, owners from `getMultipleAccounts`, funnel counts, hub keeps only the latest health.
+- `npm run build` ok. `bash scripts/check-live-gate.sh` ok (script unchanged, no live code added).
+- Screenshots (DEMO data, opened with `?demo=1`, `&nodata=1` for the warning), viewed: `docs/screenshots/funnel-card.png`, `funnel-card-dark.png`, `feed-health-warning.png`, `feed-health-panel.png`, `feed-health-node-warning.png`, `feed-health-node-ok.png`, `feed-health-connections.png`, `feed-health-connections-ok.png`. Fixed after viewing: node status text was cut off (now two lines, shorter text), health rows were misaligned.
+
+### Stubbed, limited, or unsure
+- Not run against the real RugCheck, Helius or pump.fun (sandbox network). The IDL fixture comes from `.reference/` (date unknown); the real transaction check of 2026-11-26 (`REAL_SELL_B64`) still decodes.
+- The image check no longer gets a second chance from RugCheck's copy of the image (the chain stage does not wait for RugCheck any more).
+- Coins that skip RugCheck are bought at half size and show up in the journal like any trade; compare them with full-size trades before trusting the fallback. The learning review does not separate them.
+- The supply-bundle test (3 wallets hold most) now runs when the RugCheck report arrives, and does not run for fallback coins (top holders and single holder are checked instead).
+
 ## M3d — Chrome extension, Startup and browser settings (paper only, no keys, live stays locked)
 
 ### Built

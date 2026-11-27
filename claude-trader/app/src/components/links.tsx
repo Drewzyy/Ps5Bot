@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { api } from "../source";
 
-/** Short plain label for a source link. A post link (an X post, later from X Monitor) is called "post link". */
+/** Short plain label for a source link: "X post" (one tweet), "X profile" (an account page), "Telegram" or "website". */
 export function linkLabel(url: string): string {
   let host = "";
   let path = "";
@@ -12,8 +12,9 @@ export function linkLabel(url: string): string {
   } catch {
     return "link";
   }
-  if ((host === "x.com" || host === "twitter.com") && /\/status\/\d+/.test(path)) return "post link";
-  if (host === "x.com" || host === "twitter.com") return "X page";
+  if ((host === "x.com" || host === "twitter.com") && /\/status\/\d+/.test(path)) return "X post";
+  if ((host === "x.com" || host === "twitter.com") && /^\/i\/communities\//.test(path)) return "X community";
+  if (host === "x.com" || host === "twitter.com") return "X profile";
   if (host === "t.me" || host === "telegram.me") return "Telegram";
   return "website";
 }

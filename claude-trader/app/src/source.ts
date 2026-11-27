@@ -33,7 +33,7 @@ function mockSource(): DataSource {
     kind: "mock",
     subscribe(cb) {
       if (isDemo()) for (const e of demoEvents()) cb(e);
-      for (const a of AGENTS) cb({ type: "status", agent: a, color: "grey", line: "Idle (demo)" });
+      for (const a of AGENTS) if (!(isDemo() && a === "memecoin-monitor")) cb({ type: "status", agent: a, color: "grey", line: "Idle (demo)" });
       const routes: [typeof AGENTS[number], typeof AGENTS[number], string][] = [
         ["memecoin-monitor", "scam-shield", "New launch handed to Scam Shield"],
         ["scam-shield", "token-picker", "Clean token handed to Token Picker"],

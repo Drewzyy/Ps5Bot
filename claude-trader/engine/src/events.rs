@@ -117,9 +117,64 @@ pub enum EngineEvent {
     /// Where to read about a coin: its own website, X and Telegram from its metadata. Empty strings when it has none.
     #[serde(rename_all = "camelCase")]
     Links { mint: String, website: String, twitter: String, telegram: String },
+    /// Is market data reaching the Token Picker? Sent about every 2 s.
+    FeedHealth(FeedHealthView),
+    /// Where coins dropped off today, from real counts ("Why no trades" card). Sent about every 2 s.
+    Funnel(FunnelView),
     /// Chrome extension link: is one paired, is one connected right now. Never carries the pairing code or token.
     #[serde(rename_all = "camelCase")]
     Extension { ts: i64, paired: bool, connected: bool, last_seen_ms: i64 },
+}
+
+/// Health of the buy/sell data (the trade feed). Plain numbers for the Memecoin Monitor node and Settings > Connections.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedHealthView {
+    pub ts: i64,
+    /// New-coin feed (PumpPortal) connected.
+    pub coins_connected: bool,
+    /// Trade feed (RPC WebSocket) connected.
+    pub trades_connected: bool,
+    /// Coins we are collecting trades for right now.
+    pub watched: u32,
+    /// Subscriptions the node confirmed.
+    pub subs_active: u32,
+    pub trades_last_min: u32,
+    pub trades_total: u64,
+    /// ms epoch of the newest decoded trade, 0 if none yet.
+    pub last_trade_ms: i64,
+    /// Last problem the node reported (key masked). Empty if none.
+    pub last_error: String,
+    /// Plain-language warning. Empty when all is well.
+    pub warn: String,
+    /// RugCheck requests made and failed so far (it is free and often busy).
+    pub rug_requests: u64,
+    pub rug_failures: u64,
+}
+
+/// Counts for the "Why no trades" card (today, UTC day).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FunnelView {
+    pub ts: i64,
+    pub seen: u32,
+    pub blocked: u32,
+    pub blocked_reasons: Vec<ReasonCount>,
+    /// Passed Scam Shield and still being checked or watched.
+    pub in_progress: u32,
+    pub scored: u32,
+    /// Scored coins for which not one buy or sell was seen.
+    pub scored_no_trades: u32,
+    pub best_score: f64,
+    pub best_symbol: String,
+    pub min_score: f64,
+    /// Gates that stopped the 10 best-scoring coins that were not picked.
+    pub best_blocked_by: Vec<ReasonCount>,
+    pub picked: u32,
+    pub bought: u32,
+    /// Coins judged on our own on-chain checks because RugCheck gave no answer: passed, blocked.
+    pub rug_fallback_passed: u32,
+    pub rug_fallback_blocked: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

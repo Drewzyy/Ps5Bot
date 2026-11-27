@@ -79,6 +79,24 @@ pub fn observe(trades: &[Trade], creator: &str, creator_initial_tokens: f64, lau
     }
 }
 
+/// Plain label for a failed entry gate (the strings `score_with` and the engine produce), so the "Why no trades"
+/// card can count them without showing numbers that differ on every coin.
+pub fn gate_label(g: &str) -> &'static str {
+    let g = g.to_lowercase();
+    if g.starts_with("younger than") { "Coin too young"
+    } else if g.starts_with("curve holds") { "Not enough SOL in the curve"
+    } else if g.starts_with("buy/sell") { "Buy/sell ratio too low"
+    } else if g.contains("buyers in 30 s") { "Too few buyers in the last 30 s"
+    } else if g.starts_with("volume not rising") { "Buying not speeding up"
+    } else if g.starts_with("market cap") { "Market cap under the minimum"
+    } else if g.starts_with("creator is selling") { "Creator is selling"
+    } else if g.starts_with("feed down") { "Feed was down"
+    } else if g.contains("rugcheck") || g.contains("on-chain") { "RugCheck or on-chain check failed"
+    } else if g.starts_with("scam shield pre-buy") { "Scam Shield pre-buy check"
+    } else if g.starts_with("score below") { "Score too low"
+    } else { "Other entry rule" }
+}
+
 fn frac(v: f64, target: f64) -> f64 {
     if target <= 0.0 { 1.0 } else { (v / target).clamp(0.0, 1.0) }
 }
@@ -160,6 +178,20 @@ pub fn dip_signal(trades: &[Trade], now_ms: i64, cfg: &Config) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn gate_labels_group_the_strings_the_picker_makes() {
+        assert_eq!(gate_label("curve holds 0.0 SOL (needs 4-40)"), "Not enough SOL in the curve");
+        assert_eq!(gate_label("curve holds 51.2 SOL (needs 4-40)"), "Not enough SOL in the curve");
+        assert_eq!(gate_label("buy/sell 1.6 below 2"), "Buy/sell ratio too low");
+        assert_eq!(gate_label("0 buyers in 30 s (needs 5)"), "Too few buyers in the last 30 s");
+        assert_eq!(gate_label("volume not rising"), "Buying not speeding up");
+        assert_eq!(gate_label("market cap 28.0 SOL below 30.0 SOL"), "Market cap under the minimum");
+        assert_eq!(gate_label("creator is selling (3.00% of supply, 40% of their holding)"), "Creator is selling");
+        assert_eq!(gate_label("Scam Shield: RugCheck / on-chain check (RUGCHECK_DANGER)"), "RugCheck or on-chain check failed");
+        assert_eq!(gate_label("Scam Shield pre-buy: WASH_VOLUME"), "Scam Shield pre-buy check");
+        assert_eq!(gate_label("something new"), "Other entry rule");
+    }
+
     use super::*;
 
     fn cfg() -> Config {

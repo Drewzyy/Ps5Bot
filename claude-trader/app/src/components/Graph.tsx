@@ -5,6 +5,7 @@ import type { AgentDef } from "../agents";
 import type { EngineState } from "../useEngine";
 import type { AgentId, Config, Pulse } from "../types";
 import { flatten } from "../settingsMeta";
+import { FeedHealthLine } from "./Health";
 
 const W = 1000;
 const H = 520;
@@ -129,6 +130,12 @@ function PanelBody({ def, engine, config, openSettings }: { def: AgentDef; engin
       <p className="role">{def.role}</p>
       <h4>Current task</h4>
       <div className="task">{st?.line ?? "Idle"}</div>
+      {def.id === "memecoin-monitor" && (
+        <>
+          <h4>Buy/sell data health</h4>
+          <FeedHealthLine feed={engine.feed} />
+        </>
+      )}
       <h4>Last 10 decisions</h4>
       {decisions.length === 0 ? (
         <div className="empty">No decisions yet.</div>

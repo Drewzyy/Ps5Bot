@@ -21,6 +21,8 @@ struct History {
     learning: Option<EngineEvent>,
     skipped: Option<EngineEvent>,
     extension: Option<EngineEvent>,
+    feed: Option<EngineEvent>,
+    funnel: Option<EngineEvent>,
     links: HashMap<String, EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
@@ -75,6 +77,9 @@ impl Hub {
                 EngineEvent::Learning(_) => h.learning = Some(e.clone()),
                 EngineEvent::Skipped { .. } => h.skipped = Some(e.clone()),
                 EngineEvent::Extension { .. } => h.extension = Some(e.clone()),
+                // sent every 2 s: only the latest is kept, so they never push real events out of the history
+                EngineEvent::FeedHealth(_) => h.feed = Some(e.clone()),
+                EngineEvent::Funnel(_) => h.funnel = Some(e.clone()),
                 EngineEvent::Links { mint, .. } => {
                     if h.links.len() > 600 {
                         h.links.clear();
@@ -111,6 +116,8 @@ impl Hub {
         out.extend(h.learning.iter().cloned());
         out.extend(h.skipped.iter().cloned());
         out.extend(h.extension.iter().cloned());
+        out.extend(h.feed.iter().cloned());
+        out.extend(h.funnel.iter().cloned());
         out.extend(h.links.values().cloned());
         out
     }
@@ -163,5 +170,22 @@ impl Hub {
             }
         });
         Ok(local)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn feed_health_and_funnel_keep_only_the_latest_and_never_flood_the_history() {
+        let hub = Hub::new();
+        for i in 0..2000 {
+            hub.emit(EngineEvent::FeedHealth(crate::events::FeedHealthView { ts: i, ..Default::default() }));
+            hub.emit(EngineEvent::Funnel(crate::events::FunnelView { ts: i, ..Default::default() }));
+        }
+        let snap = hub.snapshot();
+        assert_eq!(snap.len(), 2, "one health and one funnel event, nothing else");
+        assert!(snap.iter().any(|e| matches!(e, EngineEvent::FeedHealth(h) if h.ts == 1999)));
     }
 }

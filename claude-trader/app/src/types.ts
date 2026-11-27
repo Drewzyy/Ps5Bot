@@ -55,7 +55,47 @@ export type EngineEvent =
   | ({ type: "learning" } & LearningSnapshot)
   | { type: "links"; mint: string; website: string; twitter: string; telegram: string }
   | { type: "skipped"; executor: string; checks: { name: string; why: string }[] }
-  | { type: "extension"; ts: number; paired: boolean; connected: boolean; lastSeenMs: number };
+  | { type: "extension"; ts: number; paired: boolean; connected: boolean; lastSeenMs: number }
+  | ({ type: "feed-health" } & FeedHealth)
+  | ({ type: "funnel" } & Funnel);
+
+/** Mirrors engine/src/events.rs FeedHealthView: is buy/sell data reaching the Token Picker? */
+export interface FeedHealth {
+  ts: number;
+  coinsConnected: boolean;
+  tradesConnected: boolean;
+  watched: number;
+  subsActive: number;
+  tradesLastMin: number;
+  tradesTotal: number;
+  lastTradeMs: number;
+  lastError: string;
+  /** Plain warning, empty when all is well. */
+  warn: string;
+  rugRequests: number;
+  rugFailures: number;
+}
+
+/** Mirrors engine/src/events.rs FunnelView: where coins dropped off today. */
+export interface Funnel {
+  ts: number;
+  seen: number;
+  blocked: number;
+  blockedReasons: { reason: string; count: number }[];
+  inProgress: number;
+  scored: number;
+  scoredNoTrades: number;
+  bestScore: number;
+  bestSymbol: string;
+  minScore: number;
+  bestBlockedBy: { reason: string; count: number }[];
+  picked: number;
+  bought: number;
+  rugFallbackPassed: number;
+  rugFallbackBlocked: number;
+  /** True for seeded screenshot data. */
+  demo?: boolean;
+}
 
 /** Mirrors engine/src/startup.rs plus what the app adds. */
 export interface StartupView {

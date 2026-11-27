@@ -12,7 +12,7 @@ use crate::rpc::{now_ms, Rpc, TradeFeed};
 use crate::shield::rules::{ev, should_blacklist_creator, Outcome};
 use crate::learning::{self, EntryFeatures, MISSED_MIN_SCORE, MISSED_WINDOW_MS};
 use crate::trader::{Pick, Trader};
-use crate::shield::{decide, ChainFacts, Decision, Shield, ShieldOpts};
+use crate::shield::{decide, ChainFacts, Decision, RugGate, RugOutcome, Shield, ShieldOpts, FALLBACK_SIZE_FACTOR, RUG_FALLBACK_NOTE};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -241,14 +241,16 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     }
     trader.spawn_ticker(stop.clone());
     // Chrome extension bridge: it gets its own Shield for "Check this coin" and no handle to the trader at all.
+    // ONE RugCheck client for the whole app (2 in flight, rate limited, cached per mint).
+    let rug_client = Arc::new(crate::shield::net::RugCheck::new());
     if let Some(addr) = &opts.bridge_addr {
-        let checker = Arc::new(crate::bridge::ShieldChecker { shield: Arc::new(Shield::new(opts.config.clone(), db.clone(), rpc.clone(), ShieldOpts { relax_egress: opts.relax_egress })), hub: hub.clone(), db: db.clone() });
+        let checker = Arc::new(crate::bridge::ShieldChecker { shield: Arc::new(Shield::with_rugcheck(opts.config.clone(), db.clone(), rpc.clone(), ShieldOpts { relax_egress: opts.relax_egress }, rug_client.clone())), hub: hub.clone(), db: db.clone() });
         match crate::bridge::Bridge::new(hub.clone(), db.clone(), checker).serve(addr).await {
             Ok(a) => hub.log(format!("engine: Chrome extension bridge on ws://{a} (pinned extension only, pairing required)")),
             Err(e) => hub.log(format!("engine: Chrome extension bridge NOT started: {e}")),
         }
     }
-    let shield = Shield::new(opts.config.clone(), db.clone(), rpc, ShieldOpts { relax_egress: opts.relax_egress });
+    let shield = Shield::with_rugcheck(opts.config.clone(), db.clone(), rpc, ShieldOpts { relax_egress: opts.relax_egress }, rug_client.clone());
     let mon = Arc::new(MonitorState::default());
     let ctx = Arc::new(Ctx {
         links: Default::default(),
@@ -284,6 +286,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     }
 
     let mut tick = tokio::time::interval(Duration::from_secs(2));
+    let mut health = crate::health::HealthTracker::default();
     let mut stop = stop;
     let day_start = |n: i64| n - n.rem_euclid(86_400_000);
     loop {
@@ -299,11 +302,19 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
             },
             _ = tick.tick() => {
                 let now = now_ms();
-                // Memecoin Monitor
+                // Memecoin Monitor: the new-coin feed AND the buy/sell data (a coin scores 0 without it)
                 let created = mon.created.load(Ordering::Relaxed);
+                let fh = feed_health(&ctx, &mut health, &rug_client, now);
+                hub.emit(EngineEvent::FeedHealth(fh.clone()));
                 if mon.connected.load(Ordering::Relaxed) {
                     let ago = (now - mon.last_msg_ms.load(Ordering::Relaxed)) / 1000;
-                    status(&hub, AgentId::MemecoinMonitor, StatusColor::Green, format!("Live: {created} new coins seen, last message {ago} s ago"));
+                    if !fh.warn.is_empty() {
+                        status(&hub, AgentId::MemecoinMonitor, StatusColor::Red, "No buy/sell data arriving: every coin scores 0");
+                    } else if fh.watched == 0 {
+                        status(&hub, AgentId::MemecoinMonitor, StatusColor::Green, format!("Live: {created} new coins seen, last message {ago} s ago"));
+                    } else {
+                        status(&hub, AgentId::MemecoinMonitor, StatusColor::Green, format!("Live. {} trades/min on {} coins", fh.trades_last_min, fh.watched));
+                    }
                 } else if mon.no_buys() {
                     status(&hub, AgentId::MemecoinMonitor, StatusColor::Red, "Feed down for over 5 s: NO BUYS until it reconnects");
                 } else {
@@ -311,6 +322,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
                 }
                 let (checked, blocked, passed, by) = db.summary(day_start(now));
                 hub.emit(EngineEvent::ShieldSummary { ts: now, checked, blocked, passed, by_reason: by });
+                hub.emit(EngineEvent::Funnel(funnel_view(&ctx, day_start(now), now)));
                 let chk = ctx.checking.load(Ordering::Relaxed);
                 status(&hub, AgentId::ScamShield, if chk > 0 { StatusColor::Green } else { StatusColor::Amber }, format!("Checking {chk} coins. Today: {blocked} blocked, {passed} passed"));
                 let obs = ctx.observing.load(Ordering::Relaxed);
@@ -319,6 +331,52 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         }
     }
     Ok(())
+}
+
+/// Numbers for the health line. `watched` counts coins we are collecting trades for.
+fn feed_health(ctx: &Ctx, tracker: &mut crate::health::HealthTracker, rug: &crate::shield::net::RugCheck, now: i64) -> FeedHealthView {
+    use std::sync::atomic::Ordering::Relaxed;
+    let feed = &ctx.trader.feed;
+    let st = &feed.stats;
+    let watched = feed.store.active() as u32;
+    let trades_connected = feed.connected.load(Relaxed);
+    let last = st.last_trade_ms.load(Relaxed);
+    let warn = tracker.warn(now, watched, trades_connected, last);
+    FeedHealthView {
+        ts: now,
+        coins_connected: ctx.mon.connected.load(Relaxed),
+        trades_connected,
+        watched,
+        subs_active: st.subs_active.load(Relaxed) as u32,
+        trades_last_min: st.trades_within(now, 60_000),
+        trades_total: st.trades_total.load(Relaxed),
+        last_trade_ms: last,
+        last_error: st.last_error(),
+        warn,
+        rug_requests: rug.requests.load(Relaxed),
+        rug_failures: rug.failures.load(Relaxed),
+    }
+}
+
+fn funnel_view(ctx: &Ctx, since: i64, now: i64) -> FunnelView {
+    let f = ctx.db.funnel(since, 10);
+    FunnelView {
+        ts: now,
+        in_progress: f.seen.saturating_sub(f.blocked + f.scored),
+        seen: f.seen,
+        blocked: f.blocked,
+        blocked_reasons: f.blocked_reasons,
+        scored: f.scored,
+        scored_no_trades: f.scored_no_trades,
+        best_score: f.best_score,
+        best_symbol: f.best_symbol,
+        min_score: ctx.cfg.observation.min_score,
+        best_blocked_by: f.best_blocked_by,
+        picked: f.picked,
+        bought: f.bought,
+        rug_fallback_passed: f.rug_fallback_passed,
+        rug_fallback_blocked: f.rug_fallback_blocked,
+    }
 }
 
 fn short_mint(m: &str) -> String {
@@ -335,6 +393,7 @@ fn record(ctx: &Ctx, t: &FeedMsg, stage: &str, d: &Decision) {
     let now = now_ms();
     let (outcome, reason, detail, mut evidence) = match &d.block {
         Some(b) => ("block", b.code.clone(), b.detail.clone(), b.evidence.clone()),
+        None if stage == "rugcheck-fallback" => ("pass", String::new(), format!("{RUG_FALLBACK_NOTE}. {} on-chain checks all passed; half trade size if bought.", d.results.len().saturating_sub(1)), vec![]),
         None => ("pass", String::new(), format!("{} checks done, none blocked.{}", d.results.len(), flags(d)), vec![]),
     };
     if evidence.is_empty() {
@@ -374,9 +433,11 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
 
     // Start collecting trades right away so the chain checks and the observation share the same data.
     ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+    // RugCheck runs in parallel from now on (retrying a busy or not-yet-indexed API); it is judged during the watch.
+    let rug = ctx.shield.start_rugcheck(&t.mint);
 
     // Stage B: chain checks (bounded concurrency; waiting too long counts as an undecided required check)
-    let (b, facts): (Decision, ChainFacts) = match tokio::time::timeout(Duration::from_secs(8), ctx.chain_slots.acquire()).await {
+    let (b, mut facts): (Decision, ChainFacts) = match tokio::time::timeout(Duration::from_secs(8), ctx.chain_slots.acquire()).await {
         Ok(Ok(_p)) => {
             let (res, facts) = ctx.shield.stage_b(&t).await;
             (decide(res), facts)
@@ -387,6 +448,7 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
         }
     };
     ctx.checking.fetch_sub(1, Ordering::Relaxed);
+    facts.rug = Some(rug);
     if facts.links != crate::shield::rules::SocialLinks::default() {
         ctx.links.lock().unwrap().insert(t.mint.clone(), facts.links.clone());
         ctx.hub.emit(EngineEvent::Links { mint: t.mint.clone(), website: facts.links.website.clone(), twitter: facts.links.twitter.clone(), telegram: facts.links.telegram.clone() });
@@ -400,13 +462,45 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     observe_and_trade(ctx, t, t0, facts).await;
 }
 
+/// Wait out the observation window while RugCheck's request runs in parallel. When its report arrives it is judged
+/// at once: a block ends the watch early (returns the decision, already recorded).
+async fn watch_window(ctx: &Ctx, t: &FeedMsg, facts: &mut ChainFacts, wait_ms: u64) -> Option<Decision> {
+    let end = tokio::time::Instant::now() + Duration::from_millis(wait_ms);
+    let Some(mut rx) = facts.rug.clone() else {
+        tokio::time::sleep_until(end).await;
+        return None;
+    };
+    loop {
+        if let Some(d) = ctx.shield.judge_report_if_ready(t, facts) {
+            record(ctx, t, "rugcheck", &d);
+            if d.block.is_some() {
+                return Some(d);
+            }
+        }
+        let settled = facts.rug_done.is_some() || matches!(rx.borrow().outcome, RugOutcome::Unavailable(_));
+        if settled {
+            tokio::time::sleep_until(end).await;
+            return None;
+        }
+        tokio::select! {
+            _ = tokio::time::sleep_until(end) => return None,
+            r = rx.changed() => { if r.is_err() { tokio::time::sleep_until(end).await; return None; } }
+        }
+    }
+}
+
 /// Observation window, score, pre-buy checks, then the entry rule of each lane. Shared by live and replay runs.
-pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainFacts) {
+pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: ChainFacts) {
     // Observation window
     ctx.observing.fetch_add(1, Ordering::Relaxed);
     let min_age = ctx.cfg.entry.min_age_seconds as i64 * 1000;
     let wait = (t0 + min_age - now_ms()).max(0) as u64;
-    tokio::time::sleep(Duration::from_millis(wait)).await;
+    // Watch for the window. RugCheck's answer is judged the moment it arrives: a danger flag ends the watch at once.
+    if watch_window(&ctx, &t, &mut facts, wait).await.is_some() {
+        ctx.observing.fetch_sub(1, Ordering::Relaxed);
+        ctx.trader.release_feed(&t.mint);
+        return;
+    }
     let now = now_ms();
     let age = (now - t0) as f64 / 1000.0;
     let trades = ctx.trader.feed.store.snapshot(&t.mint);
@@ -468,6 +562,27 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainF
             shadow_picked = false;
         }
     }
+    // RugCheck verdict for a coin that would otherwise be picked: its report, or (no answer) our own on-chain checks at half size.
+    let mut size_factor = 1.0;
+    if picked || dip_eligible || shadow_picked {
+        let (gate, recs) = ctx.shield.rug_gate(&t, &mut facts).await;
+        for (stage, d) in &recs {
+            record(&ctx, &t, stage, d);
+        }
+        match gate {
+            RugGate::Full => {}
+            RugGate::Half => {
+                size_factor = FALLBACK_SIZE_FACTOR;
+                ctx.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::ScamShield, text: format!("{}: {RUG_FALLBACK_NOTE}. If bought, half size.", t.symbol), mint: Some(t.mint.clone()), source_url: ctx.source_for(&t.mint) });
+            }
+            RugGate::Block(code) => {
+                picked = false;
+                dip_eligible = false;
+                shadow_picked = false;
+                gates.push(format!("Scam Shield: RugCheck / on-chain check ({code})"));
+            }
+        }
+    }
     let mut blocked_by = gates.first().cloned().unwrap_or_default();
     if blocked_by.is_empty() && sc.score < mcfg.observation.min_score {
         blocked_by = format!("score below {}", mcfg.observation.min_score);
@@ -500,8 +615,17 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainF
     ctx.hub.emit(EngineEvent::Decision { ts: now, agent: AgentId::TokenPicker, text: format!("{}: {detail}", t.symbol) });
     ctx.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::TokenPicker, text: format!("Scored {} at {:.1}{}", t.symbol, sc.score, if picked { ": picked" } else { "" }), mint: Some(t.mint.clone()), source_url: ctx.source_for(&t.mint) });
     ctx.observing.fetch_sub(1, Ordering::Relaxed);
+    let gate_labels: Vec<String> = {
+        let mut v: Vec<String> = gates.iter().map(|g| picker::gate_label(g).to_string()).collect();
+        if v.is_empty() && !picked && sc.score < mcfg.observation.min_score {
+            v.push(picker::gate_label("score below").to_string());
+        }
+        v.dedup();
+        v
+    };
+    ctx.db.insert_score(now, &t.mint, &t.symbol, sc.score, picked, &gate_labels, trades.len() as u32, obs.unique_buyers);
     let features = EntryFeatures { score: sc.score, buyers: obs.unique_buyers, buys: obs.buys, sells: obs.sells, ratio: obs.ratio, curve_sol: obs.curve_sol, age_seconds: age, mcap_sol: obs.mcap_sol, picked_ms: now, source_url: ctx.source_for(&t.mint).unwrap_or_default() };
-    let pick = Pick { mint: t.mint.clone(), symbol: t.symbol.clone(), creator: t.trader_public_key.clone(), curve_key: t.bonding_curve_key.clone(), score: sc.score, features };
+    let pick = Pick { mint: t.mint.clone(), symbol: t.symbol.clone(), creator: t.trader_public_key.clone(), curve_key: t.bonding_curve_key.clone(), score: sc.score, features, size_factor };
     // A coin that scored high and was still not bought is a "missed coin": watch what it did for 5 minutes.
     if sc.score >= MISSED_MIN_SCORE && !picked {
         ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
@@ -581,7 +705,7 @@ async fn replay_drive(ctx: Arc<Ctx>, sc: crate::replay::Scenario) {
 }
 
 fn pick_clone(p: &Pick) -> Pick {
-    Pick { mint: p.mint.clone(), symbol: p.symbol.clone(), creator: p.creator.clone(), curve_key: p.curve_key.clone(), score: p.score, features: p.features.clone() }
+    Pick { mint: p.mint.clone(), symbol: p.symbol.clone(), creator: p.creator.clone(), curve_key: p.curve_key.clone(), score: p.score, features: p.features.clone(), size_factor: p.size_factor }
 }
 
 /// Paper variant `dip-40pct`: after the observation gate, wait (until the coin is 4 minutes old) for a 40-50% dip
@@ -612,6 +736,134 @@ async fn dip_watch(ctx: Arc<Ctx>, p: Pick, t0: i64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------- RugCheck outage, end to end through observe_and_trade
+
+    use crate::shield::rules::Holder;
+
+    fn test_ctx(answers: Vec<Result<Option<serde_json::Value>, String>>, require_rugcheck: bool) -> Arc<Ctx> {
+        let mut cfg = Config::from_json(include_str!("../../config.json")).unwrap();
+        cfg.filters.require_rugcheck = require_rugcheck;
+        cfg.paper_fill.buy_fail_pct = 0.0;
+        cfg.paper_fill.sell_fail_pct = 0.0;
+        cfg.paper_fill.delay_ms_min = 0;
+        cfg.paper_fill.delay_ms_max = 0;
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let hub = Hub::new();
+        let rpc = Arc::new(Rpc::new("http://127.0.0.1:9", 50.0));
+        let dir = std::env::temp_dir().join(format!("ct-eng-{}-{}", now_ms(), answers.len()));
+        let trader = Trader::new(cfg.clone(), db.clone(), hub.clone(), TradeFeed::offline(), None, 150.0, dir, true);
+        let rc = Arc::new(crate::shield::net::RugCheck::scripted(answers, vec![Duration::from_millis(5); 3]));
+        let shield = Shield::with_rugcheck(cfg.clone(), db.clone(), rpc, ShieldOpts { relax_egress: false }, rc);
+        Arc::new(Ctx { cfg, links: Default::default(), shield, trader, hub, db, mon: Arc::new(MonitorState::default()), chain_slots: Semaphore::new(6), checking: AtomicU32::new(0), observing: AtomicU32::new(0), picked: AtomicU32::new(0) })
+    }
+
+    fn create() -> FeedMsg {
+        match crate::pump::parse_feed(crate::pump::tests::REAL_CREATE) {
+            crate::pump::Parsed::Create(m) => m,
+            _ => panic!(),
+        }
+    }
+
+    /// A busy coin: 16 different buyers over the last 55 s, the curve filling up to 15.5 SOL. It scores far above 80
+    /// and passes every entry and pre-buy rule, so only the RugCheck step decides whether it is bought and at what size.
+    fn seed_busy_coin(ctx: &Ctx, t: &FeedMsg) {
+        ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+        let now = now_ms();
+        for i in 0..16u64 {
+            let age_s = if i < 3 { 50 - i as i64 * 8 } else { 27 - (i as i64 - 3) * 2 };
+            ctx.trader.feed.store.add(Trade {
+                mint: t.mint.clone(),
+                user: format!("buyer{i:02}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"),
+                is_buy: true,
+                sol: 1.0,
+                tokens: 20_000_000.0,
+                slot: 300_000_000 + i * 40,
+                signature: format!("sig{i}"),
+                recv_ms: now - age_s * 1000,
+                v_sol: 30.0 + (i as f64 + 1.0) * 1.0,
+                v_tokens: 7.0e8,
+                real_sol: (i as f64 + 1.0) * 1.0,
+            });
+        }
+    }
+
+    fn clean_facts(ctx: &Ctx, t: &FeedMsg) -> ChainFacts {
+        let mut f = ChainFacts::default();
+        f.excluded.insert(t.bonding_curve_key.clone());
+        f.mint_info = Some(crate::shield::rules::MintInfo { program: "spl-token-2022".into(), supply: 1.0e15, decimals: 6, ..Default::default() });
+        f.core = vec![crate::shield::rules::CheckResult::pass("dev_snipe", "x"), crate::shield::rules::CheckResult::pass("bundle", "x")];
+        f.rug = Some(ctx.shield.start_rugcheck(&t.mint));
+        f
+    }
+
+    fn opened_size(ctx: &Ctx) -> Option<f64> {
+        ctx.db.with_conn(|c| c.query_row("SELECT size_sol FROM positions ORDER BY id LIMIT 1", [], |r| r.get::<_, f64>(0)).ok())
+    }
+
+    fn five_502() -> Vec<Result<Option<serde_json::Value>, String>> {
+        (0..4).map(|_| Err("rugcheck http 502".to_string())).collect()
+    }
+
+    #[tokio::test]
+    async fn rugcheck_down_but_onchain_checks_pass_buys_at_half_size() {
+        let ctx = test_ctx(five_502(), false);
+        *ctx.shield.holders_stub.lock().unwrap() = Some(Ok(vec![Holder { owner: create().bonding_curve_key, pct: 60.0, insider: false }, Holder { owner: "w1".into(), pct: 3.0, insider: false }]));
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let normal = ctx.trader.lane("momentum").unwrap().risk.lock().unwrap().size();
+        let facts = clean_facts(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        let size = opened_size(&ctx).expect("the coin was bought");
+        assert!((size - normal / 2.0).abs() < 1e-9, "half of {normal}, got {size}");
+        let rows: Vec<(String, String, String)> = ctx.db.with_conn(|c| c.prepare("SELECT stage, outcome, detail FROM decisions WHERE mint=?").unwrap().query_map([&t.mint], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap().flatten().collect());
+        let fb = rows.iter().find(|r| r.0 == "rugcheck-fallback").expect("fallback decision recorded");
+        assert_eq!(fb.1, "pass");
+        assert!(fb.2.contains("RugCheck unavailable, passed on-chain checks"), "{}", fb.2);
+    }
+
+    #[tokio::test]
+    async fn rugcheck_report_ok_buys_at_full_size() {
+        let report = serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [{"owner": "w1", "pct": 2.0}], "risks": [], "fileMeta": {"image": "i"}});
+        let ctx = test_ctx(vec![Ok(Some(report))], false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let normal = ctx.trader.lane("momentum").unwrap().risk.lock().unwrap().size();
+        let facts = clean_facts(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!((opened_size(&ctx).expect("bought") - normal).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn rugcheck_danger_flag_stops_the_watch_early_and_nothing_is_bought() {
+        let danger = serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [], "risks": [{"name": "Copycat token", "level": "danger", "description": "x"}]});
+        let ctx = test_ctx(vec![Ok(Some(danger))], false);
+        *ctx.shield.holders_stub.lock().unwrap() = Some(Ok(vec![]));
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let facts = clean_facts(&ctx, &t);
+        // the coin is brand new (60 s of watching ahead): the danger report must end the watch within a moment
+        let started = std::time::Instant::now();
+        tokio::time::timeout(Duration::from_secs(5), observe_and_trade(ctx.clone(), t.clone(), now_ms(), facts)).await.expect("ended early");
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert!(opened_size(&ctx).is_none());
+        let n: i64 = ctx.db.with_conn(|c| c.query_row("SELECT COUNT(*) FROM decisions WHERE mint=? AND stage='rugcheck' AND outcome='block' AND reason='RUGCHECK_DANGER'", [&t.mint], |r| r.get(0)).unwrap());
+        assert_eq!(n, 1);
+    }
+
+    #[tokio::test]
+    async fn require_rugcheck_on_buys_nothing_when_rugcheck_is_down() {
+        let ctx = test_ctx(five_502(), true);
+        *ctx.shield.holders_stub.lock().unwrap() = Some(Ok(vec![]));
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let facts = clean_facts(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx).is_none());
+        let score_rows: i64 = ctx.db.with_conn(|c| c.query_row("SELECT COUNT(*) FROM scores WHERE picked=0 AND gates LIKE '%RugCheck or on-chain%'", [], |r| r.get(0)).unwrap());
+        assert_eq!(score_rows, 1, "the funnel can see which gate stopped the coin");
+    }
+
 
     #[test]
     fn opts_default_to_public_rpc_without_keys() {

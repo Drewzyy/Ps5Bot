@@ -8,6 +8,7 @@ import type { EngineState } from "../useEngine";
 import { SECTIONS, flatten } from "../settingsMeta";
 import type { Row } from "../settingsMeta";
 import { SourceLink } from "./links";
+import { FeedHealthLine } from "./Health";
 
 function show(v: unknown): string {
   if (typeof v === "boolean") return v ? "On" : "Off";
@@ -160,7 +161,7 @@ function FillPreset({ config, onApplied, engine }: { config: Config; onApplied: 
 
 // ------------------------------------------------------------------ Connections
 
-function Connections() {
+function Connections({ engine }: { engine: EngineState }) {
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState("");
@@ -233,6 +234,17 @@ function Connections() {
         {status?.unavailable && <div className="note">{"Saving a key only works in the desktop app. This page is the browser preview."}</div>}
       </div>
       {result && <div className={`result ${result.ok ? "ok" : "bad"}`} role="status">{result.text}</div>}
+      <div className="field" style={{ marginTop: 14 }}>
+        <div className="lblrow">
+          <b>Buy/sell data health</b>
+          <Info label="Buy/sell data health">
+            <p><b>What it does.</b> A coin's score comes from the buys and sells the app sees while it watches the coin for 60 seconds. This panel shows whether those buys and sells are really arriving.</p>
+            <p><b>A good value.</b> "Trades read, last minute" above 0 while coins are being watched. "Confirmed by the node" close to "coins being watched".</p>
+            <p><b>How to set it.</b> If it stays at 0, save a free Helius key above and press Test connection. If you already did, the line "The data connection says" tells you what the server answered.</p>
+          </Info>
+        </div>
+        <FeedHealthLine feed={engine.feed} />
+      </div>
     </div>
   );
 }
@@ -517,9 +529,9 @@ export default function SettingsPage({ config, engine, onConfig }: { config: Con
           </Section>
         );
       })}
-      <Section id="connections" title="Connections" summary="Helius key" open={isOpen("connections")} toggle={() => toggle("connections")}>
+      <Section id="connections" title="Connections" summary="Helius key and data health" open={isOpen("connections")} toggle={() => toggle("connections")}>
         <p className="acc-blurb">Outside services the app talks to. The key is kept in your computer's secure storage, never in config.json, logs or git.</p>
-        <Connections />
+        <Connections engine={engine} />
       </Section>
       <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
         <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>

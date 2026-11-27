@@ -3,39 +3,8 @@ import type { EngineState } from "../useEngine";
 import { FeesCard, OpenPositions, PerformanceCard, PositionChart } from "./Trading";
 import { LearningCard } from "./Learning";
 import { SourceLink } from "./links";
-
-export const REASON_LABEL: Record<string, string> = {
-  MINT_AUTHORITY: "Mint authority still set",
-  FREEZE_AUTHORITY: "Freeze authority still set",
-  TRANSFER_HOOK: "Token-2022 transfer hook",
-  PERMANENT_DELEGATE: "Permanent delegate",
-  TRANSFER_FEE: "Transfer fee on the token",
-  CLOSE_AUTHORITY: "Mint close authority",
-  CREATOR_HOLDING: "Creator holds too much",
-  SINGLE_HOLDER: "One wallet holds too much",
-  TOP_HOLDERS: "Top wallets hold too much",
-  INSIDERS: "Insider wallets hold too much",
-  BUNDLE_BURST: "Bundled launch (many buys in one block)",
-  BUNDLE_PAYERS: "Bundled wallets (few wallets, many buys)",
-  BUNDLE_SUPPLY: "3 wallets hold most of the supply",
-  DEV_SNIPE: "Sniped in the first block",
-  WASH_VOLUME: "Wash or thin volume",
-  COPYCAT: "Copycat of a trending coin",
-  CREATOR_BLACKLISTED: "Creator on blacklist",
-  RUGCHECK_RUGGED: "RugCheck says rugged",
-  RUGCHECK_DANGER: "RugCheck danger flag",
-  METADATA_MISSING: "Name, symbol or link missing",
-  METADATA_UNRESOLVED: "Metadata link does not open",
-  NO_IMAGE: "No image",
-  NO_SOCIALS: "No social links",
-  CHASE_RISK: "Price already spiked 3x",
-  DUMPED_FROM_PEAK: "Price fell over 40% from its peak",
-  BACKLOG: "Skipped: too busy",
-  LOW_SCORE: "Score too low",
-  GATE: "Entry rules not met",
-};
-
-export const reasonLabel = (code: string) => REASON_LABEL[code] ?? (code.startsWith("UNDECIDED_") ? `Could not verify (${code.slice(10).toLowerCase().replace(/_/g, " ")})` : code);
+import { reasonLabel } from "../reasons";
+import { FunnelCard } from "./Health";
 
 const solscan = (mint: string) => `https://solscan.io/token/${mint}`;
 const shortMint = (m: string) => `${m.slice(0, 4)}..${m.slice(-4)}`;
@@ -164,6 +133,8 @@ function ShieldCard({ engine }: { engine: EngineState }) {
 export default function Widgets({ config, openSettings, engine }: { config: Config; openSettings: () => void; engine: EngineState }) {
   return (
     <div className="grid">
+      <FunnelCard engine={engine} />
+
       <Watchlist rows={engine.watchlist} links={engine.links} />
 
       <OpenPositions engine={engine} config={config} />

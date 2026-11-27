@@ -1,0 +1,55 @@
+{
+ "_source": "pump.fun IDL (pump-fun/pump-public-docs idl/pump.json via pumpfun-bonkfun-bot idl/pump_fun_idl.json), TradeEvent only; checked 2026-11-27",
+ "TradeEvent": [
+  {
+   "name": "mint",
+   "type": "pubkey"
+  },
+  {
+   "name": "sol_amount",
+   "type": "u64"
+  },
+  {
+   "name": "token_amount",
+   "type": "u64"
+  },
+  {
+   "name": "is_buy",
+   "type": "bool"
+  },
+  {
+   "name": "user",
+   "type": "pubkey"
+  },
+  {
+   "name": "timestamp",
+   "type": "i64"
+  },
+  {
+   "name": "virtual_sol_reserves",
+   "type": "u64"
+  },
+  {
+   "name": "virtual_token_reserves",
+   "type": "u64"
+  },
+  {
+   "name": "real_sol_reserves",
+   "type": "u64"
+  },
+  {
+   "name": "real_token_reserves",
+   "type": "u64"
+  }
+ ],
+ "discriminator": [
+  189,
+  219,
+  127,
+  211,
+  78,
+  230,
+  97,
+  238
+ ]
+}

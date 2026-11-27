@@ -171,6 +171,50 @@ pub mod tests {
         assert!(matches!(parse_feed(r#"{"mint":"x","txType":"create","brandNewField":[1,2]}"#), Parsed::Create(_)));
     }
 
+    /// Build a TradeEvent log payload with the current layout (disc, mint, sol, tokens, is_buy, user, ts, 4 reserves, then
+    /// the fee fields as zeros), so tests can replay a whole market through the real decoder.
+    pub fn encode_trade_event(mint: &str, user: &str, is_buy: bool, sol: f64, tokens: f64, v_sol: f64, v_tokens: f64, real_sol: f64) -> String {
+        let mut d = Vec::with_capacity(260);
+        d.extend_from_slice(&TRADE_DISC);
+        d.extend_from_slice(&bs58::decode(mint).into_vec().unwrap());
+        d.extend_from_slice(&((sol * 1e9) as u64).to_le_bytes());
+        d.extend_from_slice(&((tokens * 1e6) as u64).to_le_bytes());
+        d.push(is_buy as u8);
+        d.extend_from_slice(&bs58::decode(user).into_vec().unwrap());
+        d.extend_from_slice(&1_795_000_000i64.to_le_bytes());
+        d.extend_from_slice(&((v_sol * 1e9) as u64).to_le_bytes());
+        d.extend_from_slice(&((v_tokens * 1e6) as u64).to_le_bytes());
+        d.extend_from_slice(&((real_sol * 1e9) as u64).to_le_bytes());
+        d.extend_from_slice(&793_000_000_000_000u64.to_le_bytes()); // real token reserves
+        d.resize(260, 0); // fee recipient, fee bps, fee, creator ... (not read)
+        base64::engine::general_purpose::STANDARD.encode(d)
+    }
+
+    #[test]
+    fn decoder_offsets_match_the_pump_idl_trade_event_layout() {
+        // The first ten TradeEvent fields from the pump.fun IDL, saved in tests/fixtures. Field sizes give each offset.
+        let v: serde_json::Value = serde_json::from_str(include_str!("../tests/fixtures/pump_trade_event_layout.json")).unwrap();
+        let size = |t: &str| match t { "pubkey" => 32, "u64" | "i64" => 8, "bool" => 1, o => panic!("unexpected type {o}") };
+        let mut off = 8; // discriminator
+        let mut at = std::collections::HashMap::new();
+        for f in v["TradeEvent"].as_array().unwrap() {
+            at.insert(f["name"].as_str().unwrap().to_string(), off);
+            off += size(f["type"].as_str().unwrap());
+        }
+        assert_eq!(v["discriminator"], serde_json::json!(TRADE_DISC.to_vec()), "event discriminator changed");
+        // what decode_trade_event reads: mint 8, sol 40, tokens 48, is_buy 56, user 57, vSol 97, vTokens 105, realSol 113
+        for (name, want) in [("mint", 8), ("sol_amount", 40), ("token_amount", 48), ("is_buy", 56), ("user", 57), ("virtual_sol_reserves", 97), ("virtual_token_reserves", 105), ("real_sol_reserves", 113)] {
+            assert_eq!(at[name], want, "{name} moved in the IDL: update decode_trade_event");
+        }
+        // and a synthetic event built from the IDL layout decodes back to the same numbers
+        let mint = bs58::encode([7u8; 32]).into_string();
+        let user = bs58::encode([9u8; 32]).into_string();
+        let b64 = encode_trade_event(&mint, &user, true, 1.5, 1234.5, 31.5, 1_000_000_000.0, 1.5);
+        let t = decode_trade_event(&b64, 5, "s", 1).unwrap();
+        assert!(t.is_buy && t.mint == mint && t.user == user);
+        assert!((t.sol - 1.5).abs() < 1e-9 && (t.tokens - 1234.5).abs() < 1e-6 && (t.v_sol - 31.5).abs() < 1e-9 && (t.real_sol - 1.5).abs() < 1e-9);
+    }
+
     #[test]
     fn decodes_real_trade_event() {
         let t = decode_trade_event(REAL_SELL_B64, 473941165, "sig", 1).unwrap();
