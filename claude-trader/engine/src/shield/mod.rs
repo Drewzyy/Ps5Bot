@@ -37,6 +37,8 @@ pub struct Shield {
 pub struct ChainFacts {
     pub holders: Vec<Holder>,
     pub excluded: HashSet<String>,
+    /// Website, X and Telegram from the coin's metadata (for the "source" links in the UI).
+    pub links: rules::SocialLinks,
 }
 
 #[derive(Debug, Clone)]
@@ -113,12 +115,13 @@ impl Shield {
             }
             last
         };
-        let meta_fut = async { timeout(BUDGET + Duration::from_millis(300), net::fetch_metadata(&self.http, &t.uri)).await.unwrap_or(MetaFetch::Failed("timeout".into())) };
+        let meta_fut = async { timeout(BUDGET + Duration::from_millis(300), net::fetch_metadata_links(&self.http, &t.uri)).await.unwrap_or((MetaFetch::Failed("timeout".into()), rules::SocialLinks::default())) };
 
-        let (mint_res, rug, sigs, meta) = tokio::join!(mint_fut, rug_fut, sig_fut, meta_fut);
+        let (mint_res, rug, sigs, (meta, links)) = tokio::join!(mint_fut, rug_fut, sig_fut, meta_fut);
         let mut out = vec![mint_res, honeypot_stub()];
         let mut facts = ChainFacts::default();
         facts.excluded.insert(t.bonding_curve_key.clone());
+        facts.links = links;
 
         match &rug {
             Ok(r) => {

@@ -1,6 +1,6 @@
 //! Network-backed Scam Shield inputs: RugCheck report and token metadata JSON.
 
-use super::rules::{parse_metadata_json, MetaFetch};
+use super::rules::{parse_metadata_json, parse_social_links, MetaFetch, SocialLinks};
 use crate::net::{http_client, mask};
 use crate::rpc::Limiter;
 use serde_json::Value;
@@ -41,12 +41,26 @@ impl Default for RugCheck {
 
 /// Fetch the metadata JSON (name, image, twitter, telegram, website) within 2 s.
 pub async fn fetch_metadata(http: &reqwest::Client, uri: &str) -> MetaFetch {
+    fetch_metadata_links(http, uri).await.0
+}
+
+/// Same fetch, plus the coin's website, X and Telegram links so the UI can show where to read about it.
+pub async fn fetch_metadata_links(http: &reqwest::Client, uri: &str) -> (MetaFetch, SocialLinks) {
+    let mut links = SocialLinks::default();
+    let m = fetch_metadata_inner(http, uri, &mut links).await;
+    (m, links)
+}
+
+async fn fetch_metadata_inner(http: &reqwest::Client, uri: &str, links: &mut SocialLinks) -> MetaFetch {
     if !(uri.starts_with("http://") || uri.starts_with("https://")) {
         return MetaFetch::Failed("not an http link".into());
     }
     match http.get(uri).timeout(Duration::from_secs(2)).send().await {
         Ok(r) if r.status().is_success() => match r.json::<Value>().await {
-            Ok(v) => parse_metadata_json(&v),
+            Ok(v) => {
+                *links = parse_social_links(&v);
+                parse_metadata_json(&v)
+            }
             Err(e) => MetaFetch::Failed(format!("not json: {e}")),
         },
         Ok(r) => MetaFetch::Failed(format!("http {}", r.status().as_u16())),

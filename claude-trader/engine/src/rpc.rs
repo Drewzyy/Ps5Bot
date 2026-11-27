@@ -47,27 +47,34 @@ impl Limiter {
 }
 
 pub struct Rpc {
-    url: String,
+    url: std::sync::RwLock<String>,
     http: reqwest::Client,
     limiter: Limiter,
 }
 
 impl Rpc {
     pub fn new(url: &str, per_sec: f64) -> Self {
-        Rpc { url: url.to_string(), http: http_client(), limiter: Limiter::new(per_sec) }
+        Rpc { url: std::sync::RwLock::new(url.to_string()), http: http_client(), limiter: Limiter::new(per_sec) }
+    }
+    fn url(&self) -> String {
+        self.url.read().unwrap().clone()
+    }
+    /// Hot swap: later calls go to the new endpoint (a saved Helius key takes effect without a restart).
+    pub fn set_url(&self, url: &str) {
+        *self.url.write().unwrap() = url.to_string();
     }
     /// URL with keys hidden. Always use this in logs.
     pub fn masked_url(&self) -> String {
-        mask(&self.url)
+        mask(&self.url())
     }
     pub fn ws_url(&self) -> String {
-        self.url.replacen("https://", "wss://", 1).replacen("http://", "ws://", 1)
+        self.url().replacen("https://", "wss://", 1).replacen("http://", "ws://", 1)
     }
 
     pub async fn call(&self, method: &str, params: Value) -> Result<Value, String> {
         self.limiter.acquire().await;
         let body = json!({"jsonrpc":"2.0","id":1,"method":method,"params":params});
-        let resp = self.http.post(&self.url).json(&body).send().await.map_err(|e| mask(&format!("rpc send: {e}")))?;
+        let resp = self.http.post(self.url()).json(&body).send().await.map_err(|e| mask(&format!("rpc send: {e}")))?;
         let status = resp.status();
         if status.as_u16() == 429 {
             return Err("rpc rate limited (429)".into());
@@ -172,6 +179,8 @@ enum FeedCmd {
 #[derive(Clone)]
 pub struct TradeFeed {
     tx: mpsc::UnboundedSender<FeedCmd>,
+    /// New WebSocket endpoint (hot swap). The feed task reconnects at once when it changes.
+    url_tx: tokio::sync::watch::Sender<String>,
     pub store: Arc<TradeStore>,
     pub connected: Arc<std::sync::atomic::AtomicBool>,
     /// When the current connection was established (ms), 0 while disconnected. Trades in a gap are lost.
@@ -185,13 +194,26 @@ impl TradeFeed {
         let store = Arc::new(TradeStore::default());
         let connected = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let since = Arc::new(std::sync::atomic::AtomicI64::new(0));
-        tokio::spawn(feed_task(ws_url, rx, store.clone(), connected.clone(), since.clone(), log));
-        TradeFeed { tx, store, connected, connected_since_ms: since }
+        let (url_tx, url_rx) = tokio::sync::watch::channel(ws_url);
+        tokio::spawn(feed_task(url_rx, rx, store.clone(), connected.clone(), since.clone(), log));
+        TradeFeed { tx, url_tx, store, connected, connected_since_ms: since }
+    }
+    /// Point the live trade feed at a new endpoint. Existing subscriptions are re-sent after the reconnect.
+    pub fn set_ws_url(&self, ws_url: &str) {
+        self.url_tx.send_if_modified(|u| {
+            if u != ws_url {
+                *u = ws_url.to_string();
+                true
+            } else {
+                false
+            }
+        });
     }
     /// A feed with no network task: trades are pushed into `store` by hand (scripted replay and tests).
     pub fn offline() -> TradeFeed {
         let (tx, _rx) = mpsc::unbounded_channel();
-        TradeFeed { tx, store: Arc::new(TradeStore::default()), connected: Arc::new(std::sync::atomic::AtomicBool::new(true)), connected_since_ms: Arc::new(std::sync::atomic::AtomicI64::new(0)) }
+        let (url_tx, _) = tokio::sync::watch::channel(String::new());
+        TradeFeed { tx, url_tx, store: Arc::new(TradeStore::default()), connected: Arc::new(std::sync::atomic::AtomicBool::new(true)), connected_since_ms: Arc::new(std::sync::atomic::AtomicI64::new(0)) }
     }
     pub fn subscribe(&self, mint: &str, curve: &str) {
         self.store.start(mint);
@@ -204,7 +226,7 @@ impl TradeFeed {
 }
 
 async fn feed_task(
-    ws_url: String,
+    mut url_rx: tokio::sync::watch::Receiver<String>,
     mut rx: mpsc::UnboundedReceiver<FeedCmd>,
     store: Arc<TradeStore>,
     connected: Arc<std::sync::atomic::AtomicBool>,
@@ -215,6 +237,7 @@ async fn feed_task(
     let mut want: HashMap<String, String> = HashMap::new(); // mint -> curve
     let mut backoff = 1u64;
     loop {
+        let ws_url = url_rx.borrow_and_update().clone();
         let mut ws = match connect_wss(&ws_url).await {
             Ok(w) => w,
             Err(e) => {
@@ -242,8 +265,10 @@ async fn feed_task(
         }
         let mut ping = tokio::time::interval(Duration::from_secs(30));
         let (mut n_notif, mut n_trades, mut n_acks) = (0u64, 0u64, 0u64);
+        let mut swapped = false;
         let end: String = loop {
             tokio::select! {
+                _ = url_rx.changed() => { swapped = true; break "endpoint changed".into(); }
                 cmd = rx.recv() => {
                     let Some(cmd) = cmd else { return };
                     match cmd {
@@ -292,6 +317,10 @@ async fn feed_task(
         };
         connected.store(false, Ordering::Relaxed);
         since.store(0, Ordering::Relaxed);
+        if swapped {
+            log("trade feed: endpoint changed, reconnecting now".into());
+            continue;
+        }
         log(format!("trade feed: disconnected ({end}), reconnecting in {backoff}s"));
         tokio::time::sleep(Duration::from_secs(backoff)).await;
         backoff = (backoff * 2).min(30);

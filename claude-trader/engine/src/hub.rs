@@ -18,6 +18,9 @@ struct History {
     positions: Option<EngineEvent>,
     stats: Option<EngineEvent>,
     kill: Option<EngineEvent>,
+    learning: Option<EngineEvent>,
+    skipped: Option<EngineEvent>,
+    links: HashMap<String, EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
 
@@ -68,6 +71,14 @@ impl Hub {
                 EngineEvent::Positions { .. } => h.positions = Some(e.clone()),
                 EngineEvent::Stats { .. } => h.stats = Some(e.clone()),
                 EngineEvent::Kill(_) => h.kill = Some(e.clone()),
+                EngineEvent::Learning(_) => h.learning = Some(e.clone()),
+                EngineEvent::Skipped { .. } => h.skipped = Some(e.clone()),
+                EngineEvent::Links { mint, .. } => {
+                    if h.links.len() > 600 {
+                        h.links.clear();
+                    }
+                    h.links.insert(mint.clone(), e.clone());
+                }
                 EngineEvent::Pulse { .. } => {}
                 _ => {
                     h.events.push_back(e.clone());
@@ -95,6 +106,9 @@ impl Hub {
         out.extend(h.positions.iter().cloned());
         out.extend(h.stats.iter().cloned());
         out.extend(h.kill.iter().cloned());
+        out.extend(h.learning.iter().cloned());
+        out.extend(h.skipped.iter().cloned());
+        out.extend(h.links.values().cloned());
         out
     }
 

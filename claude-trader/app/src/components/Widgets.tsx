@@ -1,6 +1,8 @@
 import type { Config, RiskVerdict, WatchRow } from "../types";
 import type { EngineState } from "../useEngine";
 import { FeesCard, OpenPositions, PerformanceCard, PositionChart } from "./Trading";
+import { LearningCard } from "./Learning";
+import { SourceLink } from "./links";
 
 export const REASON_LABEL: Record<string, string> = {
   MINT_AUTHORITY: "Mint authority still set",
@@ -62,7 +64,7 @@ function VerdictBadge({ v }: { v: RiskVerdict | null }) {
 
 const STATUS_TEXT: Record<WatchRow["status"], string> = { checking: "Checking", blocked: "Blocked", observing: "Watching", scored: "Scored", picked: "Picked" };
 
-function Watchlist({ rows }: { rows: WatchRow[] }) {
+function Watchlist({ rows, links }: { rows: WatchRow[]; links: EngineState["links"] }) {
   return (
     <section className="card span2">
       <h3>Watchlist <span className="hint">{rows.length} coins, newest first</span></h3>
@@ -79,6 +81,18 @@ function Watchlist({ rows }: { rows: WatchRow[] }) {
               <span className={`chip ${r.status}`}>{STATUS_TEXT[r.status]}</span>
               <span className="wreason" title={`${r.status === "blocked" ? reasonLabel(r.code) + ": " : ""}${r.reason}`}>
                 {r.reason}
+              </span>
+              <span className="wsrc">
+                {(() => {
+                  const l = links[r.mint];
+                  return l ? (
+                    <>
+                      {l.website && <SourceLink url={l.website} prefix="" />}
+                      {l.twitter && <SourceLink url={l.twitter} prefix="" />}
+                      {l.telegram && <SourceLink url={l.telegram} prefix="" />}
+                    </>
+                  ) : null;
+                })()}
               </span>
               <span className="wscore">{r.score !== null ? r.score.toFixed(0) : ""}</span>
             </div>
@@ -116,6 +130,17 @@ function ShieldCard({ engine }: { engine: EngineState }) {
           ))}
         </div>
       )}
+      {engine.skipped && engine.skipped.checks.length > 0 && (
+        <div className="skipped">
+          <h4>Skipped in {engine.skipped.executor} mode</h4>
+          <p>These checks cannot run here. They are not hidden: live mode will do them.</p>
+          <ul>
+            {engine.skipped.checks.map((c) => (
+              <li key={c.name} title={c.why}><b>{c.name}.</b> {c.why}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {engine.verdicts.length > 0 && (
         <div className="evid">
           <h4>Latest checks and evidence</h4>
@@ -139,13 +164,15 @@ function ShieldCard({ engine }: { engine: EngineState }) {
 export default function Widgets({ config, openSettings, engine }: { config: Config; openSettings: () => void; engine: EngineState }) {
   return (
     <div className="grid">
-      <Watchlist rows={engine.watchlist} />
+      <Watchlist rows={engine.watchlist} links={engine.links} />
 
       <OpenPositions engine={engine} config={config} />
 
       <ShieldCard engine={engine} />
 
       <PositionChart engine={engine} />
+
+      <LearningCard engine={engine} />
 
       <FeesCard lane={engine.stats?.lanes[0]} />
 

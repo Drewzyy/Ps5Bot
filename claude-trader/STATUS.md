@@ -1,5 +1,34 @@
 # Claude Trader — STATUS
 
+## M3c — Helius key, update check, Settings accordion, one code path, learning journal (paper only)
+
+### Built
+- **Helius key** (Settings > Connections): password field, Save, Test connection (OK with ms, or a plain error), Remove key. `engine/src/secrets.rs` (OS vault via `keyring`, encrypted-file fallback, masked hint only), hot swap of RPC and trade-feed endpoint (`reload-rpc`), env var override, Tauri commands `helius_status/save_helius_key/remove_helius_key/test_helius_key`. Tips walkthrough step and Tips entries added.
+- **Update check** (Settings > About and updates): version, commit, build time (`engine/build.rs` embeds `GITHUB_SHA` or `git rev-parse`), "Check for updates" against the public GitHub API, "Update available" with Open download page and 3 steps. `engine/src/update.rs`.
+- **Settings accordion**: Entry, Scam Shield, Exits, Risk, Fees, Paper fill realism (preset Optimistic / Realistic / Harsh, saved in SQLite, hot applied), Learning, Connections, Appearance, About and updates. Collapsed by default, open state remembered in localStorage. Every old i is kept.
+- **Same code path** (SPEC 4b): `Executor` trait, `ScriptedExecutor`, test that paper and scripted executors give identical decisions, "Skipped in paper" list in the Scam Shield card and in Paper fill realism.
+- **Learning journal** ("What it learned" widget, SPEC 4c): journal per trade, review every 30 trades, shadow lane test, apply only if it wins, +-20% bounds, Undo, live-mode approval, efficiency notes, missed coins. All in SQLite (tables journal, trade_features, reviews, changes, learning_notes).
+- **Source links**: `sourceUrl` on activity feed items, website/X/Telegram links on Watchlist rows and journal entries (from coin metadata). X Monitor and Thesis Finder slots only, no fake data.
+
+### Verification
+- `cargo test --workspace`: 151 engine tests pass (was 114). New: key storage with a mock keyring (save, fallback file is encrypted, remove, env override, bad keys), update comparison (same commit, compare status, time fallback, unknown build, API parsing, safe URLs), learning (observations carry the real numbers, 10-trade floor, gap threshold, +-20% bounds, Scam Shield/size/fees/loss limits not tunable, shadow win applies, shadow loss drops, live approval, undo, restore after restart, missed coin text, efficiency), same decisions with two executors, social link cleaning.
+- `npm run build` ok. `bash scripts/check-live-gate.sh` ok.
+- Screenshots in `docs/screenshots/` (all labelled DEMO where seeded, opened with `?demo=1`): `settings-accordion-collapsed.png`, `settings-paper-fill-realism.png`, `settings-connections-empty.png`, `settings-connections-saved.png`, `settings-about-updates.png`, `settings-connections-about-dark.png`, `settings-connections-narrow.png`, `learning-widget.png`, `learning-widget-dark.png`, `dashboard-demo.png`. Fixed after viewing: bold explanation text inside labels, feed source link squeezed the text, watchlist link prefix.
+
+### Stubbed, limited, or unsure
+- Not run on Windows: Credential Manager, `rundll32` browser open, the Tauri build itself. Linux build and tests pass; the vault path is tested with a mock.
+- **Self-updating (tauri-plugin-updater) is NOT done.** It needs a signing keypair; a key I generated would be lost to you. Upgrade path: run `npx tauri signer generate -w ~/.tauri/claude-trader.key` once, put the public key in `tauri.conf.json` under `plugins.updater.pubkey`, add the private key as GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (and its password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), publish GitHub Releases from the workflow. Never commit the private key.
+- Artifacts on GitHub Actions need a GitHub login to download (the steps say so).
+- Learning has had no real data: the live paper run made 0 trades, so every learning screenshot is DEMO. The pipeline is covered by unit tests only. The shadow lane makes a trade only if a coin passes the candidate's rules, so a test can take long.
+- The trailing-stop give-back and bucket patterns are the only proposals; weights move only when the top bucket of ratio or buyers clearly wins.
+- Browser-only preview cannot store a key (it says so). Changing the paper fill preset in browser mode against engine-cli works through the WebSocket.
+
+### How the user enters the Helius key
+1. Go to helius.dev, sign up free, open Dashboard > API Keys and copy the key.
+2. In Claude Trader press Settings, open Connections.
+3. Paste the key into Helius API key, press Save (it shows "saved, ends in ...xxxx"), then Test connection (expect OK with a time).
+It is used right away, no restart. Remove key deletes it.
+
 ## M3b — SOL market-cap gate, full paper fee model, kill switch, long live run (paper only, no keys)
 
 ### Changes

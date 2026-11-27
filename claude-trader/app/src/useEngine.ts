@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { source } from "./source";
-import type { KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
+import type { LearningSnapshot, SourceLinks, KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
 
 export interface EngineState {
   agents: Record<string, AgentState>;
@@ -16,11 +16,17 @@ export interface EngineState {
   positions: PositionView[];
   stats: StatsState | null;
   kill: KillState | null;
+  /** Latest learning journal snapshot. */
+  learning: LearningSnapshot | null;
+  /** Coin website, X and Telegram links by mint. */
+  links: Record<string, SourceLinks>;
+  /** What the current executor cannot run ("skipped in paper"). */
+  skipped: { executor: string; checks: { name: string; why: string }[] } | null;
   /** True once real engine events (not the browser mock) have arrived. */
   live: boolean;
 }
 
-const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, live: false };
+const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, learning: null, links: {}, skipped: null, live: false };
 const WATCH_MAX = 300;
 const FLUSH_MS = 300; // UI updates throttled to about 3 per second
 
@@ -47,6 +53,9 @@ export function useEngine(): EngineState {
           positions: prev.positions,
           stats: prev.stats,
           kill: prev.kill,
+          learning: prev.learning,
+          links: prev.links,
+          skipped: prev.skipped,
           live: prev.live,
         };
         let watch: Map<string, WatchRow> | null = null;
@@ -54,7 +63,7 @@ export function useEngine(): EngineState {
         for (const e of batch) {
           if (e.type === "status") next.agents[e.agent] = { color: e.color, line: e.line };
           else if (e.type === "activity")
-            next.activity = [{ ts: e.ts, agent: e.agent, text: e.text, mint: e.mint }, ...next.activity].slice(0, 200);
+            next.activity = [{ ts: e.ts, agent: e.agent, text: e.text, mint: e.mint, sourceUrl: e.sourceUrl ?? null }, ...next.activity].slice(0, 200);
           else if (e.type === "decision") {
             const list = next.decisions[e.agent] ?? [];
             next.decisions[e.agent] = [{ ts: e.ts, text: e.text }, ...list].slice(0, 10);
@@ -94,6 +103,14 @@ export function useEngine(): EngineState {
             next.stats = { balanceSol: e.balanceSol, bankrollSol: e.bankrollSol, solUsd: e.solUsd, replay: e.replay, lanes: e.lanes };
           } else if (e.type === "kill") {
             next.kill = e;
+          } else if (e.type === "learning") {
+            const { type: _t, ...snap } = e;
+            next.learning = snap as LearningSnapshot;
+          } else if (e.type === "links") {
+            const keys = Object.keys(next.links);
+            next.links = { ...(keys.length > 600 ? {} : next.links), [e.mint]: { website: e.website, twitter: e.twitter, telegram: e.telegram } };
+          } else if (e.type === "skipped") {
+            next.skipped = { executor: e.executor, checks: e.checks };
           } else if (e.type === "shield-summary") {
             next.shield = { checked: e.checked, blocked: e.blocked, passed: e.passed, byReason: e.byReason };
           } else if (e.type === "pulse") {

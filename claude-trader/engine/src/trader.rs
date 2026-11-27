@@ -8,6 +8,8 @@ use crate::db::{Db, DecisionRow};
 use crate::events::*;
 use crate::exits::{self, ExitAction, Market};
 use crate::hub::Hub;
+use crate::exec::Executor;
+use crate::learning::{Effect, EntryFeatures, Learner, Tuned, SHADOW_LANE};
 use crate::paper::PaperExecutor;
 use crate::position::{PosState, Position};
 use crate::pump::{Trade, SUPPLY_TOKENS};
@@ -25,11 +27,15 @@ pub struct Pick {
     pub creator: String,
     pub curve_key: String,
     pub score: f64,
+    /// What the picker saw (kept with the position for the learning journal).
+    pub features: EntryFeatures,
 }
 
 pub struct Lane {
     pub style: String,
     pub risk: Mutex<RiskState>,
+    /// What this lane runs on: the shipped config plus any applied (or, for the shadow lane, tested) learning change.
+    pub tuned: std::sync::RwLock<Tuned>,
     live: Mutex<HashMap<i64, Position>>,
     recent: Mutex<VecDeque<PositionView>>,
 }
@@ -40,7 +46,8 @@ pub struct Trader {
     pub hub: Arc<Hub>,
     pub feed: TradeFeed,
     rpc: Option<Arc<Rpc>>,
-    pub exec: PaperExecutor,
+    pub exec: Arc<dyn Executor>,
+    pub learner: Arc<Learner>,
     fees: FeeModel,
     pub lanes: Vec<Arc<Lane>>,
     sol_usd: f64,
@@ -66,9 +73,22 @@ fn pp(x: f64) -> String {
 impl Trader {
     #[allow(clippy::too_many_arguments)]
     pub fn new(cfg: Config, db: Arc<Db>, hub: Arc<Hub>, feed: TradeFeed, rpc: Option<Arc<Rpc>>, sol_usd: f64, logs_dir: PathBuf, replay: bool) -> Arc<Trader> {
+        let mut exec = PaperExecutor::new(&cfg, Rng::from_time());
+        if cfg!(test) {
+            exec.time_scale = 0.0; // unit tests never wait out the 20 s "unconfirmed" check
+        }
+        Self::with_executor(cfg, db, hub, feed, rpc, sol_usd, logs_dir, replay, Arc::new(exec))
+    }
+
+    /// The same trader with any executor plugged in (paper today, the gated live executor later).
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_executor(cfg: Config, db: Arc<Db>, hub: Arc<Hub>, feed: TradeFeed, rpc: Option<Arc<Rpc>>, sol_usd: f64, logs_dir: PathBuf, replay: bool, exec: Arc<dyn Executor>) -> Arc<Trader> {
         let now = now_ms();
         let mut styles = vec!["momentum".to_string()];
         styles.push(cfg.entry.paper_variant.style.clone());
+        // the shadow lane only trades while a learning change is being tested (it is idle otherwise)
+        styles.push(SHADOW_LANE.to_string());
+        let tuned0 = Tuned::from_config(&cfg);
         let lanes = styles
             .iter()
             .map(|s| {
@@ -96,16 +116,14 @@ impl Trader {
                     }
                 }
                 r.halt = db.kv_get(&format!("halt:{s}")).filter(|h| !h.is_empty());
-                Arc::new(Lane { style: s.clone(), risk: Mutex::new(r), live: Mutex::new(HashMap::new()), recent: Mutex::new(VecDeque::new()) })
+                Arc::new(Lane { style: s.clone(), risk: Mutex::new(r), tuned: std::sync::RwLock::new(tuned0.clone()), live: Mutex::new(HashMap::new()), recent: Mutex::new(VecDeque::new()) })
             })
             .collect();
         let killed = db.killed_at().is_some();
         let fees = FeeModel::from_config(&cfg);
-        let mut exec = PaperExecutor::new(&cfg, Rng::from_time());
-        if cfg!(test) {
-            exec.time_scale = 0.0; // unit tests never wait out the 20 s "unconfirmed" check
-        }
+        let learner = Arc::new(Learner::new(db.clone(), Some(hub.clone()), &cfg));
         Arc::new(Trader {
+            learner,
             cfg,
             db,
             hub,
@@ -123,6 +141,56 @@ impl Trader {
             poll_checks: std::sync::atomic::AtomicU32::new(0),
             killed: std::sync::atomic::AtomicBool::new(killed),
         })
+    }
+
+    /// The config a lane is running right now (shipped values plus learning changes).
+    pub fn lane_cfg(&self, style: &str) -> Config {
+        self.lane(style).map(|l| l.tuned.read().unwrap().cfg.clone()).unwrap_or_else(|| self.cfg.clone())
+    }
+
+    pub fn lane_tuned(&self, style: &str) -> Tuned {
+        self.lane(style).map(|l| l.tuned.read().unwrap().clone()).unwrap_or_else(|| Tuned::from_config(&self.cfg))
+    }
+
+    /// Carry out what the learning loop decided.
+    pub fn apply_effects(&self, fx: Vec<Effect>) {
+        for e in fx {
+            match e {
+                Effect::SetMain(t) => {
+                    if let Some(l) = self.lane("momentum") {
+                        *l.tuned.write().unwrap() = *t;
+                    }
+                }
+                Effect::SetShadow(t) => {
+                    if let Some(l) = self.lane(SHADOW_LANE) {
+                        // a stopped test keeps the lane's tuning at the main lane's so it stays comparable
+                        *l.tuned.write().unwrap() = match t {
+                            Some(t) => *t,
+                            None => self.lane_tuned("momentum"),
+                        };
+                    }
+                }
+                Effect::Log(m) => self.hub.log(m),
+            }
+        }
+    }
+
+    /// After a restart: put applied changes and a running test back on their lanes.
+    pub fn restore_learning(&self) {
+        let fx = self.learner.restore();
+        self.apply_effects(fx);
+        self.learner.emit(now_ms());
+    }
+
+    pub fn learning_command(&self, cmd: &str) -> String {
+        let (msg, fx) = self.learner.command(cmd);
+        self.apply_effects(fx);
+        msg
+    }
+
+    /// True while a change is being tested in the shadow lane.
+    pub fn shadow_active(&self) -> bool {
+        self.learner.shadow_tuned().is_some()
     }
 
     pub fn lane(&self, style: &str) -> Option<Arc<Lane>> {
@@ -159,7 +227,7 @@ impl Trader {
         self.killed.store(true, std::sync::atomic::Ordering::SeqCst);
         let n: usize = self.lanes.iter().map(|l| l.live.lock().unwrap().len()).sum();
         self.hub.log(format!("TRADE KILL SWITCH ON (from {source}): no new entries, selling {n} open position(s) now"));
-        self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("KILL SWITCH ON: all trading stopped, selling {n} open position(s)"), mint: None });
+        self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("KILL SWITCH ON: all trading stopped, selling {n} open position(s)"), mint: None, source_url: None });
         self.hub.emit(EngineEvent::Kill(self.kill_state()));
         format!("kill switch on, {n} position(s) closing")
     }
@@ -172,7 +240,7 @@ impl Trader {
         self.db.kv_del("killed");
         self.killed.store(false, std::sync::atomic::Ordering::SeqCst);
         self.hub.log(format!("TRADE KILL SWITCH OFF (from {source}): trading may resume"));
-        self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "Kill switch off: trading resumed".into(), mint: None });
+        self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "Kill switch off: trading resumed".into(), mint: None, source_url: None });
         self.hub.emit(EngineEvent::Kill(self.kill_state()));
         "trading resumed".into()
     }
@@ -183,7 +251,7 @@ impl Trader {
         let was = self.killed.swap(k, std::sync::atomic::Ordering::SeqCst);
         if k && !was {
             self.hub.log("TRADE KILL SWITCH ON (from another process): no new entries, selling every open position");
-            self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "KILL SWITCH ON: all trading stopped, selling every open position".into(), mint: None });
+            self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "KILL SWITCH ON: all trading stopped, selling every open position".into(), mint: None, source_url: None });
         } else if !k && was {
             self.hub.log("TRADE KILL SWITCH OFF (from another process): trading may resume");
         }
@@ -291,7 +359,7 @@ impl Trader {
         let now = now_ms();
         self.db.insert_decision(&DecisionRow { ts: now, mint: p.mint.clone(), symbol: p.symbol.clone(), stage: "risk-gate".into(), outcome: "block".into(), reason: reason.into(), detail: format!("[{lane}] {detail}"), verdict: String::new() });
         self.hub.log(format!("TRADE[{lane}] SKIP {} ({}) {reason}: {detail}", p.symbol, p.mint));
-        self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("[{lane}] Skipped {}: {detail}", p.symbol), mint: Some(p.mint.clone()) });
+        self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("[{lane}] Skipped {}: {detail}", p.symbol), mint: Some(p.mint.clone()), source_url: None });
     }
 
     /// Run the risk gates, write the position to SQLite, do the paper buy and start managing it.
@@ -310,7 +378,8 @@ impl Trader {
         let (tokens, quote_price, after) = self.exec.quote_buy(&curve, size);
         let sell_impact = if tokens > 0.0 { (1.0 - after.sell(tokens).0 / (after.price() * tokens)) * 100.0 } else { 0.0 };
         let impact = self.exec.buy_impact_pct(&curve, size) + sell_impact;
-        let tp1 = self.cfg.exits.tranches.first().map(|t| t.at_pct).unwrap_or(20.0);
+        let lane_cfg = self.lane_cfg(style);
+        let tp1 = lane_cfg.exits.tranches.first().map(|t| t.at_pct).unwrap_or(20.0);
         {
             let mut r = lane.risk.lock().unwrap();
             if let Err(g) = r.check_entry(now, &p.mint, size, &self.fees, tp1, impact) {
@@ -346,6 +415,7 @@ impl Trader {
                 pos.entry_ms = now;
                 pos.fill_buy(f.entry_price, f.tokens, mcap_usd, &f.fees, f.slippage_pct)?;
                 self.db.save_position(&pos);
+                self.learner.record_features(pos.id, style, &p.features);
                 lane.live.lock().unwrap().insert(pos.id, pos.clone());
                 lane.risk.lock().unwrap().set_last_slippage(f.slippage_pct);
                 self.hub.log(format!(
@@ -353,7 +423,7 @@ impl Trader {
                     p.symbol, p.mint, pf(size), f.tokens, pp(f.entry_price), f.slippage_pct, f.delay_ms, pf(f.fees.total()), pf(f.fees.pump_fun), pf(f.fees.pump_portal), pf(f.fees.tx), pf(f.fees.priority)
                 ));
                 self.hub.emit(EngineEvent::Pulse { from: AgentId::Executor, to: AgentId::HoldTimer, text: format!("{} bought, Hold Timer takes over", p.symbol) });
-                self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("[{style}] Paper bought {} for {size} SOL at {}", p.symbol, pf(f.entry_price)), mint: Some(p.mint.clone()) });
+                self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("[{style}] Paper bought {} for {size} SOL at {}", p.symbol, pf(f.entry_price)), mint: Some(p.mint.clone()), source_url: None });
                 let me = self.clone();
                 let id = pos.id;
                 tokio::spawn(async move { me.manage(lane, id).await });
@@ -413,6 +483,7 @@ impl Trader {
 
     async fn manage(self: Arc<Self>, lane: Arc<Lane>, id: i64) {
         let every = Duration::from_millis(self.cfg.exits.exit_loop_ms as u64);
+        let style = lane.style.clone();
         let mut tick = 0u64;
         loop {
             tokio::time::sleep(every).await;
@@ -439,7 +510,7 @@ impl Trader {
             let migrated = self.migrated.lock().unwrap().contains(&pos.mint);
             let real_sol = curve.map(|c| c.real_sol).unwrap_or(0.0);
             let market = Market { now_ms: now, price, real_sol, trades: &trades, feed_ok_since_ms: ok_since, migrated };
-            let action = exits::evaluate(&mut pos, &market, &self.cfg);
+            let action = exits::evaluate(&mut pos, &market, &self.lane_cfg(&style));
             // kill switch: sell everything that is left, whatever the exit rules say. A failed sell leaves the
             // position OPEN and this loop tries again every tick with the escalated fee (SPEC 11b #17).
             let action = if self.is_killed() && pos.tokens_remaining > 0.0 { Some(ExitAction::all("kill-switch")) } else { action };
@@ -533,7 +604,11 @@ impl Trader {
         if let Ok(s) = report::write_daily_summary(&self.logs_dir, &lane.style, &crate::timefmt::date_local(exit_ms)) {
             self.hub.log(report::print_summary(&lane.style, &s));
         }
-        self.hub.emit(EngineEvent::Activity { ts: exit_ms, agent: AgentId::HoldTimer, text: format!("[{}] Closed {}: {} ({:+.4} SOL)", lane.style, pos.symbol, pos.exit_reason, pos.pnl_sol), mint: Some(pos.mint.clone()) });
+        let src = self.learner.features_of(pos.id).map(|f| f.source_url).filter(|u| !u.is_empty());
+        self.hub.emit(EngineEvent::Activity { ts: exit_ms, agent: AgentId::HoldTimer, text: format!("[{}] Closed {}: {} ({:+.4} SOL)", lane.style, pos.symbol, pos.exit_reason, pos.pnl_sol), mint: Some(pos.mint.clone()), source_url: src });
+        // the learning journal: one entry per closed trade, then a review or a shadow verdict if one is due
+        let fx = self.learner.on_close(&pos);
+        self.apply_effects(fx);
     }
 
     // ------------------------------------------------------------ UI snapshots
@@ -546,7 +621,8 @@ impl Trader {
     }
 
     fn view_of(&self, p: &Position, cur_price: f64, pnl_sol: f64, ticks: Vec<[f64; 2]>) -> PositionView {
-        let lv = exits::levels(p, &self.cfg);
+        let lane_cfg = self.lane_cfg(&p.lane);
+        let lv = exits::levels(p, &lane_cfg);
         let now = now_ms();
         let closed = p.state == PosState::Closed;
         PositionView {
@@ -564,7 +640,7 @@ impl Trader {
             pnl_pct: if p.size_sol > 0.0 { pnl_sol / p.size_sol * 100.0 } else { 0.0 },
             price_pct: p.pct(cur_price),
             hold_seconds: if closed { (p.exit_ms.unwrap_or(now) - p.entry_ms) as f64 / 1000.0 } else { p.hold_seconds(now) },
-            next_action: if closed { format!("Closed: {}", p.exit_reason) } else if p.state == PosState::Selling { "Selling now".into() } else { exits::next_action(p, cur_price, now, &self.cfg) },
+            next_action: if closed { format!("Closed: {}", p.exit_reason) } else if p.state == PosState::Selling { "Selling now".into() } else { exits::next_action(p, cur_price, now, &lane_cfg) },
             soft_stop: lv.soft_stop,
             hard_stop: lv.hard_stop,
             take_profits: lv.take_profits,
@@ -611,6 +687,9 @@ impl Trader {
         for (i, l) in self.lanes.iter().enumerate() {
             let closed = self.db.load_closed(&l.style, true);
             let live: Vec<Position> = l.live.lock().unwrap().values().filter(|p| p.state != PosState::Buying).cloned().collect();
+            if l.style == SHADOW_LANE && closed.is_empty() && live.is_empty() {
+                continue; // idle: no test is running
+            }
             let mut st = LaneStats { lane: l.style.clone(), open: live.len() as u32, ..Default::default() };
             let mut lines = vec![];
             let mut eq = vec![];
@@ -722,6 +801,7 @@ impl Trader {
 mod tests {
     use super::*;
     use crate::replay::Sim;
+    use crate::picker;
 
     fn test_cfg() -> Config {
         let mut c = Config::from_json(include_str!("../../config.json")).unwrap();
@@ -740,7 +820,7 @@ mod tests {
     }
 
     fn pick() -> Pick {
-        Pick { mint: "TESTMINT".into(), symbol: "TST".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0 }
+        Pick { mint: "TESTMINT".into(), symbol: "TST".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default() }
     }
 
     /// Put a hot-looking curve into the store (14 SOL in the curve, price up).
@@ -814,6 +894,78 @@ mod tests {
         assert!(line.exit_price > line.entry_price, "a winner");
         assert!(dir.join(format!("{day}-summary.json")).exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Run one scripted market through the real entry gates, the exit loop and the risk gates with the executor given,
+    /// and return every DECISION it made (never the fills): risk-gate answers, exit reasons, how much each exit sold.
+    async fn decisions_with(exec: Arc<dyn Executor>, tag: &str) -> Vec<String> {
+        let dir = std::env::temp_dir().join(format!("ct-same-{tag}-{}", now_ms()));
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let hub = Hub::new();
+        let t = Trader::with_executor(test_cfg(), db.clone(), hub, TradeFeed::offline(), None, 150.0, dir.clone(), true, exec);
+        let mut sim = Sim::new("TESTMINT");
+        seed(&t, &mut sim);
+        let mut out = vec![];
+        // the picker's own verdict on what the market looks like (pure code, same for any executor)
+        let obs = picker::observe(&t.feed.store.snapshot("TESTMINT"), "CREATOR", 3.0e-8, 0.0, 60.0, now_ms());
+        let sc = picker::score(&obs, &t.cfg);
+        out.push(format!("picker score={:.1} picked={} gates={:?}", sc.score, sc.picked, sc.gates));
+        let id = t.try_enter("momentum", &pick()).await.expect("entry");
+        out.push("entry: allowed".into());
+        // the same coin again at once: the risk gates must say no (cooldown / already open), whatever the executor
+        let again = t.try_enter("momentum", &pick()).await.err().unwrap_or_default();
+        out.push(format!("second entry: {again}"));
+        for i in 0..24 {
+            sim.trade(30.0 + i as f64, &format!("up{i}"), true, 1.0);
+            push(&t, &mut sim);
+            tokio::time::sleep(Duration::from_millis(60)).await;
+        }
+        for i in 0..10 {
+            sim.trade(60.0 + i as f64, &format!("dn{i}"), false, 0.8);
+            push(&t, &mut sim);
+            tokio::time::sleep(Duration::from_millis(60)).await;
+        }
+        wait_closed(&t, "momentum").await;
+        let p = db.position_by_id(id).unwrap();
+        for s in &p.stages {
+            out.push(format!("exit {} sold {:.0}% of the position", s.reason, s.tokens / p.tokens_initial * 100.0));
+        }
+        out.push(format!("closed by {}", p.exit_reason));
+        let rows: Vec<String> = db.with_conn(|c| {
+            let mut st = c.prepare("SELECT stage,outcome,reason FROM decisions ORDER BY id").unwrap();
+            st.query_map([], |r| Ok(format!("decision {}/{}/{}", r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))).unwrap().flatten().collect()
+        });
+        out.extend(rows);
+        let _ = std::fs::remove_dir_all(&dir);
+        out
+    }
+
+    /// SPEC 4b: paper is practice for live with the same rules. Only the executor differs, so the same market must
+    /// produce the same decisions with the paper executor and with a different (scripted) executor.
+    #[tokio::test]
+    async fn same_market_same_decisions_with_paper_and_scripted_executors() {
+        let cfg = test_cfg();
+        let paper: Arc<dyn Executor> = {
+            let mut e = PaperExecutor::new(&cfg, Rng::new(7));
+            e.time_scale = 0.0;
+            Arc::new(e)
+        };
+        let scripted: Arc<dyn Executor> = Arc::new(crate::exec::ScriptedExecutor::new(&cfg));
+        assert_eq!((paper.name(), scripted.name()), ("paper", "scripted"));
+        let a = decisions_with(paper, "paper").await;
+        let b = decisions_with(scripted, "scripted").await;
+        assert_eq!(a, b, "decisions differ between executors:\n{a:#?}\n{b:#?}");
+        assert!(a.iter().any(|l| l.starts_with("exit take-profit-1")) && a.iter().any(|l| l.starts_with("closed by trailing-stop")), "{a:#?}");
+        assert!(a.iter().any(|l| l.starts_with("second entry:") && l.len() > "second entry: ".len()), "the second entry was refused: {a:#?}");
+    }
+
+    #[test]
+    fn paper_lists_what_it_cannot_run_and_the_scripted_executor_hides_nothing() {
+        let cfg = test_cfg();
+        let p = PaperExecutor::new(&cfg, Rng::new(1));
+        let skipped = Executor::skipped_checks(&p);
+        assert!(skipped.iter().any(|c| c.name == "Honeypot sell test"));
+        assert!(skipped.iter().all(|c| !c.why.contains('\u{2014}')));
     }
 
     #[tokio::test]
@@ -903,7 +1055,7 @@ mod tests {
     }
 
     fn pick_of(mint: &str) -> Pick {
-        Pick { mint: mint.into(), symbol: "KIL".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0 }
+        Pick { mint: mint.into(), symbol: "KIL".into(), creator: "CREATOR".into(), curve_key: "CURVE".into(), score: 90.0, features: EntryFeatures::default() }
     }
 
     #[tokio::test]

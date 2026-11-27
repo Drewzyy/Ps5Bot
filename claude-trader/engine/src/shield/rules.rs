@@ -327,6 +327,52 @@ pub enum MetaFetch {
     EgressBlocked,
 }
 
+/// The coin's own website, X and Telegram links from its metadata (http or https only; empty when absent).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SocialLinks {
+    pub website: String,
+    pub twitter: String,
+    pub telegram: String,
+}
+
+fn clean_link(raw: &str, host_prefix: &str) -> String {
+    let t = raw.trim();
+    if t.is_empty() || t.len() > 300 || t.chars().any(|c| c.is_whitespace() || c.is_control() || c == '"' || c == '<' || c == '>') {
+        return String::new();
+    }
+    let lower = t.to_ascii_lowercase();
+    if lower.starts_with("https://") || lower.starts_with("http://") {
+        return t.to_string();
+    }
+    if lower.contains("://") || lower.starts_with("javascript:") || lower.starts_with("data:") {
+        return String::new();
+    }
+    // a bare handle or a link without a scheme
+    if host_prefix.is_empty() {
+        return if t.contains('.') { format!("https://{t}") } else { String::new() };
+    }
+    let handle = t.trim_start_matches('@');
+    if lower.starts_with("x.com/") || lower.starts_with("twitter.com/") || lower.starts_with("t.me/") {
+        return format!("https://{t}");
+    }
+    if handle.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') && !handle.is_empty() {
+        return format!("{host_prefix}{handle}");
+    }
+    String::new()
+}
+
+pub fn parse_social_links(v: &Value) -> SocialLinks {
+    let g = |k: &str| v[k].as_str().unwrap_or("");
+    SocialLinks { website: clean_link(g("website"), ""), twitter: clean_link(g("twitter"), "https://x.com/"), telegram: clean_link(g("telegram"), "https://t.me/") }
+}
+
+impl SocialLinks {
+    /// The one link to show next to a coin: website first, then X, then Telegram.
+    pub fn best(&self) -> Option<&str> {
+        [&self.website, &self.twitter, &self.telegram].into_iter().find(|s| !s.is_empty()).map(|s| s.as_str())
+    }
+}
+
 /// Count social links in a pump.fun metadata JSON: twitter, telegram, website (non-empty).
 pub fn parse_metadata_json(v: &Value) -> MetaFetch {
     let nz = |k: &str| v[k].as_str().map(|s| !s.trim().is_empty()).unwrap_or(false);
@@ -768,6 +814,18 @@ mod tests {
         let u = metadata_uri_rule(&MetaFetch::EgressBlocked, false);
         assert!(u.blocks());
         assert!(!metadata_uri_rule(&MetaFetch::EgressBlocked, true).blocks());
+    }
+
+    #[test]
+    fn social_links_are_cleaned_and_only_web_links_survive() {
+        let l = parse_social_links(&json!({"website":"https://moon.cat","twitter":"@mooncat","telegram":"t.me/mooncat"}));
+        assert_eq!((l.website.as_str(), l.twitter.as_str(), l.telegram.as_str()), ("https://moon.cat", "https://x.com/mooncat", "https://t.me/mooncat"));
+        assert_eq!(l.best(), Some("https://moon.cat"));
+        let bad = parse_social_links(&json!({"website":"javascript:alert(1)","twitter":"file:///etc/passwd","telegram":"a b"}));
+        assert_eq!(bad, SocialLinks::default());
+        assert_eq!(bad.best(), None);
+        let only_x = parse_social_links(&json!({"twitter":"https://x.com/a/status/1"}));
+        assert_eq!(only_x.best(), Some("https://x.com/a/status/1"));
     }
 
     #[test]

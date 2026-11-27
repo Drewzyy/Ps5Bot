@@ -76,16 +76,26 @@ fn frac(v: f64, target: f64) -> f64 {
     if target <= 0.0 { 1.0 } else { (v / target).clamp(0.0, 1.0) }
 }
 
+/// Starting weights of the five score parts (they add up to 100). The learning review may move each by up to 20%.
+pub const DEFAULT_WEIGHTS: [f64; 5] = [25.0, 25.0, 20.0, 15.0, 15.0];
+
 pub fn score(o: &Observation, cfg: &Config) -> Scored {
+    score_with(o, cfg, &DEFAULT_WEIGHTS)
+}
+
+/// Same scoring with explicit weights [ratio, buyers, price change, volume slope, wallets]. The result is scaled so a
+/// perfect coin is always 100, whatever the weights add up to.
+pub fn score_with(o: &Observation, cfg: &Config, w: &[f64; 5]) -> Scored {
     let ob = &cfg.observation;
+    let scale = { let t: f64 = w.iter().sum(); if t > 0.0 { 100.0 / t } else { 1.0 } };
     let en = &cfg.entry;
     let slope_ratio = if o.buys_first_half == 0 { if o.buys_second_half > 0 { 1.0 } else { 0.0 } } else { o.buys_second_half as f64 / o.buys_first_half as f64 };
     let parts = vec![
-        ("buy/sell ratio", 25.0 * frac(o.ratio, ob.min_buy_sell_ratio)),
-        ("unique buyers", 25.0 * frac(o.unique_buyers as f64, ob.min_unique_buyers as f64)),
-        ("price change", 20.0 * frac(o.price_change_pct, ob.min_price_change_pct)),
-        ("volume slope", 15.0 * slope_ratio.clamp(0.0, 1.0)),
-        ("wallets", 15.0 * frac(o.wallets as f64, en.min_holders as f64)),
+        ("buy/sell ratio", w[0] * scale * frac(o.ratio, ob.min_buy_sell_ratio)),
+        ("unique buyers", w[1] * scale * frac(o.unique_buyers as f64, ob.min_unique_buyers as f64)),
+        ("price change", w[2] * scale * frac(o.price_change_pct, ob.min_price_change_pct)),
+        ("volume slope", w[3] * scale * slope_ratio.clamp(0.0, 1.0)),
+        ("wallets", w[4] * scale * frac(o.wallets as f64, en.min_holders as f64)),
     ];
     let total: f64 = parts.iter().map(|p| p.1).sum();
     let mut gates = vec![];

@@ -26,3 +26,15 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 rusqlite = { version = "0.32", features = ["bundled"] }
 base64 = "0.22"
 bs58 = "0.5"
+async-trait = "0.1"
+chacha20poly1305 = "0.10"
+sha2 = "0.10"
+getrandom = "0.2"
+
+# OS secure storage: Windows Credential Manager, macOS Keychain, Linux kernel keyring. Anything else uses the encrypted file.
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["linux-native"] }

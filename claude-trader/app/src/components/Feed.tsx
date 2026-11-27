@@ -1,4 +1,5 @@
 import type { ActivityItem } from "../types";
+import { SourceLink } from "./links";
 
 export default function Feed({ items }: { items: ActivityItem[] }) {
   return (
@@ -9,17 +10,15 @@ export default function Feed({ items }: { items: ActivityItem[] }) {
       ) : (
         <div className="feed">
           {items.map((it, i) => (
-            it.mint ? (
-              <a key={i} href={`https://solscan.io/token/${it.mint}`} target="_blank" rel="noreferrer" title="Open this coin on Solscan">
-                <span className="ts">{new Date(it.ts).toLocaleTimeString([], { hour12: false })}</span>
-                <span>{it.text}</span>
-              </a>
-            ) : (
-              <div key={i} className="plain">
-                <span className="ts">{new Date(it.ts).toLocaleTimeString([], { hour12: false })}</span>
-                <span>{it.text}</span>
-              </div>
-            )
+            <div key={i} className="plain">
+              <span className="ts">{new Date(it.ts).toLocaleTimeString([], { hour12: false })}</span>
+              {it.mint ? (
+                <a className="fmain" href={`https://solscan.io/token/${it.mint}`} target="_blank" rel="noreferrer" title="Open this coin on Solscan">{it.text}</a>
+              ) : (
+                <span className="fmain">{it.text}</span>
+              )}
+              <SourceLink url={it.sourceUrl} />
+            </div>
           ))}
         </div>
       )}

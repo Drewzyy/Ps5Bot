@@ -56,7 +56,7 @@ pub enum EngineEvent {
     #[serde(rename_all = "camelCase")]
     Pulse { from: AgentId, to: AgentId, text: String },
     #[serde(rename_all = "camelCase")]
-    Activity { ts: i64, agent: AgentId, text: String, mint: Option<String> },
+    Activity { ts: i64, agent: AgentId, text: String, mint: Option<String>, #[serde(default)] source_url: Option<String> },
     #[serde(rename_all = "camelCase")]
     Decision { ts: i64, agent: AgentId, text: String },
     /// A new token was seen on the live feed (Watchlist row is created).
@@ -109,6 +109,14 @@ pub enum EngineEvent {
     /// Kill switch state, refreshed about once a second.
     #[serde(rename_all = "camelCase")]
     Kill(KillState),
+    /// The learning journal: latest entries, changes, next review, efficiency notes.
+    Learning(Box<crate::learning::LearningSnapshot>),
+    /// Checks the current executor cannot run (shown as "skipped in paper"). Sent once at start.
+    #[serde(rename_all = "camelCase")]
+    Skipped { executor: String, checks: Vec<crate::exec::SkippedCheck> },
+    /// Where to read about a coin: its own website, X and Telegram from its metadata. Empty strings when it has none.
+    #[serde(rename_all = "camelCase")]
+    Links { mint: String, website: String, twitter: String, telegram: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

@@ -13,6 +13,19 @@ pub struct Config {
     pub fees: Fees,
     pub paper_fill: PaperFill,
     pub risk: Risk,
+    pub learning: Learning,
+}
+
+/// The learning journal and the review loop (see learning.rs). The hard limits (10 trades minimum,
+/// 20% change cap, never touching Scam Shield, trade size or loss limits) are not settings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Learning {
+    pub enabled: bool,
+    pub review_every_trades: u32,
+    pub shadow_trades: u32,
+    pub min_sample: u32,
+    pub min_win_rate_gap_pts: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -234,6 +247,15 @@ impl Config {
         }
         if self.paper_fill.delay_ms_min > self.paper_fill.delay_ms_max {
             return Err("paperFill.delayMsMin cannot be above delayMsMax".into());
+        }
+        if self.learning.review_every_trades == 0 || self.learning.shadow_trades == 0 {
+            return Err("learning.reviewEveryTrades and learning.shadowTrades must be above 0".into());
+        }
+        if self.learning.min_sample < 10 {
+            return Err("learning.minSample cannot be below 10 trades".into());
+        }
+        if self.learning.min_win_rate_gap_pts < 20.0 {
+            return Err("learning.minWinRateGapPts cannot be below 20 points".into());
         }
         const STYLES: [&str; 5] = ["momentum", "snipe", "confirmation", "dip-40pct", "graduation-dip"];
         if !STYLES.contains(&self.entry.style.as_str()) {

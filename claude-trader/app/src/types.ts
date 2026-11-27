@@ -16,7 +16,7 @@ export type StatusColor = "green" | "amber" | "grey" | "red";
 export type EngineEvent =
   | { type: "status"; agent: AgentId; color: StatusColor; line: string }
   | { type: "pulse"; from: AgentId; to: AgentId; text: string }
-  | { type: "activity"; ts: number; agent: AgentId; text: string; mint: string | null }
+  | { type: "activity"; ts: number; agent: AgentId; text: string; mint: string | null; sourceUrl?: string | null }
   | { type: "decision"; ts: number; agent: AgentId; text: string }
   | { type: "token"; ts: number; mint: string; symbol: string; name: string; creator: string; mcapSol: number }
   | {
@@ -51,7 +51,135 @@ export type EngineEvent =
   | { type: "shield-summary"; ts: number; checked: number; blocked: number; passed: number; byReason: { reason: string; count: number }[] }
   | { type: "positions"; ts: number; positions: PositionView[] }
   | { type: "stats"; ts: number; balanceSol: number; bankrollSol: number; solUsd: number; replay: boolean; lanes: LaneStats[] }
-  | ({ type: "kill" } & KillState);
+  | ({ type: "kill" } & KillState)
+  | ({ type: "learning" } & LearningSnapshot)
+  | { type: "links"; mint: string; website: string; twitter: string; telegram: string }
+  | { type: "skipped"; executor: string; checks: { name: string; why: string }[] };
+
+/** Mirrors engine/src/learning.rs */
+export interface JournalRow {
+  id: number;
+  ts: number;
+  positionId: number;
+  lane: string;
+  tradeNo: number;
+  symbol: string;
+  mint: string;
+  pnlSol: number;
+  pnlPct: number;
+  feesSol: number;
+  grossSol: number;
+  holdSeconds: number;
+  exitReason: string;
+  score: number;
+  buyers: number;
+  ratio: number;
+  curveSol: number;
+  ageSeconds: number;
+  peakPct: number;
+  exitPct: number;
+  fillSeconds: number;
+  observations: string[];
+  sourceUrl: string;
+  headline: string;
+}
+
+export interface ChangeRow {
+  id: number;
+  ts: number;
+  key: string;
+  label: string;
+  before: number;
+  after: number;
+  status: "shadow" | "applied" | "rejected" | "undone" | "awaiting-approval";
+  why: string;
+  evidence: string[];
+  result: string;
+  startMs: number;
+  mainStart: number;
+  target: number;
+  doneMs: number;
+}
+
+export interface ArmStat {
+  trades: number;
+  netSol: number;
+  wins: number;
+  profitFactor: number | null;
+}
+
+export interface NoteRow {
+  id: number;
+  ts: number;
+  kind: string;
+  text: string;
+  sourceUrl: string;
+}
+
+export interface LearningSnapshot {
+  ts: number;
+  enabled: boolean;
+  liveMode: boolean;
+  demo: boolean;
+  closedTrades: number;
+  reviewEvery: number;
+  nextReviewIn: number;
+  journal: JournalRow[];
+  changes: ChangeRow[];
+  shadow: ChangeRow | null;
+  shadowProgress: { mainDone: number; target: number; shadow: ArmStat; main: ArmStat } | null;
+  lastReview: { ts: number; tradesReviewed: number; result: { tradesReviewed: number; findings: { text: string }[]; exitLines: string[]; proposal: { label: string; before: number; after: number; why: string; evidence: string[] } | null; notes: string[] } } | null;
+  efficiency: {
+    fills: number;
+    avgPickToFillS: number;
+    failedBuys: number;
+    failedTxCostSol: number;
+    feesSol: number;
+    grossProfitSol: number;
+    feeSharePct: number | null;
+    missed: number;
+    notes: NoteRow[];
+  };
+}
+
+export interface SourceLinks {
+  website: string;
+  twitter: string;
+  telegram: string;
+}
+
+export interface KeyStatus {
+  saved: boolean;
+  hint: string;
+  storage: string;
+  envOverride: boolean;
+  /** True in a plain browser tab: key storage only works in the desktop app. */
+  unavailable?: boolean;
+}
+
+export interface ConnTest {
+  ok: boolean;
+  latencyMs: number | null;
+  message: string;
+}
+
+export interface BuildInfo {
+  version: string;
+  sha: string;
+  shortSha: string;
+  branch: string;
+  builtAt: number;
+  builtAtText: string;
+}
+
+export interface UpdateCheck {
+  verdict: "up-to-date" | "update-available" | "unknown";
+  message: string;
+  current: BuildInfo;
+  latest: { sha: string; shortSha: string; url: string; kind: string; title: string; createdAt: string; createdUnix: number } | null;
+  steps: string[];
+  demo?: boolean;
+}
 
 export interface KillItem {
   symbol: string;
@@ -159,6 +287,8 @@ export type WatchStatus = "checking" | "blocked" | "observing" | "scored" | "pic
 
 export interface WatchRow {
   mint: string;
+  /** Coin's own website, X and Telegram from its metadata (empty until known). */
+  links?: SourceLinks;
   symbol: string;
   name: string;
   ts: number;
@@ -199,6 +329,8 @@ export interface ActivityItem {
   agent: AgentId;
   text: string;
   mint: string | null;
+  /** Where to read about it (a coin's website, X or Telegram; later an X post or thesis link). */
+  sourceUrl?: string | null;
 }
 
 export interface Pulse {

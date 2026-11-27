@@ -55,6 +55,12 @@ impl Db {
         Ok(Db { conn: Mutex::new(conn) })
     }
 
+    /// Run `f` with the connection (used by the learning journal for its own tables).
+    pub fn with_conn<R>(&self, f: impl FnOnce(&Connection) -> R) -> R {
+        let c = self.conn.lock().unwrap();
+        f(&c)
+    }
+
     pub fn insert_decision(&self, d: &DecisionRow) {
         let c = self.conn.lock().unwrap();
         let _ = c.execute(

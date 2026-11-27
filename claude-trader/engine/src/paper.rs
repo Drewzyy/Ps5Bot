@@ -62,15 +62,40 @@ pub struct AttemptLog {
     pub result: String,
 }
 
+/// The knobs of "Paper fill realism". They can change while the engine runs (Settings preset).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FillParams {
+    pub buy_fail_pct: f64,
+    pub sell_fail_pct: f64,
+    pub delay_ms_min: u32,
+    pub delay_ms_max: u32,
+    pub slippage_cap_pct: f64,
+}
+
+impl FillParams {
+    pub fn from_config(c: &Config) -> Self {
+        let p = &c.paper_fill;
+        FillParams { buy_fail_pct: p.buy_fail_pct, sell_fail_pct: p.sell_fail_pct, delay_ms_min: p.delay_ms_min, delay_ms_max: p.delay_ms_max, slippage_cap_pct: p.slippage_cap_pct }
+    }
+    pub fn check(&self) -> Result<(), String> {
+        if !(0.0..=100.0).contains(&self.buy_fail_pct) || !(0.0..=100.0).contains(&self.sell_fail_pct) {
+            return Err("Fail chances must be between 0 and 100 percent.".into());
+        }
+        if self.delay_ms_min > self.delay_ms_max || self.delay_ms_max > 10_000 {
+            return Err("The delay range must go from a smaller to a larger number, at most 10000 ms.".into());
+        }
+        if !(1.0..=50.0).contains(&self.slippage_cap_pct) {
+            return Err("The slippage cap must be between 1 and 50 percent.".into());
+        }
+        Ok(())
+    }
+}
+
 pub struct PaperExecutor {
     fees: FeeModel,
-    buy_fail_pct: f64,
-    sell_fail_pct: Mutex<f64>,
+    params: Mutex<FillParams>,
     /// Chance (percent) that an unconfirmed sell turns out to have landed after the 20 s balance check.
     unconfirmed_landed_pct: Mutex<f64>,
-    delay_min: u32,
-    delay_max: u32,
-    sell_slippage_cap_pct: f64,
     rng: Mutex<Rng>,
     /// 1.0 = real waits. Tests use 0.0.
     pub time_scale: f64,
@@ -80,12 +105,8 @@ impl PaperExecutor {
     pub fn new(cfg: &Config, rng: Rng) -> Self {
         PaperExecutor {
             fees: FeeModel::from_config(cfg),
-            buy_fail_pct: cfg.paper_fill.buy_fail_pct,
-            sell_fail_pct: Mutex::new(cfg.paper_fill.sell_fail_pct),
+            params: Mutex::new(FillParams::from_config(cfg)),
             unconfirmed_landed_pct: Mutex::new(40.0),
-            delay_min: cfg.paper_fill.delay_ms_min,
-            delay_max: cfg.paper_fill.delay_ms_max,
-            sell_slippage_cap_pct: cfg.paper_fill.slippage_cap_pct,
             rng: Mutex::new(rng),
             time_scale: 1.0,
         }
@@ -93,7 +114,16 @@ impl PaperExecutor {
 
     /// Change the simulated sell failure rate while running (tests, and a later live-vs-paper recalibration).
     pub fn set_sell_fail_pct(&self, pct: f64) {
-        *self.sell_fail_pct.lock().unwrap() = pct;
+        self.params.lock().unwrap().sell_fail_pct = pct;
+    }
+
+    /// Swap the realism knobs while running (the Settings preset).
+    pub fn set_fill_params(&self, p: FillParams) {
+        *self.params.lock().unwrap() = p;
+    }
+
+    fn p(&self) -> FillParams {
+        *self.params.lock().unwrap()
     }
 
     pub fn set_unconfirmed_landed_pct(&self, pct: f64) {
@@ -109,7 +139,7 @@ impl PaperExecutor {
     }
 
     fn delay(&self) -> u32 {
-        self.rng.lock().unwrap().range_u32(self.delay_min, self.delay_max)
+        { let p = self.p(); self.rng.lock().unwrap().range_u32(p.delay_ms_min, p.delay_ms_max) }
     }
 
     async fn wait(&self, ms: u64) {
@@ -156,10 +186,11 @@ impl PaperExecutor {
         if slip > BUY_SLIPPAGE_CAP_PCT {
             return Err(BuyFail { kind: FailKind::Slippage, fees: self.fees.failed_tx_fees(priority), delay_ms, detail: format!("price moved {slip:.1}% during the {delay_ms} ms delay, cap is {BUY_SLIPPAGE_CAP_PCT:.0}%") });
         }
-        if self.roll() * 100.0 < self.buy_fail_pct {
+        let buy_fail = self.p().buy_fail_pct;
+        if self.roll() * 100.0 < buy_fail {
             let kind = self.fail_kind(false);
             let fees = if kind == FailKind::SubmitFailed { FeeBreakdown::default() } else { self.fees.failed_tx_fees(priority) };
-            return Err(BuyFail { kind, fees, delay_ms, detail: format!("simulated {kind:?} ({}% fail rate)", self.buy_fail_pct) });
+            return Err(BuyFail { kind, fees, delay_ms, detail: format!("simulated {kind:?} ({}% fail rate)", buy_fail) });
         }
         if tokens <= 0.0 || avg <= 0.0 {
             return Err(BuyFail { kind: FailKind::SubmitFailed, fees: FeeBreakdown::default(), delay_ms, detail: "empty fill".into() });
@@ -190,11 +221,12 @@ impl PaperExecutor {
             let slip = if spot_out > 0.0 { (1.0 - gross / spot_out) * 100.0 } else { 0.0 };
             let mut landed = false;
             let mut result = String::new();
-            if slip > self.sell_slippage_cap_pct {
+            let cap = self.p().slippage_cap_pct;
+            if slip > cap {
                 // the price fell too far: the sell reverts on chain and costs fees
                 failed.add(&self.fees.failed_tx_fees(priority));
-                result = format!("reverted: {slip:.1}% slippage over the {:.0}% cap", self.sell_slippage_cap_pct);
-            } else if self.roll() * 100.0 < *self.sell_fail_pct.lock().unwrap() {
+                result = format!("reverted: {slip:.1}% slippage over the {:.0}% cap", cap);
+            } else if self.roll() * 100.0 < self.p().sell_fail_pct {
                 match self.fail_kind(true) {
                     FailKind::SubmitFailed => result = "submit failed (never sent, free)".into(),
                     FailKind::Reverted => {
@@ -227,6 +259,40 @@ impl PaperExecutor {
             }
         }
         SellOutcome { fill: None, failed_fees: failed, attempts }
+    }
+}
+
+#[async_trait::async_trait]
+impl crate::exec::Executor for PaperExecutor {
+    fn name(&self) -> &'static str {
+        "paper"
+    }
+    fn fees(&self) -> &FeeModel {
+        PaperExecutor::fees(self)
+    }
+    fn quote_buy(&self, curve: &Curve, size_sol: f64) -> (f64, f64, Curve) {
+        PaperExecutor::quote_buy(self, curve, size_sol)
+    }
+    fn buy_impact_pct(&self, curve: &Curve, size_sol: f64) -> f64 {
+        PaperExecutor::buy_impact_pct(self, curve, size_sol)
+    }
+    async fn buy(&self, size_sol: f64, quoted_price: f64, curve_now: &(dyn Fn() -> Option<Curve> + Sync)) -> Result<BuyFill, BuyFail> {
+        PaperExecutor::buy(self, size_sol, quoted_price, curve_now).await
+    }
+    async fn sell(&self, tokens: f64, reason: &str, start_attempt: u32, now_ms: &(dyn Fn() -> i64 + Sync), curve_now: &(dyn Fn() -> Option<Curve> + Sync)) -> SellOutcome {
+        PaperExecutor::sell(self, tokens, reason, start_attempt, now_ms, curve_now).await
+    }
+    fn skipped_checks(&self) -> Vec<crate::exec::SkippedCheck> {
+        crate::exec::paper_skipped_checks()
+    }
+    fn set_sell_fail_pct(&self, pct: f64) {
+        PaperExecutor::set_sell_fail_pct(self, pct)
+    }
+    fn set_fill_params(&self, p: FillParams) {
+        PaperExecutor::set_fill_params(self, p)
+    }
+    fn set_unconfirmed_landed_pct(&self, pct: f64) {
+        PaperExecutor::set_unconfirmed_landed_pct(self, pct)
     }
 }
 

@@ -137,6 +137,29 @@ export function buildSteps(c: Config): Step[] {
       todo: "Nothing.",
     },
     {
+      id: "helius", title: "Add your free Helius key", target: ".nav",
+      what: [
+        "The app works without it, but the public connection drops often and misses trades. A free Helius key gives a steadier line.",
+        "Get a free key at helius.dev, then Dashboard > API Keys. Copy it.",
+        "In the app open Settings, then Connections. Paste the key, press Save, then Test connection. You should see OK with a time.",
+        "The key is kept in your computer's secure storage. It is never shown again, only its last four characters.",
+      ],
+      good: "OK with a time under about 500 ms.",
+      bad: "An error message. The usual cause is a missing character when copying. Paste it again.",
+      todo: "Do this once. It takes effect right away, no restart.",
+    },
+    {
+      id: "learning", title: "What it learned", target: ".card", card: "What it learned",
+      what: [
+        "After each closed trade the app writes a short note with the real numbers: profit after fees, how long it held, why it sold, and how the coin looked when it was bought.",
+        "Every 30 trades it looks for patterns. It only reports one if at least 10 trades back it up and the gap is large.",
+        "A change is tried in a separate pretend lane first and used only if it beats the normal one. It can never loosen Scam Shield, raise trade size or loosen loss limits, and every change has an Undo button.",
+      ],
+      good: "Short notes with numbers, and few changes.",
+      bad: "Many changes in a short time. That means the app is chasing luck. Use Undo.",
+      todo: "Read it now and then. With no closed trades it says so.",
+    },
+    {
       id: "settings", title: "Settings and the i icons", target: ".nav", 
       what: [
         "Open Settings to see every rule as a number. Each row has an i icon.",
@@ -201,13 +224,18 @@ export function buildTopics(c: Config): Topic[] {
         { q: "Exit rules", a: [`${d.ladder}. The last ${d.tail}% uses a ${c.exits.trailingStopPct}% trailing stop. Soft stop ${c.exits.softStopPct}%, hard stop ${c.exits.hardStopPct}%, maximum hold ${d.hold}.`] },
         { q: "Win rate, profit factor, drawdown", a: ["Win rate: share of winning trades. Profit factor: total wins divided by total losses, above 1 is good. Drawdown: the biggest fall from a high point."] },
         { q: "Why 0 trades for a long time?", a: ["Strict rules. It is normal and safe. Do not loosen rules to get action."] },
-        { q: "The i icons", a: ["Open Settings and click i beside any value for a plain explanation."] },
+        { q: "The i icons", a: ["Open Settings, open a section, and click i beside any value for a plain explanation."] },
+        { q: "How do I add my Helius key?", a: ["Get a free key at helius.dev, then Dashboard > API Keys. In the app open Settings > Connections, paste the key, press Save, then Test connection.", "It is stored in your computer's secure storage and shown only as 'saved, ends in ...ab12'. Remove key deletes it."] },
+        { q: "How do I update the app?", a: ["Open Settings > About and updates and press Check for updates. If a newer build exists, press Open download page and follow the three steps shown."] },
+        { q: "What does 'What it learned' show?", a: ["A note per closed trade, built only from recorded numbers. Every 30 trades it may propose one small change, tests it in a separate pretend lane, and applies it only if it wins. Every change can be undone."] },
       ],
     },
   ];
 }
 
 export const GLOSSARY: Term[] = [
+  { term: "Helius", def: "A free service that gives the app a steadier line to the Solana network. You add a free key in Settings." },
+  { term: "Test lane", def: "A separate pretend lane that tries a proposed change next to the normal one. The change is used only if the test lane wins." },
   { term: "Bankroll", def: "The pretend money the app trades with." },
   { term: "Bonding curve", def: "The price formula on pump.fun. Buying pushes price up, selling pushes it down." },
   { term: "Bundle", def: "Many wallets controlled by one person buying at launch to fake interest." },

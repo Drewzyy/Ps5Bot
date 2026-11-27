@@ -65,7 +65,7 @@ export default function App() {
         ) : page === "tips" ? (
           <TipsPage config={config} replay={() => { go("dashboard"); setTour(true); }} />
         ) : (
-          <SettingsPage config={config} />
+          <SettingsPage config={config} engine={engine} onConfig={setConfig} />
         )}
       </main>
       {tour && page === "dashboard" && <Walkthrough config={config} onClose={closeTour} />}

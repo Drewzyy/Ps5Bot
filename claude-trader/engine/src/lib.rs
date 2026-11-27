@@ -21,6 +21,10 @@ pub mod pump;
 pub mod rpc;
 pub mod shield;
 pub mod net;
+pub mod secrets;
+pub mod update;
+pub mod exec;
+pub mod learning;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};

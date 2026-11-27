@@ -72,5 +72,12 @@
     "reduceSizeAfterWins": 3,
     "cooldownSecondsPerToken": 300,
     "liveMinSolReserve": 0.02
+  },
+  "learning": {
+    "enabled": true,
+    "reviewEveryTrades": 30,
+    "shadowTrades": 30,
+    "minSample": 10,
+    "minWinRateGapPts": 25
   }
 }

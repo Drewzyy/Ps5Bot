@@ -101,12 +101,15 @@ async fn main() {
     let mut opts = EngineOpts::new(cfg, &db_path);
     if let Some(r) = arg(&args, "--rpc") {
         opts.rpc_url = r;
+        opts.rpc_pinned = true; // an explicit --rpc is never replaced by a saved key
     }
     opts.relax_egress = args.iter().any(|a| a == "--relax-metadata-egress");
     if let Some(l) = arg(&args, "--logs") {
         opts.logs_dir = l;
     }
     opts.clear_halt = args.iter().any(|a| a == "--clear-halt");
+    let opts = opts.with_saved_key();
+    let mut opts = opts;
     opts.replay = arg(&args, "--replay");
     opts.sol_usd = arg(&args, "--sol-usd").and_then(|v| v.parse().ok());
     if opts.replay.is_some() && opts.sol_usd.is_none() {

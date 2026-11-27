@@ -6,7 +6,7 @@ const f4 = (n: number) => `${n.toFixed(4)} SOL`;
 const sgn = (n: number, d = 4) => `${n > 0 ? "+" : ""}${n.toFixed(d)}`;
 const price = (p: number) => (p >= 0.001 ? p.toFixed(6) : p.toPrecision(4));
 const dur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const LANE_NAME: Record<string, string> = { momentum: "Momentum", "dip-40pct": "Dip variant" };
+const LANE_NAME: Record<string, string> = { momentum: "Momentum", "dip-40pct": "Dip variant", shadow: "Test lane" };
 const laneName = (l: string) => LANE_NAME[l] ?? l;
 
 function Empty({ children }: { children: string }) {

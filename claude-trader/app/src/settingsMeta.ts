@@ -21,6 +21,7 @@ export const SECTIONS: { key: string; title: string; blurb: string }[] = [
   { key: "fees", title: "Fees", blurb: "The costs the app expects to pay on each trade." },
   { key: "paperFill", title: "Paper fill realism", blurb: "Makes pretend trades behave like real ones, including failures." },
   { key: "risk", title: "Risk limits", blurb: "Hard limits that protect your money." },
+  { key: "learning", title: "Learning", blurb: "How the app reviews its own closed trades and tests changes." },
 ];
 
 export const META: Record<string, Explain> = {
@@ -491,6 +492,36 @@ export const META: Record<string, Explain> = {
     "After trading a coin, the app will not trade it again for this long.",
     "300 seconds.",
     "Type a number of seconds."
+  ),
+  "learning.enabled": e(
+    "Learning journal on",
+    "When on, the app writes a note after every closed trade and, every so often, looks for patterns in the trades it has made.",
+    "On. It only reads the app's own trade records and never touches Scam Shield, trade size or loss limits.",
+    "Leave it on. Turning it off stops notes and reviews."
+  ),
+  "learning.reviewEveryTrades": e(
+    "Review every (trades)",
+    "After this many closed trades the app groups them (for example by how much SOL was in the curve) and looks for a group that did clearly better or worse.",
+    "30. Fewer trades means the patterns are mostly luck.",
+    "Type a whole number. Higher is more careful."
+  ),
+  "learning.shadowTrades": e(
+    "Test a change for (trades)",
+    "A proposed change is first tried in a separate pretend lane next to the normal one. It is used only if it beats the normal lane over this many trades.",
+    "30.",
+    "Type a whole number. Higher is more careful."
+  ),
+  "learning.minSample": e(
+    "Smallest group to trust (trades)",
+    "A pattern is only reported if the group has at least this many trades. Small groups show patterns that are just luck.",
+    "10. The app will not accept a number below 10.",
+    "Type a whole number of 10 or more."
+  ),
+  "learning.minWinRateGapPts": e(
+    "Gap needed (win rate points)",
+    "A group must win this many percentage points more or less often than the other trades before it counts as a pattern.",
+    "25. The app will not accept a number below 20.",
+    "Type a number of 20 or more."
   ),
   "risk.liveMinSolReserve": e(
     "Keep in wallet (SOL)",
