@@ -13,7 +13,7 @@ pub struct Scenario {
     pub events: Vec<(i64, Trade)>,
 }
 
-pub const MINT: &str = "ReplayHot1111111111111111111111111111111pump";
+pub const MINT: &str = "Rep1ayHot1111111111111111111111111111111pump";
 
 pub struct Sim {
     pub c: Curve,
@@ -67,7 +67,7 @@ pub fn scenario(name: &str) -> Option<Scenario> {
         "dump" => false,
         _ => return None,
     };
-    let mint = if hot { MINT.to_string() } else { "ReplayDump111111111111111111111111111111pump".to_string() };
+    let mint = if hot { MINT.to_string() } else { "Rep1ayDump111111111111111111111111111111pump".to_string() };
     let mut s = Sim::new(&mint);
     // Observation window (0-60 s): 18 distinct buyers, the second half busier than the first, 2 small sells.
     for (i, t) in [3.0, 8.0, 13.0, 18.0, 23.0, 28.0].iter().enumerate() {

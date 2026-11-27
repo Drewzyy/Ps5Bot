@@ -106,7 +106,7 @@ export function demoUpdate(): UpdateCheck {
 }
 
 export function demoEvents(): EngineEvent[] {
-  const ev: EngineEvent[] = [];
+  const ev: EngineEvent[] = [{ type: "extension", ts: NOW, paired: false, connected: false, lastSeenMs: 0 }];
   const coins: [string, string, string, string, string][] = [
     ["MOONCAT", "Moon Cat", "https://example.org/mooncat", "https://x.com/mooncat", "https://t.me/mooncat"],
     ["PEPEX", "Pepe X", "", "https://x.com/pepex", ""],

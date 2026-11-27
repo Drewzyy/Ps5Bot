@@ -22,11 +22,13 @@ export interface EngineState {
   links: Record<string, SourceLinks>;
   /** What the current executor cannot run ("skipped in paper"). */
   skipped: { executor: string; checks: { name: string; why: string }[] } | null;
+  /** Chrome extension link status. */
+  extension: { paired: boolean; connected: boolean; lastSeenMs: number } | null;
   /** True once real engine events (not the browser mock) have arrived. */
   live: boolean;
 }
 
-const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, learning: null, links: {}, skipped: null, live: false };
+const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, learning: null, links: {}, skipped: null, extension: null, live: false };
 const WATCH_MAX = 300;
 const FLUSH_MS = 300; // UI updates throttled to about 3 per second
 
@@ -56,6 +58,7 @@ export function useEngine(): EngineState {
           learning: prev.learning,
           links: prev.links,
           skipped: prev.skipped,
+          extension: prev.extension,
           live: prev.live,
         };
         let watch: Map<string, WatchRow> | null = null;
@@ -111,6 +114,8 @@ export function useEngine(): EngineState {
             next.links = { ...(keys.length > 600 ? {} : next.links), [e.mint]: { website: e.website, twitter: e.twitter, telegram: e.telegram } };
           } else if (e.type === "skipped") {
             next.skipped = { executor: e.executor, checks: e.checks };
+          } else if (e.type === "extension") {
+            next.extension = { paired: e.paired, connected: e.connected, lastSeenMs: e.lastSeenMs };
           } else if (e.type === "shield-summary") {
             next.shield = { checked: e.checked, blocked: e.blocked, passed: e.passed, byReason: e.byReason };
           } else if (e.type === "pulse") {

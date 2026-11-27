@@ -34,9 +34,21 @@ jobs:
         shell: bash
         working-directory: claude-trader
         run: bash scripts/check-live-gate.sh
+      - name: Test the Chrome extension logic
+        shell: bash
+        working-directory: claude-trader/extension
+        run: node --test tests/core.test.js
       - name: Build Windows app
         run: npx tauri build
       - uses: actions/upload-artifact@v4
         with:
           name: claude-trader-windows
           path: claude-trader/target/release/bundle/**
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claude-trader-chrome-extension
+          # GitHub zips this folder. Unzip it, then Load unpacked in chrome://extensions (pick the folder that holds manifest.json).
+          path: |
+            claude-trader/extension
+            !claude-trader/extension/tests/**
+            !claude-trader/extension/README.md

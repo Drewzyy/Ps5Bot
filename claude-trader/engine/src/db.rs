@@ -266,6 +266,29 @@ impl Db {
         c.query_row("SELECT COUNT(*) FROM positions WHERE mint=?", params![mint], |r| r.get::<_, i64>(0)).unwrap_or(0) > 0
     }
 
+    /// Latest Scam Shield decision for a coin, newest first: (symbol, stage, outcome, reason, detail, verdict).
+    pub fn latest_decision(&self, mint: &str) -> Option<(String, String, String, String, String, String)> {
+        let c = self.conn.lock().unwrap();
+        c.query_row(
+            "SELECT COALESCE(symbol,''),stage,outcome,reason,COALESCE(detail,''),COALESCE(verdict,'') FROM decisions WHERE mint=? ORDER BY (outcome='block') DESC, id DESC LIMIT 1",
+            params![mint],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+        )
+        .ok()
+    }
+
+    /// True while a position in this coin is open or being sold.
+    pub fn mint_is_held(&self, mint: &str) -> bool {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT COUNT(*) FROM positions WHERE mint=? AND state IN ('OPEN','SELLING','BUYING')", params![mint], |r| r.get::<_, i64>(0)).unwrap_or(0) > 0
+    }
+
+    /// Number of position rows ever written (tests use it to prove a check opened nothing).
+    pub fn position_count(&self) -> i64 {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT COUNT(*) FROM positions", [], |r| r.get(0)).unwrap_or(0)
+    }
+
     pub fn decision_count(&self) -> u32 {
         let c = self.conn.lock().unwrap();
         c.query_row("SELECT COUNT(*) FROM decisions", [], |r| r.get(0)).unwrap_or(0)

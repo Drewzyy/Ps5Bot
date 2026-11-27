@@ -20,6 +20,7 @@ struct History {
     kill: Option<EngineEvent>,
     learning: Option<EngineEvent>,
     skipped: Option<EngineEvent>,
+    extension: Option<EngineEvent>,
     links: HashMap<String, EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
@@ -73,6 +74,7 @@ impl Hub {
                 EngineEvent::Kill(_) => h.kill = Some(e.clone()),
                 EngineEvent::Learning(_) => h.learning = Some(e.clone()),
                 EngineEvent::Skipped { .. } => h.skipped = Some(e.clone()),
+                EngineEvent::Extension { .. } => h.extension = Some(e.clone()),
                 EngineEvent::Links { mint, .. } => {
                     if h.links.len() > 600 {
                         h.links.clear();
@@ -108,6 +110,7 @@ impl Hub {
         out.extend(h.kill.iter().cloned());
         out.extend(h.learning.iter().cloned());
         out.extend(h.skipped.iter().cloned());
+        out.extend(h.extension.iter().cloned());
         out.extend(h.links.values().cloned());
         out
     }

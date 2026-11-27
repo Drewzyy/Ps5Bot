@@ -1,4 +1,4 @@
-import type { BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, UpdateCheck } from "./types";
+import type { BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, UpdateCheck } from "./types";
 import { demoEvents, demoUpdate } from "./demo";
 import defaultConfig from "../../config.json";
 
@@ -150,7 +150,17 @@ export interface Api {
   openLink(url: string): void;
   setPaperFill(values: Record<string, unknown>): Promise<string>;
   learning(cmd: string): Promise<string>;
+  extPairStart(): Promise<string>;
+  extUnpair(): Promise<void>;
+  getStartup(): Promise<StartupView>;
+  setStartup(s: Omit<StartupView, "autostart" | "chromeFound" | "extensionId" | "extensionFolder">): Promise<void>;
+  setAutostart(on: boolean): Promise<boolean>;
+  openChromeNow(): Promise<string>;
+  openExtensionFolder(): Promise<void>;
 }
+
+const EXT_ID = "jihnmdnpkeglfhoombfjhdfbmiopnljj";
+const DEFAULT_STARTUP: StartupView = { openChrome: true, pages: { pumpFunHome: true, dexscreenerHeld: true }, closeTabOnClose: false, keepAwake: true, autostart: false, chromeFound: true, extensionId: EXT_ID, extensionFolder: "C:\\Program Files\\Claude Trader\\extension" };
 
 const BROWSER_MSG = "Saving a key only works in the desktop app. This page is the browser preview.";
 
@@ -176,12 +186,23 @@ function tauriApi(): Api {
     },
     setPaperFill: (v) => call("set_paper_fill", { values: JSON.stringify(v) }),
     learning: (cmd) => call("learning_command", { cmd }),
+    extPairStart: () => call("ext_pair_start"),
+    extUnpair: () => call("ext_unpair"),
+    getStartup: () => call("get_startup"),
+    setStartup: (settings) => call("set_startup", { settings }),
+    setAutostart: (on) => call("set_autostart", { on }),
+    openChromeNow: () => call("open_chrome_now"),
+    openExtensionFolder: () => call("open_extension_folder"),
   };
 }
 
 /** Demo and browser preview: nothing is stored anywhere. Demo pretends so the screens can be shown. */
 function localApi(demo: boolean): Api {
   let saved = "";
+  let startup: StartupView = { ...DEFAULT_STARTUP, pages: { ...DEFAULT_STARTUP.pages } };
+  const needApp = () => {
+    if (!demo) throw new Error("This only works in the desktop app.");
+  };
   const status = (): KeyStatus =>
     saved
       ? { saved: true, hint: `saved, ends in ...${saved.slice(-4)}`, storage: "Windows Credential Manager (demo)", envOverride: false }
@@ -217,6 +238,26 @@ function localApi(demo: boolean): Api {
       if (!demo) throw new Error("This only works in the desktop app.");
       return `DEMO: ${cmd} (nothing changed)`;
     },
+    extPairStart: async () => {
+      needApp();
+      return "4821-9037";
+    },
+    extUnpair: async () => needApp(),
+    getStartup: async () => startup,
+    setStartup: async (v) => {
+      needApp();
+      startup = { ...startup, ...v };
+    },
+    setAutostart: async (on) => {
+      needApp();
+      startup = { ...startup, autostart: on };
+      return on;
+    },
+    openChromeNow: async () => {
+      needApp();
+      return "DEMO: Chrome is starting.";
+    },
+    openExtensionFolder: async () => needApp(),
   };
 }
 

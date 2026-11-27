@@ -63,6 +63,20 @@ Things paper cannot run are listed in the UI as "skipped in paper", never silent
 - **Learning journal** (`engine/src/learning.rs`): every lesson comes from recorded numbers; nothing is invented. A journal entry per closed trade; a review every 30 closed main-lane trades (groups by curve SOL, buy/sell ratio, buyers, score, exit reason; a pattern needs at least 10 trades in the group and 10 in the rest and a win-rate gap of at least 25 points); the proposal runs in a shadow paper lane for the next 30 main-lane trades and is applied only if it beats the main lane on net P/L and profit factor with at least 10 shadow trades. Allowed changes: a whitelist of entry/exit thresholds and the five score weights, never more than 20% from the shipped value. Never Scam Shield, trade size, fees or loss limits. Every change is logged with before/after, evidence and result and has Undo. In live mode a winning change waits for the user's approval. Efficiency notes: pick-to-fill time, failed-transaction cost, fee share of gross profit, missed coins (score 80 or more but blocked, with the next 5 minutes of price when seen).
 - **Source links**: wherever the app shows a reason or signal from outside, it stores and shows a clickable `sourceUrl`. Today that is the coin's own website, X and Telegram from its metadata. X Monitor and Thesis Finder are not built (the X API is not free), so the UI only has the slot ("Source: post link"); no data is faked.
 
+## 4d. Chrome extension and browser startup (added 2026-11-27)
+
+An optional Manifest V3 Chrome extension (`extension/`) works with the desktop app. Paper only, no keys, no signing.
+
+- **Link.** A dedicated local WebSocket, `ws://127.0.0.1:8766` (`engine/src/bridge.rs`, `--ext-port` on engine-cli, always on in the app). The dashboard socket (8765) is unchanged and still refuses extension origins.
+- **Origin.** The handshake is refused unless `Origin` is exactly `chrome-extension://jihnmdnpkeglfhoombfjhdfbmiopnljj`. The ID comes from the public `key` pinned in `extension/manifest.json`; a test checks the two agree. A missing or any other origin gets HTTP 403.
+- **Pairing.** The app shows a one-time code (8 digits, valid 10 minutes, one use, stored only as a hash). The extension swaps it for a random 256-bit token that it keeps in `chrome.storage.local`; the app keeps only the token hash (`kv ext.token`). Five wrong tries in a row lock sign-in for 60 s. Unpair deletes the token. Reason for a code instead of a shipped secret: a secret inside the extension folder would be readable by anything on the PC and could not be revoked.
+- **What the extension gets.** The same public events the dashboard shows (activity, positions without candle ticks, stats, kill state, learning journal) and the Startup settings. Never the Helius key or any secret.
+- **What it can ask.** `verdict` (what the bot thinks of a coin: held, watching, skipped, blocked, closed, unknown, with Scam Shield result and score), `check` (Scam Shield checks only), and the commands `kill` and `resume`. There is no buy or sell message. Any other command is refused. `check` uses `Shield::manual_check` (mint account, RugCheck, holders), saves a decision with stage `manual-check` and has no handle to the trader, so it cannot open a position. The bot trades only by its own rules (Token Picker, risk gates). Tests: `bridge::tests`.
+- **Pages.** pump.fun coin pages and dexscreener.com/solana pages show a small card. The coin address comes from the URL, a token link on the page, or the public Dexscreener pair API.
+- **Tabs.** The extension opens pump.fun (once per browser session) and the Dexscreener chart of each coin bought, reuses tabs that already exist, and closes only tabs it opened, only when the setting is on and the coin has no other open trade.
+- **Startup and browser (Settings).** Open Chrome at launch (chrome.exe in `%ProgramFiles%`, `%ProgramFiles(x86)%`, `%LocalAppData%`, else the default browser; skipped when the extension is already connected), pages to open, close a coin's tab on close, start with Windows (tauri-plugin-autostart), keep the PC awake while the app runs (`SetThreadExecutionState`, released on exit). Stored in SQLite `kv startup.settings`.
+- **Install.** Developer mode > Load unpacked, once (Chrome cannot install extensions for an app). Steps are in the app and in `extension/README.md`. CI uploads the folder as `claude-trader-chrome-extension`; the installed app also carries the folder as a resource.
+
 ## 5. Pipeline
 
 discovery → cheap prefilters (no RPC) → Scam Shield chain checks → observation window → score → entry rule → portfolio/risk gates → buy → persisted position → exit engine → sell → log.
@@ -217,7 +231,7 @@ Theme: white background, white cards, green accents (#16a34a primary, #14532d te
 
 - First-run walkthrough with real download/signup links (Helius signup, Telegram @BotFather, etc.) and a green check per completed step.
 - Wallet (M4 only): generated in-app, address + funding screen, plain warning to never use a main wallet.
-- Start-with-Windows toggle and tray icon.
+- Start-with-Windows toggle (Settings > Startup and browser, section 4d) and tray icon.
 
 ## 11. Safety (enforced in code and config)
 

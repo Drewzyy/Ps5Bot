@@ -228,6 +228,7 @@ export function buildTopics(c: Config): Topic[] {
         { q: "How do I add my Helius key?", a: ["Get a free key at helius.dev, then Dashboard > API Keys. In the app open Settings > Connections, paste the key, press Save, then Test connection.", "It is stored in your computer's secure storage and shown only as 'saved, ends in ...ab12'. Remove key deletes it."] },
         { q: "How do I update the app?", a: ["Open Settings > About and updates and press Check for updates. If a newer build exists, press Open download page and follow the three steps shown."] },
         { q: "What does 'What it learned' show?", a: ["A note per closed trade, built only from recorded numbers. Every 30 trades it may propose one small change, tests it in a separate pretend lane, and applies it only if it wins. Every change can be undone."] },
+        { q: "What is the Chrome extension?", a: ["An optional add-on for Chrome. It shows your balance, open positions and the kill switch in a side panel, shows what the bot thinks of a coin on pump.fun and Dexscreener pages, and sends alerts. It can run a scam check on a coin, but it can never make the bot buy.", "Install it once from Settings > Startup and browser > Install the Chrome extension. It connects to the app only on this computer, with a code you paste once."] },
       ],
     },
   ];

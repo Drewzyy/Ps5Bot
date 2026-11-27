@@ -164,6 +164,46 @@ impl Shield {
         (out, facts)
     }
 
+    /// Scam check for ONE coin the user is looking at (Chrome extension "Check this coin"). It runs only the checks that work
+    /// for a coin of any age (mint account, RugCheck report, holders) and returns results. It never scores, never picks and has
+    /// no way to reach the Executor: the only thing that can come out of it is a verdict.
+    pub async fn manual_check(&self, mint: &str) -> Vec<CheckResult> {
+        let f = &self.cfg.filters;
+        let mint_fut = async {
+            match timeout(Duration::from_secs(8), self.rpc.get_mint(mint)).await {
+                Ok(Ok(m)) => mint_rule(&m, f.mint_authority_revoked, f.freeze_authority_revoked, mint),
+                Ok(Err(e)) => CheckResult::undecided("mint_account", e),
+                Err(_) => CheckResult::undecided("mint_account", "timed out"),
+            }
+        };
+        let rug_fut = async {
+            for attempt in 0..3 {
+                match timeout(BUDGET, self.rugcheck.report(mint)).await {
+                    Ok(Ok(Some(v))) => return Ok(parse_rugcheck(&v)),
+                    Ok(Ok(None)) if attempt < 2 => tokio::time::sleep(Duration::from_millis(800)).await,
+                    Ok(Ok(None)) => return Err("RugCheck has no report for this coin".to_string()),
+                    Ok(Err(e)) => return Err(e),
+                    Err(_) => return Err("timed out".to_string()),
+                }
+            }
+            Err("no report".to_string())
+        };
+        let (mint_res, rug) = tokio::join!(mint_fut, rug_fut);
+        let mut out = vec![mint_res, honeypot_stub()];
+        match &rug {
+            Ok(r) => {
+                out.push(rugcheck_rule(r, mint));
+                let ex: HashSet<String> = r.known_pools.iter().cloned().collect();
+                out.push(holder_rule(&r.holders, &ex, f.max_single_holder_pct, f.max_top_holders_combined_pct, f.max_insiders_pct, mint));
+            }
+            Err(e) => {
+                out.push(CheckResult::undecided("rugcheck", e.clone()));
+                out.push(CheckResult::undecided("holders", format!("holders come from RugCheck: {e}")));
+            }
+        }
+        out
+    }
+
     /// Pre-buy checks on the full observation data: wash volume, chase risk, bundle patterns on real payers.
     pub fn pre_buy(&self, trades: &[Trade], facts: &ChainFacts) -> Vec<CheckResult> {
         let now = now_ms();

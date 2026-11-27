@@ -117,6 +117,9 @@ pub enum EngineEvent {
     /// Where to read about a coin: its own website, X and Telegram from its metadata. Empty strings when it has none.
     #[serde(rename_all = "camelCase")]
     Links { mint: String, website: String, twitter: String, telegram: String },
+    /// Chrome extension link: is one paired, is one connected right now. Never carries the pairing code or token.
+    #[serde(rename_all = "camelCase")]
+    Extension { ts: i64, paired: bool, connected: bool, last_seen_ms: i64 },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

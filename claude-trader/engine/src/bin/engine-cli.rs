@@ -1,5 +1,6 @@
 //! engine-cli: run the Claude Trader pipeline headless.
 //!   engine-cli                       print the loaded config (M1 behaviour)
+//!   engine-cli ext-pair|ext-unpair|ext-state --db PATH   Chrome extension pairing code (one use, 10 minutes)
 //!   engine-cli kill|resume|kill-state --db PATH   kill switch (stops buying, sells everything; resume is separate)
 //!   engine-cli feed [--minutes N] [--ws-port P] [--db PATH] [--rpc URL] [--config PATH] [--relax-metadata-egress]
 //! Logs to stdout, writes every decision to the SQLite `decisions` table, and (with --ws-port) serves the
@@ -78,6 +79,24 @@ async fn main() {
         }
         return;
     }
+    // pairing code for the Chrome extension, from the command line (the app has a button for this)
+    if matches!(args.get(1).map(|s| s.as_str()), Some("ext-pair") | Some("ext-unpair") | Some("ext-state")) {
+        let db_path = arg(&args, "--db").unwrap_or_else(|| "claude-trader.db".into());
+        let db = engine::db::Db::open(&db_path).unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1)
+        });
+        match args[1].as_str() {
+            "ext-pair" => println!("{}", engine::bridge::new_pair_code(&db).unwrap_or_else(|e| e)),
+            "ext-unpair" => {
+                engine::bridge::unpair(&db);
+                println!("extension unpaired");
+            }
+            _ => println!("extension is {}", if engine::bridge::is_paired(&db) { "paired" } else { "not paired" }),
+        }
+        return;
+    }
+
     if args.get(1).map(|s| s.as_str()) != Some("feed") {
         let path = args.get(1).map(PathBuf::from).unwrap_or(default_cfg);
         println!("engine ok");
@@ -107,6 +126,7 @@ async fn main() {
     if let Some(l) = arg(&args, "--logs") {
         opts.logs_dir = l;
     }
+    opts.bridge_addr = arg(&args, "--ext-port").map(|p| format!("127.0.0.1:{p}"));
     opts.clear_halt = args.iter().any(|a| a == "--clear-halt");
     let opts = opts.with_saved_key();
     let mut opts = opts;

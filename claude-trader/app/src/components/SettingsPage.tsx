@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { api } from "../source";
 import { readThemePref, saveThemePref } from "../theme";
 import type { ThemePref } from "../theme";
-import type { BuildInfo, Config, ConnTest, KeyStatus, UpdateCheck } from "../types";
+import type { BuildInfo, Config, ConnTest, KeyStatus, StartupView, UpdateCheck } from "../types";
 import type { EngineState } from "../useEngine";
 import { SECTIONS, flatten } from "../settingsMeta";
 import type { Row } from "../settingsMeta";
@@ -237,6 +237,175 @@ function Connections() {
   );
 }
 
+// ------------------------------------------------------------------ Startup and browser
+
+function Toggle({ id, label, checked, onChange, disabled, children }: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; children?: ReactNode }) {
+  return (
+    <div className="field">
+      <div className="lblrow">
+        <label className="chk" htmlFor={id}>
+          <input id={id} type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+          <span>{label}</span>
+        </label>
+        {children && <Info label={label}>{children}</Info>}
+      </div>
+    </div>
+  );
+}
+
+function StartupBrowser({ engine }: { engine: EngineState }) {
+  const [st, setSt] = useState<StartupView | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [code, setCode] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+  const err = (e: unknown) => String(e instanceof Error ? e.message : e);
+  useEffect(() => {
+    api.getStartup().then(setSt).catch((e) => setMsg({ ok: false, text: err(e) }));
+  }, []);
+  const ext = engine.extension;
+
+  const change = async (patch: Partial<StartupView>) => {
+    if (!st) return;
+    const next = { ...st, ...patch, pages: { ...st.pages, ...(patch.pages ?? {}) } };
+    setSt(next);
+    try {
+      await api.setStartup({ openChrome: next.openChrome, pages: next.pages, closeTabOnClose: next.closeTabOnClose, keepAwake: next.keepAwake });
+      setMsg(null);
+    } catch (e) {
+      setSt(st);
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  const autostart = async (on: boolean) => {
+    if (!st) return;
+    try {
+      const v = await api.setAutostart(on);
+      setSt({ ...st, autostart: v });
+      setMsg(null);
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  const pair = async () => {
+    try {
+      setCode(await api.extPairStart());
+      setMsg(null);
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  const unpair = async () => {
+    try {
+      await api.extUnpair();
+      setCode(null);
+      setMsg({ ok: true, text: "Unpaired. The extension can no longer connect until you pair it again." });
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  const openNow = async () => {
+    try {
+      setMsg({ ok: true, text: await api.openChromeNow() });
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  const folder = async () => {
+    try {
+      await api.openExtensionFolder();
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  // the code disappears once the extension has used it
+  useEffect(() => {
+    if (ext?.paired) setCode(null);
+  }, [ext?.paired]);
+
+  const link = !ext ? "Checking" : ext.connected ? "Connected" : ext.paired ? "Paired, Chrome is not connected right now" : "Not paired yet";
+  const pagesOff = !st?.openChrome;
+  return (
+    <div className="acc-pad" data-testid="startup-browser">
+      <div className="kvrows" data-testid="ext-status">
+        <div><span className="k">Chrome extension</span><b className={ext?.connected ? "pos" : ""}>{link}</b></div>
+        {st && !st.chromeFound && <div className="note">Chrome was not found on this computer. The app will open your default browser instead, but the extension needs Chrome.</div>}
+      </div>
+      <div className="btns">
+        {!ext?.paired && <button className="btn" onClick={pair}>Get pairing code</button>}
+        {ext?.paired && <button className="btn ghost" onClick={pair}>Pair again</button>}
+        {ext?.paired && <button className="btn danger" onClick={unpair}>Unpair</button>}
+        <button className="btn ghost" onClick={openNow}>Open Chrome now</button>
+      </div>
+      {code && (
+        <div className="paircode" data-testid="pair-code">
+          <div className="note">Paste this code into the Claude Trader side panel in Chrome. It works once and ends in 10 minutes.</div>
+          <div className="code">{code}</div>
+          {api.kind === "demo" && <div className="note">DEMO: this code is not real.</div>}
+        </div>
+      )}
+      {st && (
+        <>
+          <Toggle id="su-chrome" label="Open Chrome when Claude Trader starts" checked={st.openChrome} onChange={(v) => change({ openChrome: v })}>
+            <p><b>What it does.</b> Starts Chrome for you so the extension can connect to the app. If Chrome is already open, nothing happens.</p>
+            <p><b>A good value.</b> On.</p>
+            <p><b>How to set it.</b> Tick or untick the box. It takes effect the next time the app starts.</p>
+          </Toggle>
+          <div className="field">
+            <div className="lblrow"><label>Pages to open at launch</label></div>
+            <div className="subtoggles">
+              <Toggle id="su-pump" label="pump.fun home page" checked={st.pages.pumpFunHome} disabled={pagesOff} onChange={(v) => change({ pages: { ...st.pages, pumpFunHome: v } })}>
+                <p><b>What it does.</b> Opens pump.fun, where new coins appear. If you already have a pump.fun tab, the extension reuses it.</p>
+                <p><b>A good value.</b> On.</p>
+              </Toggle>
+              <Toggle id="su-dex" label="Dexscreener chart of each coin the bot buys" checked={st.pages.dexscreenerHeld} disabled={pagesOff} onChange={(v) => change({ pages: { ...st.pages, dexscreenerHeld: v } })}>
+                <p><b>What it does.</b> When the bot buys a coin, the extension opens that coin's Dexscreener chart in a background tab so you can watch it. One tab per coin, never duplicated.</p>
+                <p><b>A good value.</b> On.</p>
+              </Toggle>
+            </div>
+          </div>
+          <Toggle id="su-close" label="Close a coin's tab when its trade closes" checked={st.closeTabOnClose} onChange={(v) => change({ closeTabOnClose: v })}>
+            <p><b>What it does.</b> When the bot sells a coin for good, the extension closes the chart tab it opened for that coin. It never closes tabs you opened yourself.</p>
+            <p><b>A good value.</b> Off if you like to look at the chart after a trade, on to keep Chrome tidy.</p>
+          </Toggle>
+          <Toggle id="su-auto" label="Start Claude Trader when Windows starts" checked={st.autostart} onChange={autostart}>
+            <p><b>What it does.</b> Opens the app by itself when you sign in to Windows, so the bot is running without you remembering.</p>
+            <p><b>A good value.</b> Your choice. Leave it off until you trust the bot.</p>
+          </Toggle>
+          <Toggle id="su-awake" label="Keep this PC awake while the bot runs" checked={st.keepAwake} onChange={(v) => change({ keepAwake: v })}>
+            <p><b>What it does.</b> Stops Windows from going to sleep while Claude Trader is open. A sleeping PC cannot watch coins or sell. The screen can still turn off. It is released when you close the app.</p>
+            <p><b>A good value.</b> On.</p>
+          </Toggle>
+        </>
+      )}
+      {msg && <div className={`result ${msg.ok ? "ok" : "bad"}`} role="status">{msg.text}</div>}
+
+      <div className="field">
+        <button className="btn ghost" style={{ width: "fit-content" }} aria-expanded={showGuide} onClick={() => setShowGuide(!showGuide)}>
+          {showGuide ? "Hide" : "Show"}: Install the Chrome extension
+        </button>
+        {showGuide && (
+          <div className="guide" data-testid="ext-guide">
+            <p className="note">Do this once. Chrome does not let apps install extensions for you, so these steps are by hand.</p>
+            <ol>
+              <li>Press <b>Show the extension folder</b> below. A window opens with the extension files.</li>
+              <li>In Chrome, type <b>chrome://extensions</b> in the address bar and press Enter.</li>
+              <li>Turn on <b>Developer mode</b> (switch at the top right).</li>
+              <li>Press <b>Load unpacked</b> and pick the folder from step 1 (the one that holds manifest.json).</li>
+              <li>Click the puzzle icon in Chrome and pin <b>Claude Trader</b>. Click its icon to open the side panel.</li>
+              <li>Here in the app, press <b>Get pairing code</b>. Paste the code into the side panel and press Connect.</li>
+            </ol>
+            <p className="note">The status above turns to Connected. After that it connects by itself every time. Chrome may show a "Disable developer mode extensions" notice at start. Choose Keep. The extension never gets your Helius key or any secret. It cannot buy or sell, only look, run a scam check, and press the kill switch.</p>
+            <div className="btns">
+              <button className="btn" onClick={folder}>Show the extension folder</button>
+            </div>
+            {st && <div className="note" data-testid="ext-folder">Folder: {st.extensionFolder}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ About and updates
 
 function About() {
@@ -351,6 +520,10 @@ export default function SettingsPage({ config, engine, onConfig }: { config: Con
       <Section id="connections" title="Connections" summary="Helius key" open={isOpen("connections")} toggle={() => toggle("connections")}>
         <p className="acc-blurb">Outside services the app talks to. The key is kept in your computer's secure storage, never in config.json, logs or git.</p>
         <Connections />
+      </Section>
+      <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
+        <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>
+        <StartupBrowser engine={engine} />
       </Section>
       <Section id="appearance" title="Appearance" summary="Light, dark or system" open={isOpen("appearance")} toggle={() => toggle("appearance")}>
         <Appearance />

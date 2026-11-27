@@ -54,7 +54,20 @@ export type EngineEvent =
   | ({ type: "kill" } & KillState)
   | ({ type: "learning" } & LearningSnapshot)
   | { type: "links"; mint: string; website: string; twitter: string; telegram: string }
-  | { type: "skipped"; executor: string; checks: { name: string; why: string }[] };
+  | { type: "skipped"; executor: string; checks: { name: string; why: string }[] }
+  | { type: "extension"; ts: number; paired: boolean; connected: boolean; lastSeenMs: number };
+
+/** Mirrors engine/src/startup.rs plus what the app adds. */
+export interface StartupView {
+  openChrome: boolean;
+  pages: { pumpFunHome: boolean; dexscreenerHeld: boolean };
+  closeTabOnClose: boolean;
+  keepAwake: boolean;
+  autostart: boolean;
+  chromeFound: boolean;
+  extensionId: string;
+  extensionFolder: string;
+}
 
 /** Mirrors engine/src/learning.rs */
 export interface JournalRow {

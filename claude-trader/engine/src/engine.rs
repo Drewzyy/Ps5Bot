@@ -37,6 +37,8 @@ pub struct EngineOpts {
     pub secrets_dir: Option<String>,
     /// True when CT_RPC_URL pinned the endpoint, so a saved key must not replace it.
     pub rpc_pinned: bool,
+    /// Local address for the Chrome extension bridge, e.g. "127.0.0.1:8766". None = bridge off.
+    pub bridge_addr: Option<String>,
 }
 
 impl EngineOpts {
@@ -57,6 +59,7 @@ impl EngineOpts {
             replay: None,
             secrets_dir: None,
             rpc_pinned: std::env::var("CT_RPC_URL").ok().filter(|s| !s.is_empty()).is_some(),
+            bridge_addr: None,
         }
     }
 
@@ -237,6 +240,14 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         hub.log(format!("engine: resumed {resumed} open paper position(s) from SQLite"));
     }
     trader.spawn_ticker(stop.clone());
+    // Chrome extension bridge: it gets its own Shield for "Check this coin" and no handle to the trader at all.
+    if let Some(addr) = &opts.bridge_addr {
+        let checker = Arc::new(crate::bridge::ShieldChecker { shield: Arc::new(Shield::new(opts.config.clone(), db.clone(), rpc.clone(), ShieldOpts { relax_egress: opts.relax_egress })), hub: hub.clone(), db: db.clone() });
+        match crate::bridge::Bridge::new(hub.clone(), db.clone(), checker).serve(addr).await {
+            Ok(a) => hub.log(format!("engine: Chrome extension bridge on ws://{a} (pinned extension only, pairing required)")),
+            Err(e) => hub.log(format!("engine: Chrome extension bridge NOT started: {e}")),
+        }
+    }
     let shield = Shield::new(opts.config.clone(), db.clone(), rpc, ShieldOpts { relax_egress: opts.relax_egress });
     let mon = Arc::new(MonitorState::default());
     let ctx = Arc::new(Ctx {
