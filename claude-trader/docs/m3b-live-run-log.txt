@@ -16784,3 +16784,741 @@
 2026-11-27T01:42:26.026Z BLOCK       PLINE 6TWfx4Dx1F3mpKcjCzQUumST7a47ptqoTSEzG5B3pump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/6TWfx4Dx1F3mpKcjCzQUumST7a47ptqoTSEzG5B3pump/report)
 2026-11-27T01:42:52.970Z LOG          trade feed: 11 subscriptions confirmed, 144 log messages, 10 trades decoded
 2026-11-27T01:43:22.969Z LOG          trade feed: 11 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:43:33.718Z NEW-TOKEN  mint=HMFZy2a9UciNedhwVtwpW96csKuhm8FsqSAe6Kxapump symbol=PROTON name="Proton" mcapSol=27.98
+2026-11-27T01:43:33.725Z HANDOFF     MemecoinMonitor -> ScamShield: New coin PROTON handed to Scam Shield
+2026-11-27T01:43:33.723Z BLOCK       PROTON HMFZy2a9UciNedhwVtwpW96csKuhm8FsqSAe6Kxapump stage=cheap-prefilter reason=CREATOR_BLACKLISTED verdict=HIGH | Creator is on the local blacklist: PROTON fell over 70% from its peak within 60 s.
+2026-11-27T01:43:37.663Z NEW-TOKEN  mint=5E6DJ5i8MUwUK97Y1ci2QausKiqjGZQoRq8oyNgobHyc symbol=TOE-G name="TOE-G" mcapSol=40.10
+2026-11-27T01:43:37.671Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOE-G handed to Scam Shield
+2026-11-27T01:43:37.668Z BLOCK       TOE-G 5E6DJ5i8MUwUK97Y1ci2QausKiqjGZQoRq8oyNgobHyc stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 17.7% of the supply (limit 10%).
+2026-11-27T01:43:49.820Z NEW-TOKEN  mint=31twuwsNeXcmdUrrEHXR97d8Qe7KA5g69psYd2QGpump symbol=Disney name="Disney" mcapSol=28.51
+2026-11-27T01:43:49.829Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Disney handed to Scam Shield
+2026-11-27T01:43:49.826Z PASS        Disney 31twuwsNeXcmdUrrEHXR97d8Qe7KA5g69psYd2QGpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:43:50.440Z BLOCK       Disney 31twuwsNeXcmdUrrEHXR97d8Qe7KA5g69psYd2QGpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:43:52.969Z LOG          trade feed: 12 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:44:22.969Z LOG          trade feed: 12 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:44:52.084Z NEW-TOKEN  mint=4HZcQvsgMhyWy5u7FPXoRu2ivgfpfFt4eCbDaJhWYniy symbol= name="" mcapSol=30.70
+2026-11-27T01:44:52.088Z HANDOFF     MemecoinMonitor -> ScamShield: New coin  handed to Scam Shield
+2026-11-27T01:44:52.086Z BLOCK        4HZcQvsgMhyWy5u7FPXoRu2ivgfpfFt4eCbDaJhWYniy stage=cheap-prefilter reason=METADATA_MISSING verdict=ELEVATED | Name, symbol or metadata link is missing.
+2026-11-27T01:44:52.969Z LOG          trade feed: 12 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:45:22.970Z LOG          trade feed: 12 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:45:23.175Z NEW-TOKEN  mint=AVWRBRdgDxaTDycBYdrAGwDBU28CdaX4K22GqwBopump symbol=PUMPERS name="AGENTIC TRADERS" mcapSol=29.83
+2026-11-27T01:45:23.179Z HANDOFF     MemecoinMonitor -> ScamShield: New coin PUMPERS handed to Scam Shield
+2026-11-27T01:45:23.177Z PASS        PUMPERS AVWRBRdgDxaTDycBYdrAGwDBU28CdaX4K22GqwBopump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:45:25.058Z BLOCK       PUMPERS AVWRBRdgDxaTDycBYdrAGwDBU28CdaX4K22GqwBopump stage=chain reason=DEV_SNIPE verdict=HIGH | 6 other transaction(s) landed in the same block as the launch (slot 474370587).
+2026-11-27T01:45:35.121Z NEW-TOKEN  mint=H8aSdv7vN9H2H9U225ftdof9eZ2AvAqWPU5Ao39Zpump symbol=Crysory99 name="KITTY" mcapSol=28.00
+2026-11-27T01:45:35.129Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Crysory99 handed to Scam Shield
+2026-11-27T01:45:35.125Z PASS        Crysory99 H8aSdv7vN9H2H9U225ftdof9eZ2AvAqWPU5Ao39Zpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:45:35.703Z PASS        Crysory99 H8aSdv7vN9H2H9U225ftdof9eZ2AvAqWPU5Ao39Zpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:45:35.705Z HANDOFF     ScamShield -> TokenPicker: Clean coin Crysory99 handed to Token Picker
+2026-11-27T01:45:46.372Z NEW-TOKEN  mint=5aaGHxxYaWFDnArLEFh2EmMsLMdmhEhxBKqcsq8zpump symbol=PROC/SELF name="proc/self linux" mcapSol=29.59
+2026-11-27T01:45:46.380Z HANDOFF     MemecoinMonitor -> ScamShield: New coin PROC/SELF handed to Scam Shield
+2026-11-27T01:45:46.378Z PASS        PROC/SELF 5aaGHxxYaWFDnArLEFh2EmMsLMdmhEhxBKqcsq8zpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:45:48.382Z BLOCK       PROC/SELF 5aaGHxxYaWFDnArLEFh2EmMsLMdmhEhxBKqcsq8zpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/5aaGHxxYaWFDnArLEFh2EmMsLMdmhEhxBKqcsq8zpump/report)
+2026-11-27T01:45:51.340Z NEW-TOKEN  mint=9YDLFuMDeWXSKRauWFzYdptdpfERH428yXduaW3Xpump symbol=NT name="New trying " mcapSol=28.11
+2026-11-27T01:45:51.344Z HANDOFF     MemecoinMonitor -> ScamShield: New coin NT handed to Scam Shield
+2026-11-27T01:45:51.343Z PASS        NT 9YDLFuMDeWXSKRauWFzYdptdpfERH428yXduaW3Xpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:45:52.053Z NEW-TOKEN  mint=9v6RcD2LXcBwYP4Hy45VMcGKFWggnSqhinw1fRjgpump symbol=GTP name="GIRL TRADERS PROJECT" mcapSol=28.11
+2026-11-27T01:45:52.057Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GTP handed to Scam Shield
+2026-11-27T01:45:52.056Z PASS        GTP 9v6RcD2LXcBwYP4Hy45VMcGKFWggnSqhinw1fRjgpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:45:52.969Z LOG          trade feed: 17 subscriptions confirmed, 144 log messages, 10 trades decoded
+2026-11-27T01:45:53.346Z BLOCK       NT 9YDLFuMDeWXSKRauWFzYdptdpfERH428yXduaW3Xpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/9YDLFuMDeWXSKRauWFzYdptdpfERH428yXduaW3Xpump/report)
+2026-11-27T01:45:53.814Z BLOCK       GTP 9v6RcD2LXcBwYP4Hy45VMcGKFWggnSqhinw1fRjgpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:45:57.048Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-27T01:45:58.452Z LOG          trade feed: connected
+2026-11-27T01:45:58.454Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-27T01:46:18.253Z NEW-TOKEN  mint=FgSrLGtyfbuwyeEwwK8rUX5K1feNoMKJXyC6SS6B7fqU symbol=OOPS name="Accidental Millionaires" mcapSol=28.01
+2026-11-27T01:46:18.256Z HANDOFF     MemecoinMonitor -> ScamShield: New coin OOPS handed to Scam Shield
+2026-11-27T01:46:18.255Z PASS        OOPS FgSrLGtyfbuwyeEwwK8rUX5K1feNoMKJXyC6SS6B7fqU stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:19.534Z NEW-TOKEN  mint=GCsQZkQrPcnFYxzsX1Uk9uLS4qi9SsZrxpuJFoYF359g symbol=OOPS name="Accidental Millionaires" mcapSol=28.01
+2026-11-27T01:46:19.538Z HANDOFF     MemecoinMonitor -> ScamShield: New coin OOPS handed to Scam Shield
+2026-11-27T01:46:19.536Z PASS        OOPS GCsQZkQrPcnFYxzsX1Uk9uLS4qi9SsZrxpuJFoYF359g stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:19.856Z BLOCK       OOPS FgSrLGtyfbuwyeEwwK8rUX5K1feNoMKJXyC6SS6B7fqU stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474370844).
+2026-11-27T01:46:20.089Z BLOCK       OOPS GCsQZkQrPcnFYxzsX1Uk9uLS4qi9SsZrxpuJFoYF359g stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:46:20.901Z NEW-TOKEN  mint=7Ttmp4xBtErMzxpR6AhuzJjDf7u3YGJtWm5ibPsqpump symbol=530A name="hold and retire" mcapSol=305.31
+2026-11-27T01:46:20.905Z HANDOFF     MemecoinMonitor -> ScamShield: New coin 530A handed to Scam Shield
+2026-11-27T01:46:20.904Z BLOCK       530A 7Ttmp4xBtErMzxpR6AhuzJjDf7u3YGJtWm5ibPsqpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 74.8% of the supply (limit 10%).
+2026-11-27T01:46:21.801Z NEW-TOKEN  mint=53yUgtVnuurBH1qbrijwvaX325ATjgsoygo3qBqvxgZZ symbol=OOPS name="Accidental Millionaires" mcapSol=28.01
+2026-11-27T01:46:21.805Z HANDOFF     MemecoinMonitor -> ScamShield: New coin OOPS handed to Scam Shield
+2026-11-27T01:46:21.804Z PASS        OOPS 53yUgtVnuurBH1qbrijwvaX325ATjgsoygo3qBqvxgZZ stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:22.283Z BLOCK       OOPS 53yUgtVnuurBH1qbrijwvaX325ATjgsoygo3qBqvxgZZ stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:46:23.933Z NEW-TOKEN  mint=CSuu15nGH2MuHZqnuCsAgph8ZxaNxVu5bVddWsZ3RHMT symbol=OOPS name="Accidental Millionaires" mcapSol=28.01
+2026-11-27T01:46:23.937Z HANDOFF     MemecoinMonitor -> ScamShield: New coin OOPS handed to Scam Shield
+2026-11-27T01:46:23.935Z PASS        OOPS CSuu15nGH2MuHZqnuCsAgph8ZxaNxVu5bVddWsZ3RHMT stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:25.596Z BLOCK       OOPS CSuu15nGH2MuHZqnuCsAgph8ZxaNxVu5bVddWsZ3RHMT stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:46:26.161Z NEW-TOKEN  mint=Hw2kjrkHNuxzJ3TSaF43NpNbvkGh5E28Z4hmahf3MXMc symbol=OOPS name="Accidental Millionaires" mcapSol=28.01
+2026-11-27T01:46:26.163Z HANDOFF     MemecoinMonitor -> ScamShield: New coin OOPS handed to Scam Shield
+2026-11-27T01:46:26.162Z PASS        OOPS Hw2kjrkHNuxzJ3TSaF43NpNbvkGh5E28Z4hmahf3MXMc stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:26.688Z BLOCK       OOPS Hw2kjrkHNuxzJ3TSaF43NpNbvkGh5E28Z4hmahf3MXMc stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:46:28.453Z LOG          trade feed: 6 subscriptions confirmed, 112 log messages, 22 trades decoded
+2026-11-27T01:46:35.122Z SCORE       Crysory99 H8aSdv7vN9H2H9U225ftdof9eZ2AvAqWPU5Ao39Zpump score=3.0 picked=false buyers=0 buys=0 sells=6 ratio=0.00 priceChg=-0.1% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.0 SOL below 30.0 SOL", "creator is selling"]
+2026-11-27T01:46:53.720Z NEW-TOKEN  mint=4LPFaQNrjAksjfXPyB15hiuoLginYnmjRmXKHP4xpump symbol=memer name="memer" mcapSol=29.83
+2026-11-27T01:46:53.727Z HANDOFF     MemecoinMonitor -> ScamShield: New coin memer handed to Scam Shield
+2026-11-27T01:46:53.725Z PASS        memer 4LPFaQNrjAksjfXPyB15hiuoLginYnmjRmXKHP4xpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:53.956Z NEW-TOKEN  mint=FKgwzZp54RG21LLxiCcf7tYgxdYPTAAr2cb9si56pump symbol=SALECOIN name="This coin is on sale" mcapSol=30.79
+2026-11-27T01:46:53.959Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SALECOIN handed to Scam Shield
+2026-11-27T01:46:53.958Z PASS        SALECOIN FKgwzZp54RG21LLxiCcf7tYgxdYPTAAr2cb9si56pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:46:54.638Z BLOCK       SALECOIN FKgwzZp54RG21LLxiCcf7tYgxdYPTAAr2cb9si56pump stage=chain reason=DEV_SNIPE verdict=HIGH | 2 other transaction(s) landed in the same block as the launch (slot 474371012).
+2026-11-27T01:46:54.752Z BLOCK       memer 4LPFaQNrjAksjfXPyB15hiuoLginYnmjRmXKHP4xpump stage=chain reason=DEV_SNIPE verdict=HIGH | 6 other transaction(s) landed in the same block as the launch (slot 474371011).
+2026-11-27T01:46:58.453Z LOG          trade feed: 8 subscriptions confirmed, 328 log messages, 41 trades decoded
+2026-11-27T01:47:08.805Z NEW-TOKEN  mint=CBBZ4wK8YWT8fkXfm5QUqDYhoVLmmi17gwXfijXHpump symbol=Ghazal name="Ghazal" mcapSol=28.11
+2026-11-27T01:47:08.809Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Ghazal handed to Scam Shield
+2026-11-27T01:47:08.808Z PASS        Ghazal CBBZ4wK8YWT8fkXfm5QUqDYhoVLmmi17gwXfijXHpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:47:09.339Z PASS        Ghazal CBBZ4wK8YWT8fkXfm5QUqDYhoVLmmi17gwXfijXHpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:47:09.341Z HANDOFF     ScamShield -> TokenPicker: Clean coin Ghazal handed to Token Picker
+2026-11-27T01:47:25.595Z NEW-TOKEN  mint=5b21EksNWqNzkRErVD49qE9jG7osRYLZfeLHwsbqpump symbol=DOOM name="Dr.Doom" mcapSol=28.33
+2026-11-27T01:47:25.597Z HANDOFF     MemecoinMonitor -> ScamShield: New coin DOOM handed to Scam Shield
+2026-11-27T01:47:25.596Z PASS        DOOM 5b21EksNWqNzkRErVD49qE9jG7osRYLZfeLHwsbqpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:47:26.032Z NEW-TOKEN  mint=5sJSfGd67Hkt3fXfpawZEuvwCT8rDuHrQm7NbuEdpump symbol=WORLD name="The Crypto World" mcapSol=28.11
+2026-11-27T01:47:26.037Z HANDOFF     MemecoinMonitor -> ScamShield: New coin WORLD handed to Scam Shield
+2026-11-27T01:47:26.035Z PASS        WORLD 5sJSfGd67Hkt3fXfpawZEuvwCT8rDuHrQm7NbuEdpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:47:26.201Z PASS        DOOM 5b21EksNWqNzkRErVD49qE9jG7osRYLZfeLHwsbqpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:47:26.203Z HANDOFF     ScamShield -> TokenPicker: Clean coin DOOM handed to Token Picker
+2026-11-27T01:47:27.267Z BLOCK       WORLD 5sJSfGd67Hkt3fXfpawZEuvwCT8rDuHrQm7NbuEdpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:47:28.454Z LOG          trade feed: 11 subscriptions confirmed, 328 log messages, 41 trades decoded
+2026-11-27T01:47:43.319Z NEW-TOKEN  mint=DpLKESQRhPh47i9YuXxbV617bMjnjYvBJ8PRQJsdpump symbol=KITTY name="Crysory99" mcapSol=28.00
+2026-11-27T01:47:43.322Z HANDOFF     MemecoinMonitor -> ScamShield: New coin KITTY handed to Scam Shield
+2026-11-27T01:47:43.321Z PASS        KITTY DpLKESQRhPh47i9YuXxbV617bMjnjYvBJ8PRQJsdpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:47:43.943Z PASS        KITTY DpLKESQRhPh47i9YuXxbV617bMjnjYvBJ8PRQJsdpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:47:43.945Z HANDOFF     ScamShield -> TokenPicker: Clean coin KITTY handed to Token Picker
+2026-11-27T01:47:58.453Z LOG          trade feed: 12 subscriptions confirmed, 334 log messages, 47 trades decoded
+2026-11-27T01:48:06.835Z NEW-TOKEN  mint=FthK5dFbwpY2mS191pAko13XDtJzw1KKTK8ktREqpump symbol=USFF name="USFF" mcapSol=55.01
+2026-11-27T01:48:06.837Z HANDOFF     MemecoinMonitor -> ScamShield: New coin USFF handed to Scam Shield
+2026-11-27T01:48:06.836Z BLOCK       USFF FthK5dFbwpY2mS191pAko13XDtJzw1KKTK8ktREqpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 30.8% of the supply (limit 10%).
+2026-11-27T01:48:08.807Z SCORE       Ghazal CBBZ4wK8YWT8fkXfm5QUqDYhoVLmmi17gwXfijXHpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.1 gates=["curve holds 0.1 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:48:25.599Z SCORE       DOOM 5b21EksNWqNzkRErVD49qE9jG7osRYLZfeLHwsbqpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.2 gates=["curve holds 0.2 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:48:28.453Z LOG          trade feed: 12 subscriptions confirmed, 336 log messages, 49 trades decoded
+2026-11-27T01:48:30.931Z NEW-TOKEN  mint=2ehXAfFPyY2cSfEryDSZZLDTh8FBtBoqSV49C7Wupump symbol=DRAGON name="Dragon riders" mcapSol=28.51
+2026-11-27T01:48:30.939Z HANDOFF     MemecoinMonitor -> ScamShield: New coin DRAGON handed to Scam Shield
+2026-11-27T01:48:30.934Z PASS        DRAGON 2ehXAfFPyY2cSfEryDSZZLDTh8FBtBoqSV49C7Wupump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:48:32.787Z PASS        DRAGON 2ehXAfFPyY2cSfEryDSZZLDTh8FBtBoqSV49C7Wupump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:48:32.789Z HANDOFF     ScamShield -> TokenPicker: Clean coin DRAGON handed to Token Picker
+2026-11-27T01:48:43.321Z SCORE       KITTY DpLKESQRhPh47i9YuXxbV617bMjnjYvBJ8PRQJsdpump score=13.3 picked=false buyers=1 buys=2 sells=4 ratio=0.50 priceChg=-0.1% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.5 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.0 SOL below 30.0 SOL", "creator is selling"]
+2026-11-27T01:48:51.483Z NEW-TOKEN  mint=CXhJqxN6GUigrJHZNUQFG2BzV2WWttHazZiHCASvAb1G symbol=NWF name="Nigga We Fine" mcapSol=27.96
+2026-11-27T01:48:51.489Z HANDOFF     MemecoinMonitor -> ScamShield: New coin NWF handed to Scam Shield
+2026-11-27T01:48:51.486Z PASS        NWF CXhJqxN6GUigrJHZNUQFG2BzV2WWttHazZiHCASvAb1G stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:48:52.715Z BLOCK       NWF CXhJqxN6GUigrJHZNUQFG2BzV2WWttHazZiHCASvAb1G stage=chain reason=DEV_SNIPE verdict=HIGH | 2 other transaction(s) landed in the same block as the launch (slot 474371565).
+2026-11-27T01:48:58.454Z LOG          trade feed: 14 subscriptions confirmed, 392 log messages, 59 trades decoded
+2026-11-27T01:49:20.865Z NEW-TOKEN  mint=7sVwKvVXbScsnzg8tyDGF7nHqhxdhZQ5SMKoBiWJpump symbol=Huss name="Huss Huss Huss" mcapSol=29.83
+2026-11-27T01:49:21.127Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Huss handed to Scam Shield
+2026-11-27T01:49:21.125Z PASS        Huss 7sVwKvVXbScsnzg8tyDGF7nHqhxdhZQ5SMKoBiWJpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:49:23.129Z BLOCK       Huss 7sVwKvVXbScsnzg8tyDGF7nHqhxdhZQ5SMKoBiWJpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/7sVwKvVXbScsnzg8tyDGF7nHqhxdhZQ5SMKoBiWJpump/report)
+2026-11-27T01:49:28.453Z LOG          trade feed: 15 subscriptions confirmed, 650 log messages, 90 trades decoded
+2026-11-27T01:49:30.996Z SCORE       DRAGON 2ehXAfFPyY2cSfEryDSZZLDTh8FBtBoqSV49C7Wupump score=57.0 picked=false buyers=2 buys=2 sells=1 ratio=2.00 priceChg=5.9% curveSol=1.2 gates=["curve holds 1.2 SOL (needs 4-40)", "0 buyers in 30 s (needs 5)", "volume not rising", "creator is selling"]
+2026-11-27T01:49:33.166Z NEW-TOKEN  mint=FwyKKz76sGLtT1XskFXxCggMgactj3xD5gAfggbTpump symbol=BHSL name="BHSL" mcapSol=27.98
+2026-11-27T01:49:33.173Z HANDOFF     MemecoinMonitor -> ScamShield: New coin BHSL handed to Scam Shield
+2026-11-27T01:49:33.169Z PASS        BHSL FwyKKz76sGLtT1XskFXxCggMgactj3xD5gAfggbTpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:49:34.317Z PASS        BHSL FwyKKz76sGLtT1XskFXxCggMgactj3xD5gAfggbTpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:49:34.319Z HANDOFF     ScamShield -> TokenPicker: Clean coin BHSL handed to Token Picker
+2026-11-27T01:49:39.548Z NEW-TOKEN  mint=8UguR7PbsWRw9WRXCj2Dq17fHvFGcvhkuMzw5CdApump symbol=KM name="KEIR STARMER" mcapSol=28.11
+2026-11-27T01:49:39.568Z HANDOFF     MemecoinMonitor -> ScamShield: New coin KM handed to Scam Shield
+2026-11-27T01:49:39.566Z PASS        KM 8UguR7PbsWRw9WRXCj2Dq17fHvFGcvhkuMzw5CdApump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:49:40.159Z BLOCK       KM 8UguR7PbsWRw9WRXCj2Dq17fHvFGcvhkuMzw5CdApump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:49:47.870Z NEW-TOKEN  mint=HmW92vvnWZbHdHSFrdBYKbNxPKpf3wJ5HYTFhvf5pump symbol=cap name="cap" mcapSol=54.41
+2026-11-27T01:49:47.923Z HANDOFF     MemecoinMonitor -> ScamShield: New coin cap handed to Scam Shield
+2026-11-27T01:49:47.920Z BLOCK       cap HmW92vvnWZbHdHSFrdBYKbNxPKpf3wJ5HYTFhvf5pump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 30.4% of the supply (limit 10%).
+2026-11-27T01:49:58.453Z LOG          trade feed: 17 subscriptions confirmed, 650 log messages, 90 trades decoded
+2026-11-27T01:50:04.871Z NEW-TOKEN  mint=BWxrxxYv8cHYnBwgUEH7gHLncpapjHWZsf2t3xDrpump symbol=TJR name="The Larping Bull" mcapSol=28.00
+2026-11-27T01:50:04.874Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TJR handed to Scam Shield
+2026-11-27T01:50:04.873Z PASS        TJR BWxrxxYv8cHYnBwgUEH7gHLncpapjHWZsf2t3xDrpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:05.471Z NEW-TOKEN  mint=8FdJCGHGjn3emijb9AykMMB2HLpT85HVf973ppu1pump symbol=IMGTEST name="Dynamic Image Test" mcapSol=27.96
+2026-11-27T01:50:05.484Z HANDOFF     MemecoinMonitor -> ScamShield: New coin IMGTEST handed to Scam Shield
+2026-11-27T01:50:05.479Z PASS        IMGTEST 8FdJCGHGjn3emijb9AykMMB2HLpT85HVf973ppu1pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:06.836Z PASS        TJR BWxrxxYv8cHYnBwgUEH7gHLncpapjHWZsf2t3xDrpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:50:06.840Z HANDOFF     ScamShield -> TokenPicker: Clean coin TJR handed to Token Picker
+2026-11-27T01:50:06.956Z PASS        IMGTEST 8FdJCGHGjn3emijb9AykMMB2HLpT85HVf973ppu1pump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:50:06.957Z HANDOFF     ScamShield -> TokenPicker: Clean coin IMGTEST handed to Token Picker
+2026-11-27T01:50:12.618Z NEW-TOKEN  mint=8bVbnPhDRBJVF8MajMibTQGg7DionFAtL5JbzJKkpump symbol=Zaiko name="Zaiko" mcapSol=29.83
+2026-11-27T01:50:12.628Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Zaiko handed to Scam Shield
+2026-11-27T01:50:12.623Z PASS        Zaiko 8bVbnPhDRBJVF8MajMibTQGg7DionFAtL5JbzJKkpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:13.859Z BLOCK       Zaiko 8bVbnPhDRBJVF8MajMibTQGg7DionFAtL5JbzJKkpump stage=chain reason=DEV_SNIPE verdict=HIGH | 2 other transaction(s) landed in the same block as the launch (slot 474371938).
+2026-11-27T01:50:28.453Z LOG          trade feed: 20 subscriptions confirmed, 650 log messages, 90 trades decoded
+2026-11-27T01:50:28.633Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-27T01:50:31.506Z LOG          trade feed: connected
+2026-11-27T01:50:31.508Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-27T01:50:33.167Z SCORE       BHSL FwyKKz76sGLtT1XskFXxCggMgactj3xD5gAfggbTpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:50:36.978Z NEW-TOKEN  mint=76cWGf6zQsN2SBFUAnoWQe5rUwYAKysjgRKyAiefpump symbol=MSI100 name="MemeStockIndex" mcapSol=29.83
+2026-11-27T01:50:37.034Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MSI100 handed to Scam Shield
+2026-11-27T01:50:37.031Z PASS        MSI100 76cWGf6zQsN2SBFUAnoWQe5rUwYAKysjgRKyAiefpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:38.093Z BLOCK       MSI100 76cWGf6zQsN2SBFUAnoWQe5rUwYAKysjgRKyAiefpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474372047).
+2026-11-27T01:50:45.815Z NEW-TOKEN  mint=AHviuHK38wzasj5xspMk3Uf9yHPA4gKyAQkN3McSpump symbol=George name="ジョージ" mcapSol=32.55
+2026-11-27T01:50:45.823Z HANDOFF     MemecoinMonitor -> ScamShield: New coin George handed to Scam Shield
+2026-11-27T01:50:45.821Z PASS        George AHviuHK38wzasj5xspMk3Uf9yHPA4gKyAQkN3McSpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:47.069Z BLOCK       George AHviuHK38wzasj5xspMk3Uf9yHPA4gKyAQkN3McSpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474372088).
+2026-11-27T01:50:50.920Z NEW-TOKEN  mint=7XFudFBMRgpf5o7Fs1Wr44vNajcKm63mC1DQstrBpump symbol=MINT name="MintMyGame" mcapSol=30.79
+2026-11-27T01:50:50.927Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MINT handed to Scam Shield
+2026-11-27T01:50:50.922Z PASS        MINT 7XFudFBMRgpf5o7Fs1Wr44vNajcKm63mC1DQstrBpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:50:52.610Z BLOCK       MINT 7XFudFBMRgpf5o7Fs1Wr44vNajcKm63mC1DQstrBpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474372112).
+2026-11-27T01:50:58.560Z NEW-TOKEN  mint=CHygKKLz4d3V5NVjTBgZcMRkvQLVwzRiUoYyfdMMpump symbol=Disney name="Disney" mcapSol=29.15
+2026-11-27T01:50:58.631Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Disney handed to Scam Shield
+2026-11-27T01:50:58.628Z PASS        Disney CHygKKLz4d3V5NVjTBgZcMRkvQLVwzRiUoYyfdMMpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:51:00.632Z BLOCK       Disney CHygKKLz4d3V5NVjTBgZcMRkvQLVwzRiUoYyfdMMpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/CHygKKLz4d3V5NVjTBgZcMRkvQLVwzRiUoYyfdMMpump/report)
+2026-11-27T01:51:01.508Z LOG          trade feed: 7 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:51:04.872Z SCORE       TJR BWxrxxYv8cHYnBwgUEH7gHLncpapjHWZsf2t3xDrpump score=19.9 picked=false buyers=0 buys=0 sells=1 ratio=0.00 priceChg=4.7% curveSol=0.7 gates=["curve holds 0.7 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 29.3 SOL below 30.0 SOL"]
+2026-11-27T01:51:05.474Z SCORE       IMGTEST 8FdJCGHGjn3emijb9AykMMB2HLpT85HVf973ppu1pump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:51:25.193Z NEW-TOKEN  mint=HeXGLKkpoSFLdYnkreWBMgQA5cSo5UFuytg4Ubnnpump symbol=Emmett name="Justice For Emmett" mcapSol=29.83
+2026-11-27T01:51:25.197Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Emmett handed to Scam Shield
+2026-11-27T01:51:25.196Z PASS        Emmett HeXGLKkpoSFLdYnkreWBMgQA5cSo5UFuytg4Ubnnpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:51:26.001Z BLOCK       Emmett HeXGLKkpoSFLdYnkreWBMgQA5cSo5UFuytg4Ubnnpump stage=chain reason=DEV_SNIPE verdict=HIGH | 4 other transaction(s) landed in the same block as the launch (slot 474372269).
+2026-11-27T01:51:31.508Z LOG          trade feed: 8 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:51:48.136Z NEW-TOKEN  mint=56JcfrbumsLY7BkrWGZkUrKb7Ly6QdopzywVwYfpump symbol=RapCity name="RapCity" mcapSol=54.41
+2026-11-27T01:51:48.642Z HANDOFF     MemecoinMonitor -> ScamShield: New coin RapCity handed to Scam Shield
+2026-11-27T01:51:48.640Z BLOCK       RapCity 56JcfrbumsLY7BkrWGZkUrKb7Ly6QdopzywVwYfpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 30.4% of the supply (limit 10%).
+2026-11-27T01:52:01.509Z LOG          trade feed: 8 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:52:03.619Z NEW-TOKEN  mint=FDJfGGPSw9jJ8JRnQW62GLGekjUHKDxdeA9kh27Tpump symbol=fomoDay name="fomo Day" mcapSol=305.31
+2026-11-27T01:52:03.624Z HANDOFF     MemecoinMonitor -> ScamShield: New coin fomoDay handed to Scam Shield
+2026-11-27T01:52:03.623Z BLOCK       fomoDay FDJfGGPSw9jJ8JRnQW62GLGekjUHKDxdeA9kh27Tpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 74.8% of the supply (limit 10%).
+2026-11-27T01:52:29.817Z NEW-TOKEN  mint=CSiYQu3qdYu8nHrnUaPuGZADPZ2MLQrdaKKVnWM4pump symbol=SJP name="SJP" mcapSol=30.79
+2026-11-27T01:52:29.820Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SJP handed to Scam Shield
+2026-11-27T01:52:29.819Z BLOCK       SJP CSiYQu3qdYu8nHrnUaPuGZADPZ2MLQrdaKKVnWM4pump stage=cheap-prefilter reason=COPYCAT verdict=ELEVATED | Name or symbol is almost the same as 'SJP' (SJP), seen trending in the last 24 h.
+2026-11-27T01:52:30.411Z NEW-TOKEN  mint=4yDdgFgZzBAPfqK6bw3noS6QUmRGhDFRZDe6e1Yqpump symbol=Tricky name="Tricky" mcapSol=44.63
+2026-11-27T01:52:30.417Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Tricky handed to Scam Shield
+2026-11-27T01:52:30.416Z BLOCK       Tricky 4yDdgFgZzBAPfqK6bw3noS6QUmRGhDFRZDe6e1Yqpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 22.4% of the supply (limit 10%).
+2026-11-27T01:52:31.508Z LOG          trade feed: 8 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:52:44.087Z NEW-TOKEN  mint=2vLR3GftF1HFnvmJxTgxre1yAmkv8RKN7fThHEADpump symbol=SVEN name="HISOKKAAAA" mcapSol=28.70
+2026-11-27T01:52:44.091Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SVEN handed to Scam Shield
+2026-11-27T01:52:44.089Z PASS        SVEN 2vLR3GftF1HFnvmJxTgxre1yAmkv8RKN7fThHEADpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:52:45.726Z BLOCK       SVEN 2vLR3GftF1HFnvmJxTgxre1yAmkv8RKN7fThHEADpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:52:51.904Z NEW-TOKEN  mint=5Ev6fmsuadTwPHDadGQYR3BvUy19PasMBrZfWi2qpump symbol=TRUMP2 name="TrumpAccounts" mcapSol=44.63
+2026-11-27T01:52:51.909Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TRUMP2 handed to Scam Shield
+2026-11-27T01:52:51.907Z BLOCK       TRUMP2 5Ev6fmsuadTwPHDadGQYR3BvUy19PasMBrZfWi2qpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 22.4% of the supply (limit 10%).
+2026-11-27T01:53:01.508Z LOG          trade feed: 9 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:53:31.509Z LOG          trade feed: 9 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:53:33.005Z NEW-TOKEN  mint=ErWJ7Xduav63KkLMj7dEzmc1UuCisfRM9gU1HFzWauhp symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:53:33.011Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:53:33.009Z PASS        TOGI ErWJ7Xduav63KkLMj7dEzmc1UuCisfRM9gU1HFzWauhp stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:33.631Z PASS        TOGI ErWJ7Xduav63KkLMj7dEzmc1UuCisfRM9gU1HFzWauhp stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:53:33.633Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:53:34.736Z NEW-TOKEN  mint=8JtNpjLz25vtVZcr5zHm7tuB3RELrCnDZeAumboSpump symbol=KuroCoin name="KuroCoin" mcapSol=44.63
+2026-11-27T01:53:34.741Z HANDOFF     MemecoinMonitor -> ScamShield: New coin KuroCoin handed to Scam Shield
+2026-11-27T01:53:34.739Z BLOCK       KuroCoin 8JtNpjLz25vtVZcr5zHm7tuB3RELrCnDZeAumboSpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 22.4% of the supply (limit 10%).
+2026-11-27T01:53:40.945Z NEW-TOKEN  mint=CiXdkQ4fiqwJEXmHv2eBpZMwabCn2NJtxLPJHywBpump symbol=PEP name="Pepecoin" mcapSol=29.83
+2026-11-27T01:53:40.948Z HANDOFF     MemecoinMonitor -> ScamShield: New coin PEP handed to Scam Shield
+2026-11-27T01:53:40.947Z PASS        PEP CiXdkQ4fiqwJEXmHv2eBpZMwabCn2NJtxLPJHywBpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:42.950Z BLOCK       PEP CiXdkQ4fiqwJEXmHv2eBpZMwabCn2NJtxLPJHywBpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/CiXdkQ4fiqwJEXmHv2eBpZMwabCn2NJtxLPJHywBpump/report)
+2026-11-27T01:53:52.344Z NEW-TOKEN  mint=AN9uU6G2y6e1eEKoE99XfvSNKc7CoP2BrNaMsb4bpump symbol=Harrymas name="Harrymas" mcapSol=29.46
+2026-11-27T01:53:52.348Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Harrymas handed to Scam Shield
+2026-11-27T01:53:52.347Z PASS        Harrymas AN9uU6G2y6e1eEKoE99XfvSNKc7CoP2BrNaMsb4bpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:52.810Z PASS        Harrymas AN9uU6G2y6e1eEKoE99XfvSNKc7CoP2BrNaMsb4bpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:53:52.812Z HANDOFF     ScamShield -> TokenPicker: Clean coin Harrymas handed to Token Picker
+2026-11-27T01:53:53.166Z NEW-TOKEN  mint=9JSPVrtgbK8yWt9dPA4efxmEs7ZvC3UcZR1kcuLUyNSd symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:53:53.169Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:53:53.169Z PASS        YO 9JSPVrtgbK8yWt9dPA4efxmEs7ZvC3UcZR1kcuLUyNSd stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:53.436Z NEW-TOKEN  mint=9Tcr8s7YiH5DQGKEQzpfRvgsjhmbPV195ouFn9sPhSER symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:53:53.439Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:53:53.438Z PASS        TOGI 9Tcr8s7YiH5DQGKEQzpfRvgsjhmbPV195ouFn9sPhSER stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:53.780Z PASS        YO 9JSPVrtgbK8yWt9dPA4efxmEs7ZvC3UcZR1kcuLUyNSd stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:53:53.781Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:53:55.439Z BLOCK       TOGI 9Tcr8s7YiH5DQGKEQzpfRvgsjhmbPV195ouFn9sPhSER stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | timed out
+2026-11-27T01:53:56.829Z NEW-TOKEN  mint=4ein8yRgojsYqJL7a8CmiTY7HKvRvaSt6eVNN6teDEVF symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:53:56.847Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:53:56.845Z PASS        YO 4ein8yRgojsYqJL7a8CmiTY7HKvRvaSt6eVNN6teDEVF stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:53:58.848Z BLOCK       YO 4ein8yRgojsYqJL7a8CmiTY7HKvRvaSt6eVNN6teDEVF stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/4ein8yRgojsYqJL7a8CmiTY7HKvRvaSt6eVNN6teDEVF/report)
+2026-11-27T01:54:00.055Z NEW-TOKEN  mint=DrgHKtUoKEV2NCuFVgFibiBNNX7aq3H7EEYRvaH44dRV symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:00.059Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:00.058Z PASS        YO DrgHKtUoKEV2NCuFVgFibiBNNX7aq3H7EEYRvaH44dRV stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:00.437Z NEW-TOKEN  mint=7H1mnmtUqDWMb5QJSWKGFpcCjH21PoSqbKjSNgjRVU3W symbol=RCVPROOF name="Recovery Proof" mcapSol=27.96
+2026-11-27T01:54:00.440Z HANDOFF     MemecoinMonitor -> ScamShield: New coin RCVPROOF handed to Scam Shield
+2026-11-27T01:54:00.439Z PASS        RCVPROOF 7H1mnmtUqDWMb5QJSWKGFpcCjH21PoSqbKjSNgjRVU3W stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:01.017Z BLOCK       RCVPROOF 7H1mnmtUqDWMb5QJSWKGFpcCjH21PoSqbKjSNgjRVU3W stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:54:01.509Z LOG          trade feed: 17 subscriptions confirmed, 121 log messages, 9 trades decoded
+2026-11-27T01:54:02.061Z BLOCK       YO DrgHKtUoKEV2NCuFVgFibiBNNX7aq3H7EEYRvaH44dRV stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/DrgHKtUoKEV2NCuFVgFibiBNNX7aq3H7EEYRvaH44dRV/report)
+2026-11-27T01:54:02.766Z NEW-TOKEN  mint=6oGbLjeox7sZzeeY6HVUStVWHfA3rJNHB2xpkQrvPYso symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:54:02.770Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:54:02.769Z PASS        TOGI 6oGbLjeox7sZzeeY6HVUStVWHfA3rJNHB2xpkQrvPYso stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:03.452Z NEW-TOKEN  mint=5SLRh4ujpLWreAHZ6TApFTF2mZLtRhMdmePT7oDKaqUj symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:03.457Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:03.455Z PASS        YO 5SLRh4ujpLWreAHZ6TApFTF2mZLtRhMdmePT7oDKaqUj stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:04.456Z PASS        TOGI 6oGbLjeox7sZzeeY6HVUStVWHfA3rJNHB2xpkQrvPYso stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:04.458Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:54:04.683Z PASS        YO 5SLRh4ujpLWreAHZ6TApFTF2mZLtRhMdmePT7oDKaqUj stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:04.686Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:07.033Z NEW-TOKEN  mint=9ewiJEFBQPwnhLBd9FnP14txJY3hDutEPjRvHWcgKJhB symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:07.039Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:07.038Z PASS        YO 9ewiJEFBQPwnhLBd9FnP14txJY3hDutEPjRvHWcgKJhB stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:08.269Z PASS        YO 9ewiJEFBQPwnhLBd9FnP14txJY3hDutEPjRvHWcgKJhB stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:08.271Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:10.343Z NEW-TOKEN  mint=EAvjA8gTH84A7kfCR6rSw3xoYNkCnnCnt3D2djbRW6KN symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:10.346Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:10.345Z PASS        YO EAvjA8gTH84A7kfCR6rSw3xoYNkCnnCnt3D2djbRW6KN stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:12.661Z PASS        YO EAvjA8gTH84A7kfCR6rSw3xoYNkCnnCnt3D2djbRW6KN stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:12.662Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:13.764Z NEW-TOKEN  mint=9KPcYXz5JmZVpi97nBPmayPyQP2TNytJKcZeiUDP6Qqi symbol=MOO name="Moo" mcapSol=44.63
+2026-11-27T01:54:13.768Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MOO handed to Scam Shield
+2026-11-27T01:54:13.767Z BLOCK       MOO 9KPcYXz5JmZVpi97nBPmayPyQP2TNytJKcZeiUDP6Qqi stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 22.4% of the supply (limit 10%).
+2026-11-27T01:54:14.315Z NEW-TOKEN  mint=6hqAgAVmoFaSjqJ5H4HC1xtzPWBUdNRmPjua4pnY1PAg symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:54:14.320Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:54:14.318Z PASS        TOGI 6hqAgAVmoFaSjqJ5H4HC1xtzPWBUdNRmPjua4pnY1PAg stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:15.899Z PASS        TOGI 6hqAgAVmoFaSjqJ5H4HC1xtzPWBUdNRmPjua4pnY1PAg stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:15.901Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:54:18.415Z NEW-TOKEN  mint=7fCKXLckqCytyXTntrwfWi4tVK53vhEXXMKtvHbaatuY symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:18.419Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:18.417Z PASS        YO 7fCKXLckqCytyXTntrwfWi4tVK53vhEXXMKtvHbaatuY stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:18.636Z NEW-TOKEN  mint=ApwmoTbikB4m8BSQDZyBLupeSnZeuQ9XhAcexs1vGkgs symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:18.640Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:18.639Z PASS        YO ApwmoTbikB4m8BSQDZyBLupeSnZeuQ9XhAcexs1vGkgs stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:18.859Z NEW-TOKEN  mint=Dxbi5WVrCJJVFsGccyZNyH4FKutHJ95znJvd19h83YPz symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:18.862Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:18.861Z PASS        YO Dxbi5WVrCJJVFsGccyZNyH4FKutHJ95znJvd19h83YPz stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:19.083Z NEW-TOKEN  mint=2rpcotAJKaEJw74ccG8cmQY655YfyZS8cRsgTuJgueJk symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:19.093Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:19.091Z PASS        YO 2rpcotAJKaEJw74ccG8cmQY655YfyZS8cRsgTuJgueJk stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:19.972Z PASS        YO 2rpcotAJKaEJw74ccG8cmQY655YfyZS8cRsgTuJgueJk stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:19.974Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:20.641Z BLOCK       YO ApwmoTbikB4m8BSQDZyBLupeSnZeuQ9XhAcexs1vGkgs stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | timed out
+2026-11-27T01:54:20.774Z PASS        YO 7fCKXLckqCytyXTntrwfWi4tVK53vhEXXMKtvHbaatuY stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:20.777Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:20.863Z BLOCK       YO Dxbi5WVrCJJVFsGccyZNyH4FKutHJ95znJvd19h83YPz stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | timed out
+2026-11-27T01:54:23.417Z NEW-TOKEN  mint=DPeXbpQEJhynynVCtyiVYTc7HXxqeeKRhdceMUgpump symbol=TOGI name="30k larp " mcapSol=27.96
+2026-11-27T01:54:23.421Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:54:23.420Z PASS        TOGI DPeXbpQEJhynynVCtyiVYTc7HXxqeeKRhdceMUgpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:24.651Z BLOCK       TOGI DPeXbpQEJhynynVCtyiVYTc7HXxqeeKRhdceMUgpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:54:25.323Z NEW-TOKEN  mint=6gGLhXBSRGoabeTCihF8wEjjh3pjemMh1p8Qgunwpump symbol=TOGI name="30k larp " mcapSol=27.96
+2026-11-27T01:54:25.328Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:54:25.326Z PASS        TOGI 6gGLhXBSRGoabeTCihF8wEjjh3pjemMh1p8Qgunwpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:27.132Z NEW-TOKEN  mint=3r2gMhG2rSTbSUNGrVJxAeD545kKYR8oBzPGQsskpump symbol=fine name="this is fine" mcapSol=35.81
+2026-11-27T01:54:27.136Z HANDOFF     MemecoinMonitor -> ScamShield: New coin fine handed to Scam Shield
+2026-11-27T01:54:27.134Z BLOCK       fine 3r2gMhG2rSTbSUNGrVJxAeD545kKYR8oBzPGQsskpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 12.5% of the supply (limit 10%).
+2026-11-27T01:54:27.583Z NEW-TOKEN  mint=3r2gMhG2rSTbSUNGrVJxAeD545kKYR8oBzPGQsskpump symbol= name="" mcapSol=27.96
+2026-11-27T01:54:27.585Z HANDOFF     MemecoinMonitor -> ScamShield: New coin  handed to Scam Shield
+2026-11-27T01:54:27.584Z BLOCK        3r2gMhG2rSTbSUNGrVJxAeD545kKYR8oBzPGQsskpump stage=cheap-prefilter reason=METADATA_MISSING verdict=ELEVATED | Name, symbol or metadata link is missing.
+2026-11-27T01:54:27.825Z NEW-TOKEN  mint=9zEWGsFDFF2CyKqfCyN8jzeyaBHA8KteGmombBcVpump symbol=TOGI name="30k larp " mcapSol=27.96
+2026-11-27T01:54:27.830Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:54:27.827Z PASS        TOGI 9zEWGsFDFF2CyKqfCyN8jzeyaBHA8KteGmombBcVpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:27.970Z PASS        TOGI 6gGLhXBSRGoabeTCihF8wEjjh3pjemMh1p8Qgunwpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:27.972Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:54:29.491Z PASS        TOGI 9zEWGsFDFF2CyKqfCyN8jzeyaBHA8KteGmombBcVpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:29.492Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:54:30.196Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-27T01:54:31.638Z LOG          trade feed: connected
+2026-11-27T01:54:31.639Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-27T01:54:33.007Z SCORE       TOGI ErWJ7Xduav63KkLMj7dEzmc1UuCisfRM9gU1HFzWauhp score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:54:43.181Z NEW-TOKEN  mint=99VZj1e3gQJAKDDZDnoGCXumS2mM6YEBE9QhAoocDy6o symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:43.186Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:43.184Z PASS        YO 99VZj1e3gQJAKDDZDnoGCXumS2mM6YEBE9QhAoocDy6o stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:45.187Z BLOCK       YO 99VZj1e3gQJAKDDZDnoGCXumS2mM6YEBE9QhAoocDy6o stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/99VZj1e3gQJAKDDZDnoGCXumS2mM6YEBE9QhAoocDy6o/report)
+2026-11-27T01:54:46.859Z NEW-TOKEN  mint=A54coa8XaQ4prJujnr6stosV7DZAESoZkDocYwmWPN6t symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:46.862Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:46.861Z PASS        YO A54coa8XaQ4prJujnr6stosV7DZAESoZkDocYwmWPN6t stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:48.017Z NEW-TOKEN  mint=vgXxaJfnVRWGPWHkcvXVCSBX8CLeeWnZ1Dw78mfpump symbol=BADSANTA name="Bad Santa" mcapSol=30.31
+2026-11-27T01:54:48.022Z HANDOFF     MemecoinMonitor -> ScamShield: New coin BADSANTA handed to Scam Shield
+2026-11-27T01:54:48.021Z PASS        BADSANTA vgXxaJfnVRWGPWHkcvXVCSBX8CLeeWnZ1Dw78mfpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:48.099Z PASS        YO A54coa8XaQ4prJujnr6stosV7DZAESoZkDocYwmWPN6t stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:48.100Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:48.240Z NEW-TOKEN  mint=DnqX3kB9mM4tPbjG5s65sDbpfchiXHSxjt6uZzsxpump symbol=hey nigger name="niggler" mcapSol=27.98
+2026-11-27T01:54:48.244Z HANDOFF     MemecoinMonitor -> ScamShield: New coin hey nigger handed to Scam Shield
+2026-11-27T01:54:48.243Z PASS        hey nigger DnqX3kB9mM4tPbjG5s65sDbpfchiXHSxjt6uZzsxpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:48.550Z PASS        BADSANTA vgXxaJfnVRWGPWHkcvXVCSBX8CLeeWnZ1Dw78mfpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:48.551Z HANDOFF     ScamShield -> TokenPicker: Clean coin BADSANTA handed to Token Picker
+2026-11-27T01:54:48.858Z BLOCK       hey nigger DnqX3kB9mM4tPbjG5s65sDbpfchiXHSxjt6uZzsxpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T01:54:49.549Z NEW-TOKEN  mint=F6q8972TMVbv9Vchggo6TX4bEigBMiP5jM1nXHnLECZz symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:49.555Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:49.552Z PASS        YO F6q8972TMVbv9Vchggo6TX4bEigBMiP5jM1nXHnLECZz stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:50.075Z PASS        YO F6q8972TMVbv9Vchggo6TX4bEigBMiP5jM1nXHnLECZz stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:54:50.076Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:54:52.345Z SCORE       Harrymas AN9uU6G2y6e1eEKoE99XfvSNKc7CoP2BrNaMsb4bpump score=1.0 picked=false buyers=0 buys=0 sells=1 ratio=0.00 priceChg=-5.1% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.0 SOL below 30.0 SOL", "creator is selling"]
+2026-11-27T01:54:52.766Z NEW-TOKEN  mint=8t8p1LXvHqhC2UYUW9coU2krcKzHuTtSAjqaiHjhenRz symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:54:52.768Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:54:52.768Z PASS        YO 8t8p1LXvHqhC2UYUW9coU2krcKzHuTtSAjqaiHjhenRz stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:54:53.167Z SCORE       YO 9JSPVrtgbK8yWt9dPA4efxmEs7ZvC3UcZR1kcuLUyNSd score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:54:55.889Z BLOCK       YO 8t8p1LXvHqhC2UYUW9coU2krcKzHuTtSAjqaiHjhenRz stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/8t8p1LXvHqhC2UYUW9coU2krcKzHuTtSAjqaiHjhenRz/report)
+2026-11-27T01:55:01.639Z LOG          trade feed: 18 subscriptions confirmed, 17 log messages, 15 trades decoded
+2026-11-27T01:55:02.533Z NEW-TOKEN  mint=BwHbqPak7sn7KNo7PtXUZevGSwniSbFaS7bauKr5pump symbol=Moo name="Moo" mcapSol=37.92
+2026-11-27T01:55:02.541Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Moo handed to Scam Shield
+2026-11-27T01:55:02.537Z BLOCK       Moo BwHbqPak7sn7KNo7PtXUZevGSwniSbFaS7bauKr5pump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 15.2% of the supply (limit 10%).
+2026-11-27T01:55:02.768Z SCORE       TOGI 6oGbLjeox7sZzeeY6HVUStVWHfA3rJNHB2xpkQrvPYso score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:03.453Z SCORE       YO 5SLRh4ujpLWreAHZ6TApFTF2mZLtRhMdmePT7oDKaqUj score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:07.034Z SCORE       YO 9ewiJEFBQPwnhLBd9FnP14txJY3hDutEPjRvHWcgKJhB score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:10.344Z SCORE       YO EAvjA8gTH84A7kfCR6rSw3xoYNkCnnCnt3D2djbRW6KN score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:14.317Z SCORE       TOGI 6hqAgAVmoFaSjqJ5H4HC1xtzPWBUdNRmPjua4pnY1PAg score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:18.416Z SCORE       YO 7fCKXLckqCytyXTntrwfWi4tVK53vhEXXMKtvHbaatuY score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:19.084Z SCORE       YO 2rpcotAJKaEJw74ccG8cmQY655YfyZS8cRsgTuJgueJk score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:25.324Z SCORE       TOGI 6gGLhXBSRGoabeTCihF8wEjjh3pjemMh1p8Qgunwpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:27.826Z SCORE       TOGI 9zEWGsFDFF2CyKqfCyN8jzeyaBHA8KteGmombBcVpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:31.640Z LOG          trade feed: 18 subscriptions confirmed, 17 log messages, 15 trades decoded
+2026-11-27T01:55:35.856Z NEW-TOKEN  mint=4GLVu1Hfuvg26TvgD8KubUz8F3c16FBLz7pXgCoGk27u symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:55:35.860Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:55:35.859Z PASS        TOGI 4GLVu1Hfuvg26TvgD8KubUz8F3c16FBLz7pXgCoGk27u stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:55:36.575Z PASS        TOGI 4GLVu1Hfuvg26TvgD8KubUz8F3c16FBLz7pXgCoGk27u stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:55:36.577Z HANDOFF     ScamShield -> TokenPicker: Clean coin TOGI handed to Token Picker
+2026-11-27T01:55:38.693Z NEW-TOKEN  mint=BWgZ7R1kWLFJniSmAvg5ew1g2qii33kmGoK2DfQhpump symbol=GrenCAT name="green cat" mcapSol=28.07
+2026-11-27T01:55:38.698Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GrenCAT handed to Scam Shield
+2026-11-27T01:55:38.697Z PASS        GrenCAT BWgZ7R1kWLFJniSmAvg5ew1g2qii33kmGoK2DfQhpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:55:39.336Z NEW-TOKEN  mint=8JjhrukV5Q8TWMyY82YiKdSTavbLw1PA7xvXTPERpump symbol=Kuroshiro name="Kuroshiro" mcapSol=29.83
+2026-11-27T01:55:39.341Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Kuroshiro handed to Scam Shield
+2026-11-27T01:55:39.340Z PASS        Kuroshiro 8JjhrukV5Q8TWMyY82YiKdSTavbLw1PA7xvXTPERpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:55:39.986Z PASS        GrenCAT BWgZ7R1kWLFJniSmAvg5ew1g2qii33kmGoK2DfQhpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:55:39.988Z HANDOFF     ScamShield -> TokenPicker: Clean coin GrenCAT handed to Token Picker
+2026-11-27T01:55:40.631Z BLOCK       Kuroshiro 8JjhrukV5Q8TWMyY82YiKdSTavbLw1PA7xvXTPERpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474373459).
+2026-11-27T01:55:46.860Z SCORE       YO A54coa8XaQ4prJujnr6stosV7DZAESoZkDocYwmWPN6t score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:48.019Z SCORE       BADSANTA vgXxaJfnVRWGPWHkcvXVCSBX8CLeeWnZ1Dw78mfpump score=75.0 picked=false buyers=5 buys=5 sells=2 ratio=2.50 priceChg=8.1% curveSol=2.5 gates=["curve holds 2.5 SOL (needs 4-40)", "0 buyers in 30 s (needs 5)", "volume not rising"]
+2026-11-27T01:55:48.117Z NEW-TOKEN  mint=46PTp8x4c1F3iSx8NrxGv3vq6YLoZFSCZYMa5qEbYAzs symbol=TOGI name="OG 6 MONTHS + FEES" mcapSol=27.96
+2026-11-27T01:55:48.122Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T01:55:48.120Z PASS        TOGI 46PTp8x4c1F3iSx8NrxGv3vq6YLoZFSCZYMa5qEbYAzs stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:55:49.550Z SCORE       YO F6q8972TMVbv9Vchggo6TX4bEigBMiP5jM1nXHnLECZz score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:55:50.124Z BLOCK       TOGI 46PTp8x4c1F3iSx8NrxGv3vq6YLoZFSCZYMa5qEbYAzs stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/46PTp8x4c1F3iSx8NrxGv3vq6YLoZFSCZYMa5qEbYAzs/report)
+2026-11-27T01:55:57.780Z LOG          trade feed: disconnected (closed by server), reconnecting in 1s
+2026-11-27T01:55:59.107Z LOG          trade feed: connected
+2026-11-27T01:55:59.109Z LOG          trade feed: 0 subscriptions confirmed, 0 log messages, 0 trades decoded
+2026-11-27T01:56:29.109Z LOG          trade feed: 2 subscriptions confirmed, 121 log messages, 117 trades decoded
+2026-11-27T01:56:35.857Z SCORE       TOGI 4GLVu1Hfuvg26TvgD8KubUz8F3c16FBLz7pXgCoGk27u score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:56:38.697Z SCORE       GrenCAT BWgZ7R1kWLFJniSmAvg5ew1g2qii33kmGoK2DfQhpump score=89.8 picked=false buyers=8 buys=51 sells=34 ratio=1.50 priceChg=380.4% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 1.5 below 2", "creator is selling"]
+2026-11-27T01:56:38.968Z NEW-TOKEN  mint=FSruLWvTsGJJLeiSTHchTzpW5geGZXD1nYRJ8Sdapump symbol=fine name="this is fine" mcapSol=27.96
+2026-11-27T01:56:38.971Z HANDOFF     MemecoinMonitor -> ScamShield: New coin fine handed to Scam Shield
+2026-11-27T01:56:38.970Z PASS        fine FSruLWvTsGJJLeiSTHchTzpW5geGZXD1nYRJ8Sdapump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:40.660Z PASS        fine FSruLWvTsGJJLeiSTHchTzpW5geGZXD1nYRJ8Sdapump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:56:40.662Z HANDOFF     ScamShield -> TokenPicker: Clean coin fine handed to Token Picker
+2026-11-27T01:56:41.261Z NEW-TOKEN  mint=5TQdkRy8R8uMZxHrttdfwvQTJxGABZquWtNuraNZpump symbol=fine name="this is fine" mcapSol=27.96
+2026-11-27T01:56:41.269Z HANDOFF     MemecoinMonitor -> ScamShield: New coin fine handed to Scam Shield
+2026-11-27T01:56:41.265Z PASS        fine 5TQdkRy8R8uMZxHrttdfwvQTJxGABZquWtNuraNZpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:41.792Z PASS        fine 5TQdkRy8R8uMZxHrttdfwvQTJxGABZquWtNuraNZpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:56:41.794Z HANDOFF     ScamShield -> TokenPicker: Clean coin fine handed to Token Picker
+2026-11-27T01:56:43.183Z NEW-TOKEN  mint=F44jAkCSS5oKNwPosBawYVuda5MyTt2s48mgJQdMpump symbol=shitcoin name="oh shitcoin" mcapSol=27.96
+2026-11-27T01:56:43.190Z HANDOFF     MemecoinMonitor -> ScamShield: New coin shitcoin handed to Scam Shield
+2026-11-27T01:56:43.187Z PASS        shitcoin F44jAkCSS5oKNwPosBawYVuda5MyTt2s48mgJQdMpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:46.363Z BLOCK       shitcoin F44jAkCSS5oKNwPosBawYVuda5MyTt2s48mgJQdMpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/F44jAkCSS5oKNwPosBawYVuda5MyTt2s48mgJQdMpump/report)
+2026-11-27T01:56:46.980Z NEW-TOKEN  mint=3Kyb285zRbvRasxzheuRmDEQ7VyuBD49MmGEN1fbypQ1 symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:56:46.984Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:56:46.983Z PASS        YO 3Kyb285zRbvRasxzheuRmDEQ7VyuBD49MmGEN1fbypQ1 stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:48.985Z BLOCK       YO 3Kyb285zRbvRasxzheuRmDEQ7VyuBD49MmGEN1fbypQ1 stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/3Kyb285zRbvRasxzheuRmDEQ7VyuBD49MmGEN1fbypQ1/report)
+2026-11-27T01:56:50.217Z NEW-TOKEN  mint=2LLnaPeWVU1vhTRroaDdLe4SPhpKwxr3gVfcfwhTF22X symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:56:50.225Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:56:50.221Z PASS        YO 2LLnaPeWVU1vhTRroaDdLe4SPhpKwxr3gVfcfwhTF22X stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:50.713Z PASS        YO 2LLnaPeWVU1vhTRroaDdLe4SPhpKwxr3gVfcfwhTF22X stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:56:50.717Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:56:53.269Z NEW-TOKEN  mint=7YdoYvtzns5WYg7ETwXaMQZ1LnXqhw7poEkkk3qzvsxN symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:56:53.274Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:56:53.272Z PASS        YO 7YdoYvtzns5WYg7ETwXaMQZ1LnXqhw7poEkkk3qzvsxN stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:55.864Z PASS        YO 7YdoYvtzns5WYg7ETwXaMQZ1LnXqhw7poEkkk3qzvsxN stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:56:55.867Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:56:56.766Z NEW-TOKEN  mint=4JVVWm2sQ3qThW6MxNuxCzvsshrk1Yv8B2hJqBVGWZCh symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:56:56.770Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:56:56.769Z PASS        YO 4JVVWm2sQ3qThW6MxNuxCzvsshrk1Yv8B2hJqBVGWZCh stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:57.112Z NEW-TOKEN  mint=8EULck41GmfACox1kKQ2i6b52c4jdU6ogaxrhLrvpump symbol=SQUIRELL name="Squirell Coin" mcapSol=29.83
+2026-11-27T01:56:57.119Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SQUIRELL handed to Scam Shield
+2026-11-27T01:56:57.115Z PASS        SQUIRELL 8EULck41GmfACox1kKQ2i6b52c4jdU6ogaxrhLrvpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:57.306Z PASS        YO 4JVVWm2sQ3qThW6MxNuxCzvsshrk1Yv8B2hJqBVGWZCh stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:56:57.309Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:56:57.333Z NEW-TOKEN  mint=ER4meUczhQdxdeYe8an6oHurTmzekBzQfmQrKSpApump symbol=JUGGYYYY name="JYUYGGGY" mcapSol=28.79
+2026-11-27T01:56:57.338Z HANDOFF     MemecoinMonitor -> ScamShield: New coin JUGGYYYY handed to Scam Shield
+2026-11-27T01:56:57.337Z PASS        JUGGYYYY ER4meUczhQdxdeYe8an6oHurTmzekBzQfmQrKSpApump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:56:58.578Z BLOCK       SQUIRELL 8EULck41GmfACox1kKQ2i6b52c4jdU6ogaxrhLrvpump stage=chain reason=DEV_SNIPE verdict=HIGH | 2 other transaction(s) landed in the same block as the launch (slot 474373824).
+2026-11-27T01:56:59.110Z LOG          trade feed: 11 subscriptions confirmed, 771 log messages, 184 trades decoded
+2026-11-27T01:56:59.340Z BLOCK       JUGGYYYY ER4meUczhQdxdeYe8an6oHurTmzekBzQfmQrKSpApump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | timed out
+2026-11-27T01:57:11.396Z NEW-TOKEN  mint=CLJx5pv9pwnmwq3UnTkMeCWsCtetRXV74pcVbGZt4ZEH symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:11.401Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:11.399Z PASS        YO CLJx5pv9pwnmwq3UnTkMeCWsCtetRXV74pcVbGZt4ZEH stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:11.646Z NEW-TOKEN  mint=44CSwC4Qr4eWyyNb1URnyjrs5DkwBqD2pPsEx396XJMg symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:11.652Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:11.650Z PASS        YO 44CSwC4Qr4eWyyNb1URnyjrs5DkwBqD2pPsEx396XJMg stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:11.898Z NEW-TOKEN  mint=BCQHpFVsAiBxhg9YpLPJBzj77dUo823K52PEUESPyFjP symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:11.902Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:11.901Z PASS        YO BCQHpFVsAiBxhg9YpLPJBzj77dUo823K52PEUESPyFjP stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:12.130Z NEW-TOKEN  mint=5oX7Ao7DC9W9SKkfnJqWFhwuTN2MxJF7nK2css57GYyK symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:12.134Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:12.132Z PASS        YO 5oX7Ao7DC9W9SKkfnJqWFhwuTN2MxJF7nK2css57GYyK stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:12.571Z PASS        YO BCQHpFVsAiBxhg9YpLPJBzj77dUo823K52PEUESPyFjP stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:12.574Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:12.933Z PASS        YO 5oX7Ao7DC9W9SKkfnJqWFhwuTN2MxJF7nK2css57GYyK stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:12.936Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:13.403Z BLOCK       YO CLJx5pv9pwnmwq3UnTkMeCWsCtetRXV74pcVbGZt4ZEH stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/CLJx5pv9pwnmwq3UnTkMeCWsCtetRXV74pcVbGZt4ZEH/report)
+2026-11-27T01:57:13.589Z PASS        YO 44CSwC4Qr4eWyyNb1URnyjrs5DkwBqD2pPsEx396XJMg stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:13.597Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:29.110Z LOG          trade feed: 15 subscriptions confirmed, 772 log messages, 185 trades decoded
+2026-11-27T01:57:32.866Z NEW-TOKEN  mint=Fkb4CbRsP63t7kjjW5gGteEZYXvu5wWyM7MhWsCNBtRt symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:32.872Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:32.870Z PASS        YO Fkb4CbRsP63t7kjjW5gGteEZYXvu5wWyM7MhWsCNBtRt stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:33.099Z NEW-TOKEN  mint=7FVp82FZESfiBY2KAc18ev6eHDXq8j7tFoYwR4poLgMj symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:33.103Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:33.102Z PASS        YO 7FVp82FZESfiBY2KAc18ev6eHDXq8j7tFoYwR4poLgMj stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:33.312Z NEW-TOKEN  mint=2EBNiV3zua38x3nudnHBX9okLVuqrJkpd9eAHcd5NDYx symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:57:33.315Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:57:33.314Z PASS        YO 2EBNiV3zua38x3nudnHBX9okLVuqrJkpd9eAHcd5NDYx stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:33.498Z PASS        YO Fkb4CbRsP63t7kjjW5gGteEZYXvu5wWyM7MhWsCNBtRt stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:33.501Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:34.112Z PASS        YO 7FVp82FZESfiBY2KAc18ev6eHDXq8j7tFoYwR4poLgMj stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:34.115Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:34.210Z PASS        YO 2EBNiV3zua38x3nudnHBX9okLVuqrJkpd9eAHcd5NDYx stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:57:34.212Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:57:38.969Z SCORE       fine FSruLWvTsGJJLeiSTHchTzpW5geGZXD1nYRJ8Sdapump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:57:41.262Z SCORE       fine 5TQdkRy8R8uMZxHrttdfwvQTJxGABZquWtNuraNZpump score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:57:49.800Z NEW-TOKEN  mint=E7EtgRs2opd5RQxQMKyKJV5WARUzLYTRDSV2pjjCpump symbol=HPD name="The Frontrun Bull" mcapSol=27.99
+2026-11-27T01:57:49.804Z HANDOFF     MemecoinMonitor -> ScamShield: New coin HPD handed to Scam Shield
+2026-11-27T01:57:49.803Z PASS        HPD E7EtgRs2opd5RQxQMKyKJV5WARUzLYTRDSV2pjjCpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:57:50.219Z SCORE       YO 2LLnaPeWVU1vhTRroaDdLe4SPhpKwxr3gVfcfwhTF22X score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:57:51.404Z BLOCK       HPD E7EtgRs2opd5RQxQMKyKJV5WARUzLYTRDSV2pjjCpump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474374070).
+2026-11-27T01:57:53.270Z SCORE       YO 7YdoYvtzns5WYg7ETwXaMQZ1LnXqhw7poEkkk3qzvsxN score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:57:56.767Z SCORE       YO 4JVVWm2sQ3qThW6MxNuxCzvsshrk1Yv8B2hJqBVGWZCh score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:57:59.109Z LOG          trade feed: 19 subscriptions confirmed, 774 log messages, 187 trades decoded
+2026-11-27T01:58:02.026Z NEW-TOKEN  mint=D2Y4ddUck3aV6T7BRGGXuEqZMWjGHhLXF3FymSy4P52q symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:58:02.032Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:58:02.029Z PASS        YO D2Y4ddUck3aV6T7BRGGXuEqZMWjGHhLXF3FymSy4P52q stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:58:02.530Z BLOCK       YO D2Y4ddUck3aV6T7BRGGXuEqZMWjGHhLXF3FymSy4P52q stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474374128).
+2026-11-27T01:58:05.019Z NEW-TOKEN  mint=C2KmxGBoW4P9D6RchGage1ysHu36wfZf6MAqhjE6Ybea symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:58:05.025Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:58:05.023Z PASS        YO C2KmxGBoW4P9D6RchGage1ysHu36wfZf6MAqhjE6Ybea stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:58:05.623Z PASS        YO C2KmxGBoW4P9D6RchGage1ysHu36wfZf6MAqhjE6Ybea stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T01:58:05.626Z HANDOFF     ScamShield -> TokenPicker: Clean coin YO handed to Token Picker
+2026-11-27T01:58:08.216Z NEW-TOKEN  mint=ByLrBs3YqiMq9pEuLU2UojDuto8JWyYmewczFpLnZBAb symbol=YO name="TOGI FUNDED THIS FIRST CHECK" mcapSol=27.96
+2026-11-27T01:58:08.222Z HANDOFF     MemecoinMonitor -> ScamShield: New coin YO handed to Scam Shield
+2026-11-27T01:58:08.220Z PASS        YO ByLrBs3YqiMq9pEuLU2UojDuto8JWyYmewczFpLnZBAb stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:58:10.223Z BLOCK       YO ByLrBs3YqiMq9pEuLU2UojDuto8JWyYmewczFpLnZBAb stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/ByLrBs3YqiMq9pEuLU2UojDuto8JWyYmewczFpLnZBAb/report)
+2026-11-27T01:58:11.076Z NEW-TOKEN  mint=6VSoe2SW1xJT3gSMLHchANr3ojYo6qbLhhQ3qKWNpump symbol=MAGPIE name="HELLO MR MAGPIE" mcapSol=28.11
+2026-11-27T01:58:11.082Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MAGPIE handed to Scam Shield
+2026-11-27T01:58:11.079Z PASS        MAGPIE 6VSoe2SW1xJT3gSMLHchANr3ojYo6qbLhhQ3qKWNpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:58:11.648Z SCORE       YO 44CSwC4Qr4eWyyNb1URnyjrs5DkwBqD2pPsEx396XJMg score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:11.900Z SCORE       YO BCQHpFVsAiBxhg9YpLPJBzj77dUo823K52PEUESPyFjP score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:12.131Z SCORE       YO 5oX7Ao7DC9W9SKkfnJqWFhwuTN2MxJF7nK2css57GYyK score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:13.083Z BLOCK       MAGPIE 6VSoe2SW1xJT3gSMLHchANr3ojYo6qbLhhQ3qKWNpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/6VSoe2SW1xJT3gSMLHchANr3ojYo6qbLhhQ3qKWNpump/report)
+2026-11-27T01:58:29.110Z LOG          trade feed: 23 subscriptions confirmed, 776 log messages, 189 trades decoded
+2026-11-27T01:58:32.867Z SCORE       YO Fkb4CbRsP63t7kjjW5gGteEZYXvu5wWyM7MhWsCNBtRt score=1.0 picked=false buyers=0 buys=0 sells=1 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:33.100Z SCORE       YO 7FVp82FZESfiBY2KAc18ev6eHDXq8j7tFoYwR4poLgMj score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:33.313Z SCORE       YO 2EBNiV3zua38x3nudnHBX9okLVuqrJkpd9eAHcd5NDYx score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T01:58:36.814Z NEW-TOKEN  mint=74WNZCjAm13SkwfK8pCJMzWgboidx56be2cBcDBfuAgX symbol=KEE name="Kee" mcapSol=40.10
+2026-11-27T01:58:36.818Z HANDOFF     MemecoinMonitor -> ScamShield: New coin KEE handed to Scam Shield
+2026-11-27T01:58:36.817Z BLOCK       KEE 74WNZCjAm13SkwfK8pCJMzWgboidx56be2cBcDBfuAgX stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 17.7% of the supply (limit 10%).
+2026-11-27T01:58:41.370Z NEW-TOKEN  mint=4krfddJmkfNn36EzXKeBQptvdmVoEdqg8xv4Xm9rpump symbol=IMGTEST name="Dynamic Image Test" mcapSol=27.96
+2026-11-27T01:58:41.376Z HANDOFF     MemecoinMonitor -> ScamShield: New coin IMGTEST handed to Scam Shield
+2026-11-27T01:58:41.373Z PASS        IMGTEST 4krfddJmkfNn36EzXKeBQptvdmVoEdqg8xv4Xm9rpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:58:42.692Z NEW-TOKEN  mint=7jGEvUwwXfFzYfaZr3dt69zsDVionkmUUjNkWMZxpump symbol=Mfs name="Mfs Back Then" mcapSol=49.40
+2026-11-27T01:58:42.697Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Mfs handed to Scam Shield
+2026-11-27T01:58:42.694Z BLOCK       Mfs 7jGEvUwwXfFzYfaZr3dt69zsDVionkmUUjNkWMZxpump stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 26.6% of the supply (limit 10%).
+2026-11-27T01:58:43.005Z NEW-TOKEN  mint=7jGEvUwwXfFzYfaZr3dt69zsDVionkmUUjNkWMZxpump symbol= name="" mcapSol=27.96
+2026-11-27T01:58:43.009Z HANDOFF     MemecoinMonitor -> ScamShield: New coin  handed to Scam Shield
+2026-11-27T01:58:43.006Z BLOCK        7jGEvUwwXfFzYfaZr3dt69zsDVionkmUUjNkWMZxpump stage=cheap-prefilter reason=METADATA_MISSING verdict=ELEVATED | Name, symbol or metadata link is missing.
+2026-11-27T01:58:43.377Z BLOCK       IMGTEST 4krfddJmkfNn36EzXKeBQptvdmVoEdqg8xv4Xm9rpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/4krfddJmkfNn36EzXKeBQptvdmVoEdqg8xv4Xm9rpump/report)
+2026-11-27T01:58:59.110Z LOG          trade feed: 24 subscriptions confirmed, 776 log messages, 189 trades decoded
+2026-11-27T01:59:05.022Z SCORE       YO C2KmxGBoW4P9D6RchGage1ysHu36wfZf6MAqhjE6Ybea score=1.0 picked=false buyers=0 buys=0 sells=1 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.0 SOL below 30.0 SOL"]
+2026-11-27T01:59:13.241Z NEW-TOKEN  mint=FHgnCWcxo4JjXCYaL6GLsBZwNP6paSidivVFQnFpump symbol=shitcoin name="oh shit coin" mcapSol=27.96
+2026-11-27T01:59:13.246Z HANDOFF     MemecoinMonitor -> ScamShield: New coin shitcoin handed to Scam Shield
+2026-11-27T01:59:13.245Z PASS        shitcoin FHgnCWcxo4JjXCYaL6GLsBZwNP6paSidivVFQnFpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:15.248Z BLOCK       shitcoin FHgnCWcxo4JjXCYaL6GLsBZwNP6paSidivVFQnFpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/FHgnCWcxo4JjXCYaL6GLsBZwNP6paSidivVFQnFpump/report)
+2026-11-27T01:59:18.207Z NEW-TOKEN  mint=EzZ86zi1xYUSkbfVRu8s3adTuVAAAvDjFnvYw1SXtogg symbol=Toggle name="Toggle" mcapSol=29.03
+2026-11-27T01:59:18.214Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Toggle handed to Scam Shield
+2026-11-27T01:59:18.211Z PASS        Toggle EzZ86zi1xYUSkbfVRu8s3adTuVAAAvDjFnvYw1SXtogg stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:20.215Z BLOCK       Toggle EzZ86zi1xYUSkbfVRu8s3adTuVAAAvDjFnvYw1SXtogg stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/EzZ86zi1xYUSkbfVRu8s3adTuVAAAvDjFnvYw1SXtogg/report)
+2026-11-27T01:59:29.109Z LOG          trade feed: 26 subscriptions confirmed, 776 log messages, 189 trades decoded
+2026-11-27T01:59:31.447Z NEW-TOKEN  mint=AhMVU8aL7Hynhx2MAW86UyvgV58EEo7GPa5Bsgq5kt2u symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T01:59:31.453Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T01:59:31.451Z PASS        FIRST DEV AhMVU8aL7Hynhx2MAW86UyvgV58EEo7GPa5Bsgq5kt2u stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:33.454Z BLOCK       FIRST DEV AhMVU8aL7Hynhx2MAW86UyvgV58EEo7GPa5Bsgq5kt2u stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/AhMVU8aL7Hynhx2MAW86UyvgV58EEo7GPa5Bsgq5kt2u/report)
+2026-11-27T01:59:34.430Z NEW-TOKEN  mint=28kT4Jgf4DHRydoubNa6aKK4pBYGzvYiuzjWCNhHAR8M symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T01:59:34.434Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T01:59:34.432Z PASS        FIRST DEV 28kT4Jgf4DHRydoubNa6aKK4pBYGzvYiuzjWCNhHAR8M stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:36.436Z BLOCK       FIRST DEV 28kT4Jgf4DHRydoubNa6aKK4pBYGzvYiuzjWCNhHAR8M stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/28kT4Jgf4DHRydoubNa6aKK4pBYGzvYiuzjWCNhHAR8M/report)
+2026-11-27T01:59:37.427Z NEW-TOKEN  mint=GCPUuYeBiyMT621VhkwdBsTb5SfT84gCgvsH1YUEtDEC symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T01:59:37.431Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T01:59:37.430Z PASS        FIRST DEV GCPUuYeBiyMT621VhkwdBsTb5SfT84gCgvsH1YUEtDEC stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:38.022Z BLOCK       FIRST DEV GCPUuYeBiyMT621VhkwdBsTb5SfT84gCgvsH1YUEtDEC stage=chain reason=DEV_SNIPE verdict=HIGH | 2 other transaction(s) landed in the same block as the launch (slot 474374567).
+2026-11-27T01:59:56.130Z NEW-TOKEN  mint=8yJVr5PFseQpUEqpbDnohRmzeW5f6pn8k4PgMqmdpump symbol=test name="test" mcapSol=27.98
+2026-11-27T01:59:56.136Z HANDOFF     MemecoinMonitor -> ScamShield: New coin test handed to Scam Shield
+2026-11-27T01:59:56.133Z PASS        test 8yJVr5PFseQpUEqpbDnohRmzeW5f6pn8k4PgMqmdpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T01:59:58.138Z BLOCK       test 8yJVr5PFseQpUEqpbDnohRmzeW5f6pn8k4PgMqmdpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/8yJVr5PFseQpUEqpbDnohRmzeW5f6pn8k4PgMqmdpump/report)
+2026-11-27T01:59:59.110Z LOG          trade feed: 30 subscriptions confirmed, 776 log messages, 189 trades decoded
+2026-11-27T02:00:00.056Z NEW-TOKEN  mint=GJyhNgm3aRz72UyaYa4SdDgFtX7bRsQTn7ewDKVJHKXB symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T02:00:00.061Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T02:00:00.059Z PASS        FIRST DEV GJyhNgm3aRz72UyaYa4SdDgFtX7bRsQTn7ewDKVJHKXB stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:00:00.375Z NEW-TOKEN  mint=DikN4N3m62vCm8Ts2jSpuTdK273gcs4tnPgHSpYRT9WB symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T02:00:00.380Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T02:00:00.378Z PASS        FIRST DEV DikN4N3m62vCm8Ts2jSpuTdK273gcs4tnPgHSpYRT9WB stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:00:00.584Z PASS        FIRST DEV GJyhNgm3aRz72UyaYa4SdDgFtX7bRsQTn7ewDKVJHKXB stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:00:00.586Z HANDOFF     ScamShield -> TokenPicker: Clean coin FIRST DEV handed to Token Picker
+2026-11-27T02:00:00.616Z NEW-TOKEN  mint=Bxy8m6FUCzeY5bQRSPzif4xFTRBRrDBDkw26mQtfyH95 symbol=FIRST DEV name="TOGI FUNDED THIS FIRST" mcapSol=27.96
+2026-11-27T02:00:00.621Z HANDOFF     MemecoinMonitor -> ScamShield: New coin FIRST DEV handed to Scam Shield
+2026-11-27T02:00:00.619Z PASS        FIRST DEV Bxy8m6FUCzeY5bQRSPzif4xFTRBRrDBDkw26mQtfyH95 stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:00:01.363Z PASS        FIRST DEV Bxy8m6FUCzeY5bQRSPzif4xFTRBRrDBDkw26mQtfyH95 stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:00:01.364Z HANDOFF     ScamShield -> TokenPicker: Clean coin FIRST DEV handed to Token Picker
+2026-11-27T02:00:02.381Z BLOCK       FIRST DEV DikN4N3m62vCm8Ts2jSpuTdK273gcs4tnPgHSpYRT9WB stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | timed out
+2026-11-27T02:00:10.973Z NEW-TOKEN  mint=C7acs2tkBkieWvamiZgCGyFHUrz17qnWF7VbsT2w9LhF symbol=Evelyn name="Evelyn" mcapSol=27.96
+2026-11-27T02:00:10.977Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Evelyn handed to Scam Shield
+2026-11-27T02:00:10.975Z PASS        Evelyn C7acs2tkBkieWvamiZgCGyFHUrz17qnWF7VbsT2w9LhF stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:00:11.566Z BLOCK       Evelyn C7acs2tkBkieWvamiZgCGyFHUrz17qnWF7VbsT2w9LhF stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/C7acs2tkBkieWvamiZgCGyFHUrz17qnWF7VbsT2w9LhF/report)
+2026-11-27T02:00:29.110Z LOG          trade feed: 34 subscriptions confirmed, 782 log messages, 189 trades decoded
+2026-11-27T02:00:43.494Z NEW-TOKEN  mint=8BjuKD48TprFquMUWTXbMqxr7b6zF7rLE3AtrsEZpump symbol=GrenCAT name="green cat" mcapSol=28.07
+2026-11-27T02:00:43.497Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GrenCAT handed to Scam Shield
+2026-11-27T02:00:43.496Z BLOCK       GrenCAT 8BjuKD48TprFquMUWTXbMqxr7b6zF7rLE3AtrsEZpump stage=cheap-prefilter reason=COPYCAT verdict=ELEVATED | Name or symbol is almost the same as 'green cat' (GrenCAT), seen trending in the last 24 h.
+2026-11-27T02:00:45.612Z NEW-TOKEN  mint=C78sxJPYbPfwNbydrPjLUXg3CNgacjhLxiEzxSdBpump symbol=TOGI name="TOGI" mcapSol=28.00
+2026-11-27T02:00:45.619Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TOGI handed to Scam Shield
+2026-11-27T02:00:45.614Z PASS        TOGI C78sxJPYbPfwNbydrPjLUXg3CNgacjhLxiEzxSdBpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:00:47.621Z BLOCK       TOGI C78sxJPYbPfwNbydrPjLUXg3CNgacjhLxiEzxSdBpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/C78sxJPYbPfwNbydrPjLUXg3CNgacjhLxiEzxSdBpump/report)
+2026-11-27T02:00:59.109Z LOG          trade feed: 35 subscriptions confirmed, 784 log messages, 191 trades decoded
+2026-11-27T02:01:00.057Z SCORE       FIRST DEV GJyhNgm3aRz72UyaYa4SdDgFtX7bRsQTn7ewDKVJHKXB score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T02:01:00.617Z SCORE       FIRST DEV Bxy8m6FUCzeY5bQRSPzif4xFTRBRrDBDkw26mQtfyH95 score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
+2026-11-27T02:01:29.109Z LOG          trade feed: 35 subscriptions confirmed, 784 log messages, 191 trades decoded
+2026-11-27T02:01:48.171Z LOG          feed: DISCONNECTED (no messages for 60 s); reconnecting in 1s
+2026-11-27T02:01:49.455Z LOG          feed: connected to wss://pumpportal.fun/api/data (subscribeNewToken, subscribeMigration)
+2026-11-27T02:01:49.534Z LOG          feed: server says: Successfully subscribed to token creation events.
+2026-11-27T02:01:49.534Z LOG          feed: server says: Subscribed to 'migration' events.
+2026-11-27T02:01:59.109Z LOG          trade feed: 35 subscriptions confirmed, 784 log messages, 191 trades decoded
+2026-11-27T02:02:28.560Z NEW-TOKEN  mint=4ovjADkkZDgoBPeq6hgg4khfptb1BRd6WAh7UZp2pump symbol=EVELYN name="Evelyn" mcapSol=27.96
+2026-11-27T02:02:28.568Z HANDOFF     MemecoinMonitor -> ScamShield: New coin EVELYN handed to Scam Shield
+2026-11-27T02:02:28.565Z PASS        EVELYN 4ovjADkkZDgoBPeq6hgg4khfptb1BRd6WAh7UZp2pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:02:29.110Z LOG          trade feed: 36 subscriptions confirmed, 786 log messages, 193 trades decoded
+2026-11-27T02:02:30.569Z BLOCK       EVELYN 4ovjADkkZDgoBPeq6hgg4khfptb1BRd6WAh7UZp2pump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/4ovjADkkZDgoBPeq6hgg4khfptb1BRd6WAh7UZp2pump/report)
+2026-11-27T02:02:37.745Z NEW-TOKEN  mint=F9EJaJQyp6GX6FHHvy2TjxMD59UXs5HNd17jwEA1pump symbol=GrenCAT name="green cat" mcapSol=28.07
+2026-11-27T02:02:37.748Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GrenCAT handed to Scam Shield
+2026-11-27T02:02:37.747Z BLOCK       GrenCAT F9EJaJQyp6GX6FHHvy2TjxMD59UXs5HNd17jwEA1pump stage=cheap-prefilter reason=COPYCAT verdict=ELEVATED | Name or symbol is almost the same as 'green cat' (GrenCAT), seen trending in the last 24 h.
+2026-11-27T02:02:59.110Z LOG          trade feed: 36 subscriptions confirmed, 788 log messages, 195 trades decoded
+2026-11-27T02:03:29.109Z LOG          trade feed: 36 subscriptions confirmed, 788 log messages, 195 trades decoded
+2026-11-27T02:03:29.672Z NEW-TOKEN  mint=84cdzuYq63u2hJrMn8YjgkADXg7safQ4tgMxpyC1pump symbol=NO SLEEP name="NO SLEEP" mcapSol=28.11
+2026-11-27T02:03:29.676Z HANDOFF     MemecoinMonitor -> ScamShield: New coin NO SLEEP handed to Scam Shield
+2026-11-27T02:03:29.675Z PASS        NO SLEEP 84cdzuYq63u2hJrMn8YjgkADXg7safQ4tgMxpyC1pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:03:30.668Z BLOCK       NO SLEEP 84cdzuYq63u2hJrMn8YjgkADXg7safQ4tgMxpyC1pump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T02:03:32.860Z NEW-TOKEN  mint=BdQZtWwKGGu4fegHsnvtaHK3pNpNbZY5ajFZRnm6pump symbol=530A name="READ" mcapSol=29.17
+2026-11-27T02:03:32.863Z HANDOFF     MemecoinMonitor -> ScamShield: New coin 530A handed to Scam Shield
+2026-11-27T02:03:32.862Z PASS        530A BdQZtWwKGGu4fegHsnvtaHK3pNpNbZY5ajFZRnm6pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:03:35.166Z BLOCK       530A BdQZtWwKGGu4fegHsnvtaHK3pNpNbZY5ajFZRnm6pump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T02:03:59.110Z LOG          trade feed: 38 subscriptions confirmed, 792 log messages, 197 trades decoded
+2026-11-27T02:04:01.860Z NEW-TOKEN  mint=AZcaJn9Vb2sJqGFHPjR9mdaZW3jPynUNuv4JRWSqpump symbol=wind name="wind" mcapSol=28.07
+2026-11-27T02:04:01.864Z HANDOFF     MemecoinMonitor -> ScamShield: New coin wind handed to Scam Shield
+2026-11-27T02:04:01.863Z PASS        wind AZcaJn9Vb2sJqGFHPjR9mdaZW3jPynUNuv4JRWSqpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:04:03.866Z BLOCK       wind AZcaJn9Vb2sJqGFHPjR9mdaZW3jPynUNuv4JRWSqpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/AZcaJn9Vb2sJqGFHPjR9mdaZW3jPynUNuv4JRWSqpump/report)
+2026-11-27T02:04:21.853Z NEW-TOKEN  mint=2Bs6WmotZiRtjmyntMLCRzSBR3e7GfUFcZPdDxQipump symbol=cat3d name="cat3d" mcapSol=28.00
+2026-11-27T02:04:21.858Z HANDOFF     MemecoinMonitor -> ScamShield: New coin cat3d handed to Scam Shield
+2026-11-27T02:04:21.857Z PASS        cat3d 2Bs6WmotZiRtjmyntMLCRzSBR3e7GfUFcZPdDxQipump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:04:22.710Z NEW-TOKEN  mint=kXpW1q2PY8RK4etnkSUhKtZNRh8wpW1v9ai8xDTtesT symbol=test name="test" mcapSol=27.96
+2026-11-27T02:04:22.714Z HANDOFF     MemecoinMonitor -> ScamShield: New coin test handed to Scam Shield
+2026-11-27T02:04:22.713Z PASS        test kXpW1q2PY8RK4etnkSUhKtZNRh8wpW1v9ai8xDTtesT stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:04:23.860Z BLOCK       cat3d 2Bs6WmotZiRtjmyntMLCRzSBR3e7GfUFcZPdDxQipump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/2Bs6WmotZiRtjmyntMLCRzSBR3e7GfUFcZPdDxQipump/report)
+2026-11-27T02:04:24.717Z BLOCK       test kXpW1q2PY8RK4etnkSUhKtZNRh8wpW1v9ai8xDTtesT stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/kXpW1q2PY8RK4etnkSUhKtZNRh8wpW1v9ai8xDTtesT/report)
+2026-11-27T02:04:28.910Z NEW-TOKEN  mint=4aw2BtjF4BxWn4RQPoUcrEWe61MexjASfmuyuSb7pump symbol=Toggle name="Toggle" mcapSol=29.03
+2026-11-27T02:04:28.913Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Toggle handed to Scam Shield
+2026-11-27T02:04:28.912Z PASS        Toggle 4aw2BtjF4BxWn4RQPoUcrEWe61MexjASfmuyuSb7pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:04:29.109Z LOG          trade feed: 42 subscriptions confirmed, 792 log messages, 197 trades decoded
+2026-11-27T02:04:29.514Z BLOCK       Toggle 4aw2BtjF4BxWn4RQPoUcrEWe61MexjASfmuyuSb7pump stage=chain reason=DEV_SNIPE verdict=HIGH | 3 other transaction(s) landed in the same block as the launch (slot 474375913).
+2026-11-27T02:04:59.110Z LOG          trade feed: 42 subscriptions confirmed, 792 log messages, 197 trades decoded
+2026-11-27T02:05:23.479Z NEW-TOKEN  mint=8xkK8tLJJE4p82zm8VXmjDFn7S33yd7GELUzLZmZTSWg symbol=MINT name="Mint Intern" mcapSol=27.97
+2026-11-27T02:05:23.483Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MINT handed to Scam Shield
+2026-11-27T02:05:23.482Z PASS        MINT 8xkK8tLJJE4p82zm8VXmjDFn7S33yd7GELUzLZmZTSWg stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:05:25.485Z BLOCK       MINT 8xkK8tLJJE4p82zm8VXmjDFn7S33yd7GELUzLZmZTSWg stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/8xkK8tLJJE4p82zm8VXmjDFn7S33yd7GELUzLZmZTSWg/report)
+2026-11-27T02:05:29.109Z LOG          trade feed: 43 subscriptions confirmed, 794 log messages, 199 trades decoded
+2026-11-27T02:05:59.110Z LOG          trade feed: 43 subscriptions confirmed, 794 log messages, 199 trades decoded
+2026-11-27T02:06:07.111Z NEW-TOKEN  mint=CacB9D7iZ6bp2v4PnP41n1w1qjcLRCUpfaquM99mpump symbol=wind name="wind" mcapSol=28.07
+2026-11-27T02:06:07.115Z HANDOFF     MemecoinMonitor -> ScamShield: New coin wind handed to Scam Shield
+2026-11-27T02:06:07.113Z PASS        wind CacB9D7iZ6bp2v4PnP41n1w1qjcLRCUpfaquM99mpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:06:09.116Z BLOCK       wind CacB9D7iZ6bp2v4PnP41n1w1qjcLRCUpfaquM99mpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/CacB9D7iZ6bp2v4PnP41n1w1qjcLRCUpfaquM99mpump/report)
+2026-11-27T02:06:29.110Z LOG          trade feed: 44 subscriptions confirmed, 794 log messages, 199 trades decoded
+2026-11-27T02:06:59.110Z LOG          trade feed: 44 subscriptions confirmed, 794 log messages, 199 trades decoded
+2026-11-27T02:06:59.631Z NEW-TOKEN  mint=Fuedt4ystjHLF5aUXUxjwaMZYrgh9hmszY9cfugxpump symbol=SPNG name="SPOONGEBOOB" mcapSol=28.14
+2026-11-27T02:06:59.646Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SPNG handed to Scam Shield
+2026-11-27T02:06:59.644Z PASS        SPNG Fuedt4ystjHLF5aUXUxjwaMZYrgh9hmszY9cfugxpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:07:00.266Z PASS        SPNG Fuedt4ystjHLF5aUXUxjwaMZYrgh9hmszY9cfugxpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:07:00.268Z HANDOFF     ScamShield -> TokenPicker: Clean coin SPNG handed to Token Picker
+2026-11-27T02:07:02.449Z NEW-TOKEN  mint=DtHVEq3Wfo9ezEsa32eptytQFiD5yXjPDCMLo7wopump symbol=ANSELMPAD name="ANSELMPAD" mcapSol=29.64
+2026-11-27T02:07:02.456Z HANDOFF     MemecoinMonitor -> ScamShield: New coin ANSELMPAD handed to Scam Shield
+2026-11-27T02:07:02.452Z PASS        ANSELMPAD DtHVEq3Wfo9ezEsa32eptytQFiD5yXjPDCMLo7wopump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:07:03.678Z BLOCK       ANSELMPAD DtHVEq3Wfo9ezEsa32eptytQFiD5yXjPDCMLo7wopump stage=chain reason=DEV_SNIPE verdict=HIGH | 1 other transaction(s) landed in the same block as the launch (slot 474376630).
+2026-11-27T02:07:27.571Z NEW-TOKEN  mint=BanPw9TeaUSUk3PUkUx9PQj32RPLsuyWPxdAjgVCpump symbol=MAGPIE name="HELLO MR MAGPIE" mcapSol=28.11
+2026-11-27T02:07:27.579Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MAGPIE handed to Scam Shield
+2026-11-27T02:07:27.575Z PASS        MAGPIE BanPw9TeaUSUk3PUkUx9PQj32RPLsuyWPxdAjgVCpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:07:29.110Z LOG          trade feed: 47 subscriptions confirmed, 798 log messages, 203 trades decoded
+2026-11-27T02:07:29.580Z BLOCK       MAGPIE BanPw9TeaUSUk3PUkUx9PQj32RPLsuyWPxdAjgVCpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/BanPw9TeaUSUk3PUkUx9PQj32RPLsuyWPxdAjgVCpump/report)
+2026-11-27T02:07:48.365Z NEW-TOKEN  mint=6ohN6cDgsVjkkNK1Rb2Gqdme5gBGMLy1yyvK3r2tpump symbol=$GOBIRD name="Go Bird" mcapSol=28.33
+2026-11-27T02:07:48.375Z HANDOFF     MemecoinMonitor -> ScamShield: New coin $GOBIRD handed to Scam Shield
+2026-11-27T02:07:48.371Z PASS        $GOBIRD 6ohN6cDgsVjkkNK1Rb2Gqdme5gBGMLy1yyvK3r2tpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:07:48.955Z PASS        $GOBIRD 6ohN6cDgsVjkkNK1Rb2Gqdme5gBGMLy1yyvK3r2tpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:07:48.957Z HANDOFF     ScamShield -> TokenPicker: Clean coin $GOBIRD handed to Token Picker
+2026-11-27T02:07:59.109Z LOG          trade feed: 48 subscriptions confirmed, 805 log messages, 210 trades decoded
+2026-11-27T02:07:59.632Z SCORE       SPNG Fuedt4ystjHLF5aUXUxjwaMZYrgh9hmszY9cfugxpump score=44.1 picked=false buyers=2 buys=2 sells=0 ratio=2.00 priceChg=1.8% curveSol=0.4 gates=["curve holds 0.4 SOL (needs 4-40)", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 28.6 SOL below 30.0 SOL"]
+2026-11-27T02:08:07.521Z NEW-TOKEN  mint=4VWhxc9VUxqzhDKnRHvaKvnoUrbTmnxujvJixH1Jpump symbol=LMAO name="LMAO" mcapSol=28.07
+2026-11-27T02:08:07.528Z HANDOFF     MemecoinMonitor -> ScamShield: New coin LMAO handed to Scam Shield
+2026-11-27T02:08:07.525Z PASS        LMAO 4VWhxc9VUxqzhDKnRHvaKvnoUrbTmnxujvJixH1Jpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:08:09.153Z BLOCK       LMAO 4VWhxc9VUxqzhDKnRHvaKvnoUrbTmnxujvJixH1Jpump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T02:08:29.109Z LOG          trade feed: 49 subscriptions confirmed, 846 log messages, 251 trades decoded
+2026-11-27T02:08:38.267Z NEW-TOKEN  mint=afRLGKRMpfmbcftfLGRPfMJXyYeDZ3h1PsmqR54pump symbol=BOOBCOIN name="BOOBCOIN" mcapSol=29.12
+2026-11-27T02:08:38.273Z HANDOFF     MemecoinMonitor -> ScamShield: New coin BOOBCOIN handed to Scam Shield
+2026-11-27T02:08:38.271Z PASS        BOOBCOIN afRLGKRMpfmbcftfLGRPfMJXyYeDZ3h1PsmqR54pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:08:40.275Z BLOCK       BOOBCOIN afRLGKRMpfmbcftfLGRPfMJXyYeDZ3h1PsmqR54pump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/afRLGKRMpfmbcftfLGRPfMJXyYeDZ3h1PsmqR54pump/report)
+2026-11-27T02:08:48.368Z SCORE       $GOBIRD 6ohN6cDgsVjkkNK1Rb2Gqdme5gBGMLy1yyvK3r2tpump score=74.4 picked=false buyers=3 buys=24 sells=14 ratio=1.71 priceChg=60.5% curveSol=0.5 gates=["curve holds 0.5 SOL (needs 4-40)", "buy/sell 1.7 below 2", "2 buyers in 30 s (needs 5)", "volume not rising"]
+2026-11-27T02:08:52.527Z NEW-TOKEN  mint=64J684ynaJV1rFQk7Qgo3UbKNW6RHX8w1yT1huqnpump symbol=T-shirt name="shirts" mcapSol=27.97
+2026-11-27T02:08:52.534Z HANDOFF     MemecoinMonitor -> ScamShield: New coin T-shirt handed to Scam Shield
+2026-11-27T02:08:52.532Z PASS        T-shirt 64J684ynaJV1rFQk7Qgo3UbKNW6RHX8w1yT1huqnpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:08:54.446Z NEW-TOKEN  mint=4eatVYdMfuXfCT3pMK2zih4fRrBATz7hpLUaPM7sLvRi symbol=DragonRiders name="DragonRiders" mcapSol=27.96
+2026-11-27T02:08:54.451Z HANDOFF     MemecoinMonitor -> ScamShield: New coin DragonRiders handed to Scam Shield
+2026-11-27T02:08:54.450Z BLOCK       DragonRiders 4eatVYdMfuXfCT3pMK2zih4fRrBATz7hpLUaPM7sLvRi stage=cheap-prefilter reason=COPYCAT verdict=ELEVATED | Name or symbol is almost the same as 'Dragon riders' (DRAGON), seen trending in the last 24 h.
+2026-11-27T02:08:54.535Z BLOCK       T-shirt 64J684ynaJV1rFQk7Qgo3UbKNW6RHX8w1yT1huqnpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | timed out
+2026-11-27T02:08:59.109Z LOG          trade feed: 51 subscriptions confirmed, 873 log messages, 278 trades decoded
+2026-11-27T02:09:01.890Z NEW-TOKEN  mint=3bFadgfQ12Km2pHMY6YCX4puDyhHSvxoEnCrn7MTpump symbol=RULES name="Rules" mcapSol=29.83
+2026-11-27T02:09:01.901Z HANDOFF     MemecoinMonitor -> ScamShield: New coin RULES handed to Scam Shield
+2026-11-27T02:09:01.896Z PASS        RULES 3bFadgfQ12Km2pHMY6YCX4puDyhHSvxoEnCrn7MTpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:03.903Z BLOCK       RULES 3bFadgfQ12Km2pHMY6YCX4puDyhHSvxoEnCrn7MTpump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/3bFadgfQ12Km2pHMY6YCX4puDyhHSvxoEnCrn7MTpump/report)
+2026-11-27T02:09:19.562Z NEW-TOKEN  mint=FYF7eURp7UUjVKcQMcQEmbKnHZgHdcbh4TCgNHi2WG9h symbol=GME name="Greatest Meme Ever" mcapSol=40.10
+2026-11-27T02:09:19.569Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GME handed to Scam Shield
+2026-11-27T02:09:19.566Z BLOCK       GME FYF7eURp7UUjVKcQMcQEmbKnHZgHdcbh4TCgNHi2WG9h stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 17.7% of the supply (limit 10%).
+2026-11-27T02:09:20.845Z NEW-TOKEN  mint=AHmKReyqk8rriCYa3cHBskw3BYTFGv593NRNoxi1pump symbol=MAGPIE name="HELLO MR MAGPIE" mcapSol=28.11
+2026-11-27T02:09:20.853Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MAGPIE handed to Scam Shield
+2026-11-27T02:09:20.849Z PASS        MAGPIE AHmKReyqk8rriCYa3cHBskw3BYTFGv593NRNoxi1pump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:21.451Z BLOCK       MAGPIE AHmKReyqk8rriCYa3cHBskw3BYTFGv593NRNoxi1pump stage=chain reason=RUGCHECK_DANGER verdict=HIGH | RugCheck danger flag: Creator history of rugged tokens: Creator has a history of rugging tokens.
+2026-11-27T02:09:29.109Z LOG          trade feed: 53 subscriptions confirmed, 1639 log messages, 338 trades decoded
+2026-11-27T02:09:34.174Z NEW-TOKEN  mint=WvrLEYx6BoZ5q4nTj9xEkNApF9ViymbBEbcRGcopump symbol=CAT name="Nyan Cat" mcapSol=28.07
+2026-11-27T02:09:34.182Z HANDOFF     MemecoinMonitor -> ScamShield: New coin CAT handed to Scam Shield
+2026-11-27T02:09:34.178Z PASS        CAT WvrLEYx6BoZ5q4nTj9xEkNApF9ViymbBEbcRGcopump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:36.183Z BLOCK       CAT WvrLEYx6BoZ5q4nTj9xEkNApF9ViymbBEbcRGcopump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/WvrLEYx6BoZ5q4nTj9xEkNApF9ViymbBEbcRGcopump/report)
+2026-11-27T02:09:51.473Z NEW-TOKEN  mint=3Vp4yi2Ztv5Th4tRQ9FN6m4EBCF7XqKVMDid7BTopump symbol=Toggle name="Toggle" mcapSol=29.83
+2026-11-27T02:09:51.476Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Toggle handed to Scam Shield
+2026-11-27T02:09:51.475Z PASS        Toggle 3Vp4yi2Ztv5Th4tRQ9FN6m4EBCF7XqKVMDid7BTopump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:52.280Z NEW-TOKEN  mint=6dECRzh18PGWZXwjYqcwqhw95Cpwa8td7YgD8PqxPDpA symbol=GME name="Greatest Meme Ever" mcapSol=27.96
+2026-11-27T02:09:52.285Z HANDOFF     MemecoinMonitor -> ScamShield: New coin GME handed to Scam Shield
+2026-11-27T02:09:52.283Z PASS        GME 6dECRzh18PGWZXwjYqcwqhw95Cpwa8td7YgD8PqxPDpA stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:53.477Z BLOCK       Toggle 3Vp4yi2Ztv5Th4tRQ9FN6m4EBCF7XqKVMDid7BTopump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/3Vp4yi2Ztv5Th4tRQ9FN6m4EBCF7XqKVMDid7BTopump/report)
+2026-11-27T02:09:54.286Z BLOCK       GME 6dECRzh18PGWZXwjYqcwqhw95Cpwa8td7YgD8PqxPDpA stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/6dECRzh18PGWZXwjYqcwqhw95Cpwa8td7YgD8PqxPDpA/report)
+2026-11-27T02:09:58.433Z NEW-TOKEN  mint=CRTNDvgHMR1RWs4WHheLT7E7dUJQCPVXAA4ubaUApump symbol=BDOG name="BANDIT DOGY" mcapSol=28.14
+2026-11-27T02:09:58.441Z HANDOFF     MemecoinMonitor -> ScamShield: New coin BDOG handed to Scam Shield
+2026-11-27T02:09:58.439Z PASS        BDOG CRTNDvgHMR1RWs4WHheLT7E7dUJQCPVXAA4ubaUApump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:09:59.110Z LOG          trade feed: 57 subscriptions confirmed, 1671 log messages, 338 trades decoded
+2026-11-27T02:09:59.823Z NEW-TOKEN  mint=HkdCP2WbJ8EuD8aHn4LBwhqvyRr23t1o5YzRuRCWpump symbol=LMAO name="LMAO" mcapSol=28.07
+2026-11-27T02:09:59.832Z HANDOFF     MemecoinMonitor -> ScamShield: New coin LMAO handed to Scam Shield
+2026-11-27T02:09:59.828Z PASS        LMAO HkdCP2WbJ8EuD8aHn4LBwhqvyRr23t1o5YzRuRCWpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:10:00.443Z BLOCK       BDOG CRTNDvgHMR1RWs4WHheLT7E7dUJQCPVXAA4ubaUApump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/CRTNDvgHMR1RWs4WHheLT7E7dUJQCPVXAA4ubaUApump/report)
+2026-11-27T02:10:01.834Z BLOCK       LMAO HkdCP2WbJ8EuD8aHn4LBwhqvyRr23t1o5YzRuRCWpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/HkdCP2WbJ8EuD8aHn4LBwhqvyRr23t1o5YzRuRCWpump/report)
+2026-11-27T02:10:29.109Z LOG          trade feed: 58 subscriptions confirmed, 1677 log messages, 344 trades decoded
+2026-11-27T02:10:59.109Z LOG          trade feed: 58 subscriptions confirmed, 1677 log messages, 344 trades decoded
+2026-11-27T02:11:09.456Z LOG          feed: DISCONNECTED (no messages for 60 s); reconnecting in 1s
+2026-11-27T02:11:10.880Z LOG          feed: connected to wss://pumpportal.fun/api/data (subscribeNewToken, subscribeMigration)
+2026-11-27T02:11:10.931Z LOG          feed: server says: Successfully subscribed to token creation events.
+2026-11-27T02:11:10.933Z LOG          feed: server says: Subscribed to 'migration' events.
+2026-11-27T02:11:28.164Z NEW-TOKEN  mint=Fxep1XXDNDcxens2FnrL7ob9ijXNr4ckztZ4fE6qpump symbol=TGIBF name="Thank god It’s black friday!" mcapSol=28.70
+2026-11-27T02:11:28.169Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TGIBF handed to Scam Shield
+2026-11-27T02:11:28.167Z PASS        TGIBF Fxep1XXDNDcxens2FnrL7ob9ijXNr4ckztZ4fE6qpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:11:29.109Z LOG          trade feed: 59 subscriptions confirmed, 1677 log messages, 344 trades decoded
+2026-11-27T02:11:30.171Z BLOCK       TGIBF Fxep1XXDNDcxens2FnrL7ob9ijXNr4ckztZ4fE6qpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/Fxep1XXDNDcxens2FnrL7ob9ijXNr4ckztZ4fE6qpump/report)
+2026-11-27T02:11:36.779Z NEW-TOKEN  mint=8xYQG5drfbeJ7iLaefJL2cEqHefaNKeGW7WZmXpspump symbol=Custos name="Custos" mcapSol=29.83
+2026-11-27T02:11:36.786Z HANDOFF     MemecoinMonitor -> ScamShield: New coin Custos handed to Scam Shield
+2026-11-27T02:11:36.782Z PASS        Custos 8xYQG5drfbeJ7iLaefJL2cEqHefaNKeGW7WZmXpspump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:11:38.788Z BLOCK       Custos 8xYQG5drfbeJ7iLaefJL2cEqHefaNKeGW7WZmXpspump stage=chain reason=UNDECIDED_RUGCHECK verdict=HIGH | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/8xYQG5drfbeJ7iLaefJL2cEqHefaNKeGW7WZmXpspump/report)
+2026-11-27T02:11:43.932Z NEW-TOKEN  mint=4rUVDngCjtGvAarzZMRqRU8GB58Pm3wvzcnUWqUoGzZW symbol=DORA name="The Runner" mcapSol=35.81
+2026-11-27T02:11:43.942Z HANDOFF     MemecoinMonitor -> ScamShield: New coin DORA handed to Scam Shield
+2026-11-27T02:11:43.937Z BLOCK       DORA 4rUVDngCjtGvAarzZMRqRU8GB58Pm3wvzcnUWqUoGzZW stage=cheap-prefilter reason=CREATOR_HOLDING verdict=HIGH | Creator holds 12.5% of the supply (limit 10%).
+2026-11-27T02:11:50.574Z NEW-TOKEN  mint=5829eVZcuKqasLvNH8qQBRnCjFBRpZDTMSBEDKXvpump symbol=TRUMPCOIN name="Trumppp" mcapSol=28.14
+2026-11-27T02:11:50.582Z HANDOFF     MemecoinMonitor -> ScamShield: New coin TRUMPCOIN handed to Scam Shield
+2026-11-27T02:11:50.578Z PASS        TRUMPCOIN 5829eVZcuKqasLvNH8qQBRnCjFBRpZDTMSBEDKXvpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:11:51.069Z PASS        TRUMPCOIN 5829eVZcuKqasLvNH8qQBRnCjFBRpZDTMSBEDKXvpump stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | rugcheck: RugCheck warnings: Low Liquidity: Low amount of liquidity in the token pool | community: Image not verifiable yet; social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:11:51.074Z HANDOFF     ScamShield -> TokenPicker: Clean coin TRUMPCOIN handed to Token Picker
+2026-11-27T02:11:59.109Z LOG          trade feed: 61 subscriptions confirmed, 1679 log messages, 346 trades decoded
+2026-11-27T02:12:01.003Z NEW-TOKEN  mint=Gue8tGq9AXz7uFSTX1akzzHK3aDk936wkSU6HeTF9gQ7 symbol=SpaceXers name="SpaceX'ers" mcapSol=27.96
+2026-11-27T02:12:01.010Z HANDOFF     MemecoinMonitor -> ScamShield: New coin SpaceXers handed to Scam Shield
+2026-11-27T02:12:01.006Z PASS        SpaceXers Gue8tGq9AXz7uFSTX1akzzHK3aDk936wkSU6HeTF9gQ7 stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:12:03.012Z BLOCK       SpaceXers Gue8tGq9AXz7uFSTX1akzzHK3aDk936wkSU6HeTF9gQ7 stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/Gue8tGq9AXz7uFSTX1akzzHK3aDk936wkSU6HeTF9gQ7/report)
+2026-11-27T02:12:07.559Z NEW-TOKEN  mint=DWpc1RyqTr28WMbG7WoUyzgUCtZAK1tj35U72gz7RhZG symbol=RCAT name="Rules cat" mcapSol=27.96
+2026-11-27T02:12:07.567Z HANDOFF     MemecoinMonitor -> ScamShield: New coin RCAT handed to Scam Shield
+2026-11-27T02:12:07.563Z BLOCK       RCAT DWpc1RyqTr28WMbG7WoUyzgUCtZAK1tj35U72gz7RhZG stage=cheap-prefilter reason=COPYCAT verdict=ELEVATED | Name or symbol is almost the same as 'Fireball Cat' (FCAT), seen trending in the last 24 h.
+2026-11-27T02:12:07.961Z NEW-TOKEN  mint=Bp1ACsP7ye2BQUxYd2jd7Wm1XmFNa76vyuL2y8yxYhm1 symbol=CORNSUGAR name="Corn Sugar" mcapSol=27.96
+2026-11-27T02:12:07.968Z HANDOFF     MemecoinMonitor -> ScamShield: New coin CORNSUGAR handed to Scam Shield
+2026-11-27T02:12:07.965Z PASS        CORNSUGAR Bp1ACsP7ye2BQUxYd2jd7Wm1XmFNa76vyuL2y8yxYhm1 stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:12:08.815Z PASS        CORNSUGAR Bp1ACsP7ye2BQUxYd2jd7Wm1XmFNa76vyuL2y8yxYhm1 stage=chain verdict=ELEVATED | 9 checks done, none blocked. Flags: honeypot: Sell simulation is not available in paper mode (needs a wallet that holds the coin). Re-checked before M4. | community: Image present (via RugCheck); social links unverifiable from this machine (relaxed, sandbox only). | metadata_uri: Metadata host unreachable from this machine's network policy; relaxed (sandbox only).
+2026-11-27T02:12:08.818Z HANDOFF     ScamShield -> TokenPicker: Clean coin CORNSUGAR handed to Token Picker
+2026-11-27T02:12:12.859Z NEW-TOKEN  mint=9YgoSCrrThrac3PRc3WWSHgLAe74WMiTfoPd7XAzpump symbol=MAGPIE name="HELLO MR MAGPIE" mcapSol=28.12
+2026-11-27T02:12:12.867Z HANDOFF     MemecoinMonitor -> ScamShield: New coin MAGPIE handed to Scam Shield
+2026-11-27T02:12:12.865Z PASS        MAGPIE 9YgoSCrrThrac3PRc3WWSHgLAe74WMiTfoPd7XAzpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:12:14.868Z BLOCK       MAGPIE 9YgoSCrrThrac3PRc3WWSHgLAe74WMiTfoPd7XAzpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/9YgoSCrrThrac3PRc3WWSHgLAe74WMiTfoPd7XAzpump/report)
+2026-11-27T02:12:22.479Z NEW-TOKEN  mint=DmHG4dpmbavdbVWZ7n5u6A5Qexg1uE9QELVH3aNpump symbol=cap name="dog wif cap" mcapSol=28.14
+2026-11-27T02:12:22.486Z HANDOFF     MemecoinMonitor -> ScamShield: New coin cap handed to Scam Shield
+2026-11-27T02:12:22.483Z PASS        cap DmHG4dpmbavdbVWZ7n5u6A5Qexg1uE9QELVH3aNpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:12:24.487Z BLOCK       cap DmHG4dpmbavdbVWZ7n5u6A5Qexg1uE9QELVH3aNpump stage=chain reason=UNDECIDED_RUGCHECK verdict=ELEVATED | rugcheck: error sending request for url (https://api.rugcheck.xyz/v1/tokens/DmHG4dpmbavdbVWZ7n5u6A5Qexg1uE9QELVH3aNpump/report)
+2026-11-27T02:12:28.820Z NEW-TOKEN  mint=FR67ghLA9fFpGxa98KQHryw7c36FHB2dT9EgLDFkpump symbol=VITAMIN  name="VITAMIN B-1" mcapSol=29.45
+2026-11-27T02:12:28.829Z HANDOFF     MemecoinMonitor -> ScamShield: New coin VITAMIN  handed to Scam Shield
+2026-11-27T02:12:28.825Z PASS        VITAMIN  FR67ghLA9fFpGxa98KQHryw7c36FHB2dT9EgLDFkpump stage=cheap-prefilter verdict=LOW_SIGNAL | 4 checks done, none blocked.
+2026-11-27T02:12:29.109Z LOG          trade feed: 66 subscriptions confirmed, 1721 log messages, 388 trades decoded
+2026-11-27T02:12:30.821Z BLOCK       VITAMIN  FR67ghLA9fFpGxa98KQHryw7c36FHB2dT9EgLDFkpump stage=chain reason=SINGLE_HOLDER verdict=HIGH | One wallet (BwWK..de6s) holds 50.0% of supply (limit 5%), curve and pool accounts excluded.
+2026-11-27T02:12:50.578Z SCORE       TRUMPCOIN 5829eVZcuKqasLvNH8qQBRnCjFBRpZDTMSBEDKXvpump score=79.9 picked=false buyers=5 buys=20 sells=18 ratio=1.11 priceChg=161.9% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 1.1 below 2", "4 buyers in 30 s (needs 5)", "creator is selling"]
+2026-11-27T02:12:59.109Z LOG          trade feed: 66 subscriptions confirmed, 1756 log messages, 419 trades decoded
+2026-11-27T02:13:07.962Z SCORE       CORNSUGAR Bp1ACsP7ye2BQUxYd2jd7Wm1XmFNa76vyuL2y8yxYhm1 score=0.0 picked=false buyers=0 buys=0 sells=0 ratio=0.00 priceChg=0.0% curveSol=0.0 gates=["curve holds 0.0 SOL (needs 4-40)", "buy/sell 0.0 below 2", "0 buyers in 30 s (needs 5)", "volume not rising", "market cap 0.0 SOL below 30.0 SOL"]
