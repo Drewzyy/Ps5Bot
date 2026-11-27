@@ -488,3 +488,50 @@ label.chk input { width: 16px; height: 16px; accent-color: var(--green); }
 .fhealth .kvrows span.k { min-width: 0; }
 .fhealth .kvrows > div > b { text-align: right; }
 .fhealth { max-width: 520px; }
+
+/* updates */
+.upd-btn { position: relative; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--heading); display: grid; place-items: center; padding: 0; }
+.upd-btn:hover:not(:disabled) { background: var(--surface); color: var(--green); border-color: var(--green); }
+.upd-btn:disabled { cursor: default; }
+.upd-btn.spin svg { animation: upd-spin 1s linear infinite; }
+@keyframes upd-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .upd-btn.spin svg { animation-duration: 3s; } }
+.upd-dot { position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%; background: var(--red); border: 2px solid var(--card); }
+.upd-btn::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; white-space: nowrap; background: var(--heading); color: var(--card); font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 60; }
+.upd-btn:hover::after, .upd-btn:focus-visible::after { opacity: 1; }
+.toast { position: fixed; right: 20px; bottom: 20px; z-index: 90; max-width: min(460px, calc(100vw - 40px)); display: grid; gap: 8px; background: var(--card); color: var(--text); border: 1px solid var(--green); border-radius: 12px; padding: 12px 16px; box-shadow: 0 12px 40px var(--shadow-lg); font-size: 14px; }
+.toast.bad { border-color: var(--red-line); background: var(--red-bg); color: var(--red); }
+.toast-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.progress { height: 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.progress > div { height: 100%; background: var(--green); border-radius: 999px; transition: width .2s; }
+.progress.indet > div { animation: upd-slide 1.2s ease-in-out infinite; }
+@keyframes upd-slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+.upd-dialog { border-color: var(--green); }
+.upd-dialog h2 { color: var(--heading); }
+.set-badge { display: inline-block; background: var(--red); color: var(--on-green); border-radius: 999px; font-size: 10.5px; font-weight: 800; padding: 1px 8px; margin-left: 8px; vertical-align: middle; }
+.help-q { border: 1px solid var(--line); background: var(--card); color: var(--green); border-radius: 50%; width: 26px; height: 26px; font-weight: 800; margin-left: 10px; vertical-align: middle; }
+.help-q:hover { background: var(--surface); }
+.conn-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--card); display: grid; gap: 10px; }
+.conn-card h3 { margin: 0; font-size: 15px; color: var(--heading); }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; }
+.vault-path { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; word-break: break-all; }
+.okpill { display: inline-block; background: var(--surface); color: var(--green); border: 1px solid var(--green); border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 800; margin-left: 6px; vertical-align: middle; }
+.conn-fields { display: grid; gap: 8px; }
+.conn-field { display: grid; gap: 3px; font-size: 13px; }
+.conn-field input { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 14px; }
+.hint-saved { font-size: 12px; color: var(--green-dark); font-family: ui-monospace, Consolas, monospace; }
+.payload-doc pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: 12px; }
+.payload-doc summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.conn-card + .conn-card { margin-top: 12px; }
+@media (max-width: 1500px) {
+  .topbar { gap: 12px; padding: 8px 14px; }
+  .nav { gap: 2px; }
+  .nav button { padding: 6px 8px; }
+  .set-badge { margin-left: 5px; padding: 1px 6px; font-size: 10px; }
+  .brand { font-size: 15px; }
+}
+@media (max-width: 1320px) {
+  .topbar { gap: 8px; padding: 8px 10px; }
+  .stat .v small { margin-left: 3px; font-size: 11px; }
+}

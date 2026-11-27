@@ -394,3 +394,63 @@ export interface Pulse {
 }
 
 export type Config = typeof import("../../config.json");
+
+export interface UpdaterInfo {
+  available: boolean;
+  version: string;
+  notes: string;
+}
+
+export interface VaultSettings {
+  path: string;
+  trades: boolean;
+  coins: boolean;
+  days: boolean;
+  lessons: boolean;
+  situations: boolean;
+}
+
+export interface VaultStatus {
+  settings: VaultSettings;
+  folderExists: boolean;
+  looksLikeObsidian: boolean;
+  notesFolder: string;
+  lastError: string;
+}
+
+export interface VaultTest {
+  ok: boolean;
+  message: string;
+}
+
+export interface BackfillResult {
+  trades: number;
+  days: number;
+  coins: number;
+  lessons: number;
+  situations: number;
+  keptYours: number;
+}
+
+export interface NotifyEvents {
+  buy: boolean;
+  sell: boolean;
+  dailySummary: boolean;
+  learningChange: boolean;
+  killSwitch: boolean;
+  lossLimit: boolean;
+  health: boolean;
+  updateInstalled: boolean;
+}
+
+export type ConnName = "discord" | "webhook";
+
+/** What a connector card may know. Secrets never come back: only masked hints. */
+export interface ConnStatus {
+  conn: ConnName;
+  configured: boolean;
+  hints: Record<string, string>;
+  events: NotifyEvents;
+  lastError: string;
+  lastOkMs: number;
+}

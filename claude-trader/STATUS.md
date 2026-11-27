@@ -74,7 +74,7 @@
 
 ### Stubbed, limited, or unsure
 - Not run on Windows: Credential Manager, `rundll32` browser open, the Tauri build itself. Linux build and tests pass; the vault path is tested with a mock.
-- **Self-updating (tauri-plugin-updater) is NOT done.** It needs a signing keypair; a key I generated would be lost to you. Upgrade path: run `npx tauri signer generate -w ~/.tauri/claude-trader.key` once, put the public key in `tauri.conf.json` under `plugins.updater.pubkey`, add the private key as GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (and its password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), publish GitHub Releases from the workflow. Never commit the private key.
+- **(Done in M3d, see below.) Self-updating (tauri-plugin-updater) was NOT done at M3c.** It needs a signing keypair; a key I generated would be lost to you. Upgrade path: run `npx tauri signer generate -w ~/.tauri/claude-trader.key` once, put the public key in `tauri.conf.json` under `plugins.updater.pubkey`, add the private key as GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (and its password as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), publish GitHub Releases from the workflow. Never commit the private key.
 - Artifacts on GitHub Actions need a GitHub login to download (the steps say so).
 - Learning has had no real data: the live paper run made 0 trades, so every learning screenshot is DEMO. The pipeline is covered by unit tests only. The shadow lane makes a trade only if a coin passes the candidate's rules, so a test can take long.
 - The trailing-stop give-back and bucket patterns are the only proposals; weights move only when the top bucket of ratio or buyers clearly wins.
@@ -222,3 +222,40 @@ Buy: pump.fun protocol 0.00095 + creator 0.00030 + PumpPortal 0.00100 + base 0.0
 - Mock/demo pulses only (no activity-feed entries) so the feed stays empty in M1.
 - Pinned exact npm versions; Tauri CLI/API 2.12.5 (2.5.x no longer on the registry).
 - Open questions: SPEC.md section 14.
+
+
+## M3d: one-click self-update, Obsidian memory, Discord and webhook connectors
+
+### Self-update (tauri-plugin-updater)
+- `tauri.conf.json` has `plugins.updater` (public key, endpoint `https://github.com/Drewzyy/Ps5Bot/releases/latest/download/latest.json`, Windows `installMode: "passive"`). The private key is NOT in the repo; it belongs in the GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (no password).
+- UI: a round update button (circular arrows, tooltip "Check for update") replaced the Tips tab in the top bar. One click: spins while checking, then "Up to date (vX)" toast, or "Updating to vX..." with a progress bar, install and restart. A red dot on the button and an "Update ready" badge on Settings appear when the quiet background check (4 s after start, then every 6 hours) finds one. It never installs without a click.
+- Open paper positions: the dialog says "1 open paper position will be closed first. Continue?". On confirm the engine command `update-close` sells them through the normal exit path (exit reason `update`, normal fees and fail rates) and blocks new entries. This is NOT the kill switch: nothing persistent is set (test `closing_for_an_update_sells_normally_and_never_sets_the_kill_switch`). If the install fails, `update-close-cancel` lets trading carry on.
+- Settings > About and updates: version shown as `0.1.<run>` plus the short commit; Check for updates, "You're up to date (version X)" or "Version Y is ready" with Update and restart; progress bar. On any error the old GitHub download page link and 3 steps are shown as a fallback.
+- Settings, trade history, learning and keys live in the app data folder (`app.path().app_data_dir()`, `claude-trader.db` there), not the install folder, so the installer cannot touch them (read from `lib.rs` setup; the real Windows install is NOT tested here).
+- Tips moved into Settings > Tips and help (small ? button next to the Settings title); Replay walkthrough kept. The old `#/tips` address opens Settings.
+- CI (`.github/workflows/windows-build.yml`): sets version `0.1.<run_number>` in tauri.conf.json and Cargo.toml (`scripts/ci-set-version.mjs`), signs with `TAURI_SIGNING_PRIVATE_KEY` (password empty), enables `createUpdaterArtifacts`, and on pushes to `claude/trader-build-prompt-v2-9pmbsi` creates release `v0.1.<run>` (latest) with the NSIS setup.exe, its .sig, `latest.json` (`scripts/make-latest-json.mjs`) and the Chrome extension zip, using `gh release create` with the built-in GITHUB_TOKEN (`permissions: contents: write`). If the secret is missing it prints a warning, skips signing and the release, and still builds and uploads the normal artifacts. `node --test scripts/ci-scripts.test.mjs` covers the latest.json shape (version, notes, pub_date, platforms.windows-x86_64 {signature, url}) and the version edits.
+- ONE STEP FOR YOU: add the repository secret `TAURI_SIGNING_PRIVATE_KEY` (the contents of your private key file). Until then CI builds unsigned and makes no release, and the update button shows the fallback link.
+
+### Obsidian vault connector (Settings > Connectors)
+- `engine/src/vault.rs`. Local markdown only. Choose vault folder (Tauri dialog), Test (writes and reads back `Claude Trader/Test note.md`), Disconnect, Backfill, per-type toggles (Trades, Coins, Days, Lessons, Situations). The path is in SQLite kv (`vault.settings`), not config.json.
+- Writes `<vault>/Claude Trader/`: `Trades/YYYY-MM-DD SYMBOL id.md` (lane, times, prices, size, every fee line, net P&L, hold, exit reason, entry features, Scam Shield rows with a Solscan link, journal observations, source link, tags #win/#loss #exit/...), `Coins/<mint>.md`, `Days/YYYY-MM-DD.md` (summary, funnel counts, links), `Lessons/` (each review, each change with status, efficiency notes), `Situations/` (kill switch on/off, loss limit halt, feed warning, RugCheck outage once per hour, missed coins scoring 80 or more with what happened next), `Index.md`. YAML frontmatter and [[wikilinks]].
+- Safety: temp file then rename; nothing is ever deleted; a note without our `generated-by` line is never overwritten; names are sanitised (no separators, reserved Windows names, length cap); nothing is written while disconnected. Only recorded data is used.
+- Tests (engine, `vault::tests`): note content from data, names sanitised, atomic writes and keep-yours, disconnected writes nothing, connect/test/toggles/disconnect, close writes trade+day+index and honours toggles, backfill (twice is harmless), missed coins under 80 not written.
+
+### Discord and generic webhook connectors (outgoing only)
+- `engine/src/notify.rs`. Per-event toggles: buy, sell (with P&L), daily summary, learning change applied, kill switch, daily loss limit, feed/RugCheck warnings, update installed. Secrets (webhook URLs, optional secret header) are stored one by one in the OS secure storage (encrypted file fallback) like the Helius key, shown only as a masked hint, scrubbed from every error text, never in logs, SQLite or config.json.
+- Discord: URL must be https://discord.com or discordapp.com `/api/webhooks/<id>/<token>`; embeds green for a win and red for a loss, with fields and the Dexscreener link; footer says "Paper results" while paper. Generic webhook: JSON POST (`claude-trader/event/v1`, schema in the card and below), https only (http only for localhost), optional `X-Claude-Trader-Secret` header.
+- Each connector has its own bounded queue and worker: `emit` never blocks (a full queue drops), sends are paced (Discord 1.2 s, webhook 0.5 s), a 429 waits `retry_after`, 5xx and network errors retry up to 3 times, then the error is stored masked and shown on the card. A failing service cannot hold up trading.
+- Daily summary: yesterday's real totals are sent once after midnight (only if there were trades). Update installed: sent after the restart when the version changed.
+- Tests (`notify::tests`): URL validation, masking, payloads from data, paper label, rate limiting and 429, a failure that does not block, event toggles, secrets kept out of SQLite and status, test button error masking, day summary/version change. The X (Twitter) and Telegram connectors were dropped by decision; X as a reader is a later task.
+
+### Webhook payload
+`{"schema":"claude-trader/event/v1","event":"sell","mode":"paper","paper":true,"sent_at":ISO,"title":"Win CAT","data":{...recorded numbers, "event" repeated...},"links":{"dexscreener":...,"solscan":...}}`. Events: buy, sell, dailySummary, learningChange, killSwitch, lossLimit, health, updateInstalled, test.
+
+### Screenshots (DEMO, viewed)
+`docs/screenshots/`: `topbar-1280.png`, `dashboard-topbar-demo.png`, `update-downloading.png`, `update-closing-positions.png`, `update-confirm-open-position.png`, `update-up-to-date.png`, `update-error-fallback.png`, `settings-about-update-ready.png`, `settings-about-up-to-date.png`, `settings-tips-section.png`, `connectors-obsidian-card.png`, `connectors-discord-card.png`, `connectors-webhook-card.png`. Fixed after viewing: the top bar wrapped at 1280 px (tighter gaps under 1500 px), card screenshots had the sticky bar over them.
+
+### Not verified
+- The real update download, install and relaunch on Windows, the signature check against the real key, and the release created by CI (needs the secret).
+- Real sends to Discord or a webhook (tests use a mock transport). The OAuth/Telegram code from the first draft was removed.
+- Writing into a real Obsidian vault on Windows (tests use temp folders).

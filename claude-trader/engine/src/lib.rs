@@ -28,6 +28,8 @@ pub mod learning;
 pub mod startup;
 pub mod bridge;
 pub mod health;
+pub mod vault;
+pub mod notify;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};

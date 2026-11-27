@@ -67,6 +67,9 @@ pub struct Trader {
     poll_checks: std::sync::atomic::AtomicU32,
     /// Kill switch (persisted in SQLite kv "killed"; this flag is refreshed from it every second).
     killed: std::sync::atomic::AtomicBool,
+    /// "Closing for an update": not persisted, not the kill switch. No new entries, open positions are sold by the
+    /// normal exit path, and a restart (or `cancel_update_close`) clears it.
+    updating: std::sync::atomic::AtomicBool,
 }
 
 fn pf(x: f64) -> String {
@@ -148,6 +151,7 @@ impl Trader {
             migrated: Mutex::new(HashSet::new()),
             poll_checks: std::sync::atomic::AtomicU32::new(0),
             killed: std::sync::atomic::AtomicBool::new(killed),
+            updating: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
@@ -193,6 +197,8 @@ impl Trader {
     pub fn learning_command(&self, cmd: &str) -> String {
         let (msg, fx) = self.learner.command(cmd);
         self.apply_effects(fx);
+        crate::vault::on_lessons_changed(&self.db, now_ms());
+        crate::notify::scan_learning(&self.db);
         msg
     }
 
@@ -237,7 +243,38 @@ impl Trader {
         self.hub.log(format!("TRADE KILL SWITCH ON (from {source}): no new entries, selling {n} open position(s) now"));
         self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("KILL SWITCH ON: all trading stopped, selling {n} open position(s)"), mint: None, source_url: None });
         self.hub.emit(EngineEvent::Kill(self.kill_state()));
+        crate::notify::emit(crate::notify::Event::KillSwitch { ts: now, on: true, source: source.to_string() });
+        crate::vault::situation(&self.db, now, "kill-switch", "Kill switch turned on", &format!("Kill switch turned on from {source}. No new entries; {n} open position(s) were being sold."), "");
         format!("kill switch on, {n} position(s) closing")
+    }
+
+    pub fn is_updating(&self) -> bool {
+        self.updating.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Number of positions still open (bought or being sold) in every lane.
+    pub fn open_count(&self) -> usize {
+        self.lanes.iter().map(|l| l.live.lock().unwrap().len()).sum()
+    }
+
+    /// Before installing an update: stop new entries and sell every open position through the normal exit path
+    /// (exit reason "update"). Unlike `kill` this is NOT saved: the persisted KILLED state is never set, so trading
+    /// carries on by itself after the restart.
+    pub fn close_for_update(&self) -> String {
+        let n = self.open_count();
+        self.updating.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.hub.log(format!("UPDATE: no new entries, selling {n} open position(s) before the update is installed"));
+        self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: format!("Update: closing {n} open position(s) first, no new buys"), mint: None, source_url: None });
+        format!("{n}")
+    }
+
+    /// The update was cancelled or failed: trading carries on.
+    pub fn cancel_update_close(&self) -> String {
+        if self.updating.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            self.hub.log("UPDATE cancelled: new entries allowed again");
+            self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "Update cancelled: trading carries on".into(), mint: None, source_url: None });
+        }
+        "ok".into()
     }
 
     /// Separate explicit step: only this clears the persisted KILLED state.
@@ -250,6 +287,8 @@ impl Trader {
         self.hub.log(format!("TRADE KILL SWITCH OFF (from {source}): trading may resume"));
         self.hub.emit(EngineEvent::Activity { ts: now_ms(), agent: AgentId::Executor, text: "Kill switch off: trading resumed".into(), mint: None, source_url: None });
         self.hub.emit(EngineEvent::Kill(self.kill_state()));
+        crate::notify::emit(crate::notify::Event::KillSwitch { ts: now_ms(), on: false, source: source.to_string() });
+        crate::vault::situation(&self.db, now_ms(), "kill-switch-off", "Trading resumed after the kill switch", &format!("Kill switch turned off from {source}. Trading may resume."), "");
         "trading resumed".into()
     }
 
@@ -378,6 +417,10 @@ impl Trader {
             self.block(style, p, "KILLED", "Kill switch is on. No new entries.");
             return Err("KILLED".into());
         }
+        if self.is_updating() {
+            self.block(style, p, "UPDATING", "An update is being installed. No new entries.");
+            return Err("UPDATING".into());
+        }
         let Some(curve) = self.current_curve(&p.mint) else {
             self.block(style, p, "NO_CURVE_DATA", "No curve data for this coin yet.");
             return Err("no curve data".into());
@@ -404,7 +447,7 @@ impl Trader {
         self.hold_feed(&p.mint, &p.curve_key);
         self.hub.log(format!("TRADE[{style}] SIGNAL {} mint={} score={:.1} size={size} SOL quote={} impactRoundTrip={impact:.2}%", p.symbol, p.mint, p.score, pp(quote_price)));
 
-        if self.is_killed() {
+        if self.is_killed() || self.is_updating() {
             // switched on between the gates and the buy: cancel the pending buy
             pos.fail_buy(&FeeBreakdown::default(), now_ms(), "buy-cancelled: kill switch");
             self.db.save_position(&pos);
@@ -432,6 +475,9 @@ impl Trader {
                 ));
                 self.hub.emit(EngineEvent::Pulse { from: AgentId::Executor, to: AgentId::HoldTimer, text: format!("{} bought, Hold Timer takes over", p.symbol) });
                 self.hub.emit(EngineEvent::Activity { ts: now, agent: AgentId::Executor, text: format!("[{style}] Paper bought {} for {size} SOL at {}", p.symbol, pf(f.entry_price)), mint: Some(p.mint.clone()), source_url: None });
+                if style != crate::learning::SHADOW_LANE {
+                    crate::notify::emit(crate::notify::Event::Buy { ts: now, symbol: p.symbol.clone(), mint: p.mint.clone(), lane: style.to_string(), size_sol: size, entry_price: f.entry_price, score: Some(p.score) });
+                }
                 let me = self.clone();
                 let id = pos.id;
                 tokio::spawn(async move { me.manage(lane, id).await });
@@ -521,7 +567,13 @@ impl Trader {
             let action = exits::evaluate(&mut pos, &market, &self.lane_cfg(&style));
             // kill switch: sell everything that is left, whatever the exit rules say. A failed sell leaves the
             // position OPEN and this loop tries again every tick with the escalated fee (SPEC 11b #17).
-            let action = if self.is_killed() && pos.tokens_remaining > 0.0 { Some(ExitAction::all("kill-switch")) } else { action };
+            let action = if self.is_killed() && pos.tokens_remaining > 0.0 {
+                Some(ExitAction::all("kill-switch"))
+            } else if self.is_updating() && pos.tokens_remaining > 0.0 {
+                Some(ExitAction::all("update"))
+            } else {
+                action
+            };
             lane.live.lock().unwrap().insert(id, pos.clone());
             self.db.save_position(&pos);
             if let Some(a) = action {
@@ -590,6 +642,8 @@ impl Trader {
                 let h = r.halt.clone().unwrap_or_default();
                 self.db.kv_set(&format!("halt:{}", lane.style), &h);
                 self.hub.log(format!("TRADE[{}] HALT: {h}. No new entries until a manual restart (--clear-halt).", lane.style));
+                crate::notify::emit(crate::notify::Event::LossLimit { ts: exit_ms, lane: lane.style.clone(), text: h.clone() });
+                crate::vault::situation(&self.db, exit_ms, "loss-limit", &format!("Trading halted in lane {}", lane.style), &format!("Lane {} halted: {h}. No new entries until a manual restart.", lane.style), &pos.mint);
             }
         }
         let ticks = self.ticks(&pos.mint);
@@ -617,6 +671,13 @@ impl Trader {
         // the learning journal: one entry per closed trade, then a review or a shadow verdict if one is due
         let fx = self.learner.on_close(&pos);
         self.apply_effects(fx);
+        // Obsidian vault (does nothing unless connected in Settings > Connectors)
+        crate::vault::on_trade_closed(&self.db, &pos);
+        // outgoing connectors (Discord, generic webhook): the trade as it really closed
+        if pos.lane != crate::learning::SHADOW_LANE {
+            crate::notify::emit(crate::notify::Event::Sell { ts: exit_ms, symbol: pos.symbol.clone(), mint: pos.mint.clone(), lane: pos.lane.clone(), pnl_sol: pos.pnl_sol, pnl_pct: line.pnl_pct, exit_reason: pos.exit_reason.clone(), hold_seconds: line.hold_seconds, fees_sol: line.fees_sol });
+        }
+        crate::notify::scan_learning(&self.db);
     }
 
     // ------------------------------------------------------------ UI snapshots
@@ -856,6 +917,27 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
         panic!("position did not close");
+    }
+
+    #[tokio::test]
+    async fn closing_for_an_update_sells_normally_and_never_sets_the_kill_switch() {
+        let dir = std::env::temp_dir().join(format!("ct-upd1-{}", now_ms()));
+        let db = Arc::new(Db::open(":memory:").unwrap());
+        let (t, _h) = mk(test_cfg(), db.clone(), &dir);
+        let mut sim = Sim::new("TESTMINT");
+        seed(&t, &mut sim);
+        let a = t.try_enter("momentum", &pick()).await.unwrap();
+        assert_eq!(t.open_count(), 1);
+        assert_eq!(t.close_for_update(), "1");
+        assert!(t.is_updating() && !t.is_killed() && db.killed_at().is_none(), "not the persistent kill state");
+        assert_eq!(t.try_enter("momentum", &pick_of("OTHER")).await.unwrap_err(), "UPDATING");
+        wait_closed(&t, "momentum").await;
+        let p = db.position_by_id(a).unwrap();
+        assert_eq!((p.state, p.exit_reason.as_str()), (PosState::Closed, "update"));
+        assert_eq!(t.open_count(), 0);
+        t.cancel_update_close();
+        assert!(!t.is_updating() && !t.is_killed() && db.killed_at().is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

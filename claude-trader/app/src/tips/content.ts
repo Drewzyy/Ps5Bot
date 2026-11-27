@@ -57,7 +57,7 @@ export function buildSteps(c: Config): Step[] {
       ],
       good: "PAPER badge in green. Profit after fees over many trades.",
       bad: "A red LIVE badge before you meant to switch. Or good paper profit from only a handful of trades, which is mostly luck.",
-      todo: "Stay on paper. Do not go live until you have read the Tips page on risk and the results hold up.",
+      todo: "Stay on paper. Do not go live until you have read the risk tips (Settings > Tips and help) and the results hold up.",
     },
     {
       id: "graph", title: "The agents and the network", target: ".graph-wrap",
@@ -180,7 +180,7 @@ export function buildSteps(c: Config): Step[] {
       ],
       good: "Leave defaults alone while you learn.",
       bad: "Raising trade size or loosening stops after a loss.",
-      todo: "Read a few i icons for fun. Replay this tour or read more under the Tips tab any time.",
+      todo: "Read a few i icons for fun. Replay this tour or read more under Settings > Tips and help (the ? button) any time.",
     },
   ];
 }
@@ -241,8 +241,10 @@ export function buildTopics(c: Config): Topic[] {
         { q: "Why 0 trades for a long time?", a: ["Strict rules. It is normal and safe. Do not loosen rules to get action."] },
         { q: "The i icons", a: ["Open Settings, open a section, and click i beside any value for a plain explanation."] },
         { q: "How do I add my Helius key?", a: ["Get a free key at helius.dev, then Dashboard > API Keys. In the app open Settings > Connections, paste the key, press Save, then Test connection.", "It is stored in your computer's secure storage and shown only as 'saved, ends in ...ab12'. Remove key deletes it."] },
-        { q: "How do I update the app?", a: ["Open Settings > About and updates and press Check for updates. If a newer build exists, press Open download page and follow the three steps shown."] },
+        { q: "How do I update the app?", a: ["Press the round update button (circular arrows) at the top right, or open Settings > About and updates and press Check for updates. When a newer version is ready, press Update and restart. The app closes any open paper position the normal way first, downloads the update, installs it and starts again by itself. Your settings, trade history and learning stay.","A small red dot on the button and an Update ready badge on Settings mean the app found a newer version in the background. It never installs by itself. If automatic updating fails, a link to the GitHub download page is shown."] },
         { q: "What does 'What it learned' show?", a: ["A note per closed trade, built only from recorded numbers. Every 30 trades it may propose one small change, tests it in a separate pretend lane, and applies it only if it wins. Every change can be undone."] },
+        { q: "What is the Obsidian vault connector?", a: ["Obsidian is a free note app (obsidian.md) that keeps notes as plain files in a folder called a vault. In Settings > Connectors you can point the app at your vault. It then writes readable notes into a Claude Trader folder there: one note per closed trade, per coin, per day, the lessons the learning feature found, and notable events such as the kill switch or a missed coin.","Notes contain only numbers and text the app really recorded, with [[links]] between them. The app never deletes your notes and never overwrites a note you wrote. Turn each note type on or off, or press Disconnect to stop. Backfill writes notes for trades that closed before you connected."] },
+        { q: "Discord and webhook connectors", a: ["In Settings > Connectors you can have the app send messages out: a Discord webhook posts a coloured card (green for a win, red for a loss) with the numbers and a Dexscreener link; a generic webhook sends the same facts as JSON to Zapier, Make, n8n or your own server. Both are outgoing only.","Pick which events to send: buy, sell with P&L, daily summary, learning change applied, kill switch, daily loss limit, feed or RugCheck warnings, update installed. Every message says Paper results while the app is paper only, and contains only numbers the app recorded.","The webhook link or secret is stored in your computer's secure storage like the Helius key, shown only as a masked hint, and never goes into logs or config.json. Sending is paced and queued. If Discord or your server is down, the message is dropped after three tries and trading is never held up. Send test message checks the connection."] },
         { q: "What is the Chrome extension?", a: ["An optional add-on for Chrome. It shows your balance, open positions and the kill switch in a side panel, shows what the bot thinks of a coin on pump.fun and Dexscreener pages, and sends alerts. It can run a scam check on a coin, but it can never make the bot buy.", "Install it once from Settings > Startup and browser > Install the Chrome extension. It connects to the app only on this computer, with a code you paste once."] },
       ],
     },

@@ -307,6 +307,12 @@ Strategy:
 
 All 29 protections are acceptance items: each needs a unit test or a recorded demo before its milestone closes (token checks and execution rules in M2/M3, live-only rules in M4).
 
+## 11c. Updates, vault and connectors (M3d)
+
+- Self-update: signed releases only (`tauri-plugin-updater`, public key in tauri.conf.json), installed only after a click. Open paper positions are sold through the normal exit path first (exit reason `update`), never through the persistent kill switch.
+- Obsidian vault: markdown in `<vault>/Claude Trader/` (Trades, Coins, Days, Lessons, Situations, Index), YAML frontmatter, wikilinks, atomic writes, nothing deleted, foreign notes never overwritten, content only from recorded data.
+- Outgoing connectors (Discord webhook, generic webhook): secrets in OS secure storage, masked everywhere, paced and queued, a failed send never blocks trading, "Paper results" label while paper, payload `claude-trader/event/v1`. No inbound connector can place a trade.
+
 ## 12. Out of scope
 
 Live trading before the M4 gate; real keys in repo/logs/fixtures; paid APIs (Birdeye streaming, LaserStream, Solscan Pro, Jupiter Developer, X API reads); Axiom; copy-trade execution; auto-posting to X/Telegram; EVM, leverage, perps; anything needing a gated server or paid signal feed.

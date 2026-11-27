@@ -73,7 +73,7 @@ pub struct UpdateCheck {
 
 pub fn install_steps() -> Vec<String> {
     vec![
-        "Press Open download page. Sign in to GitHub if it asks.".into(),
+        "Fallback only (automatic updating failed). Press Open download page. Sign in to GitHub if it asks.".into(),
         "Scroll to Artifacts at the bottom and download claude-trader-windows. Unzip it.".into(),
         "Close Claude Trader, then run the new setup file from the zip. Your settings and trade history stay.".into(),
     ]

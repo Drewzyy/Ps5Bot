@@ -1,4 +1,4 @@
-import type { BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, UpdateCheck } from "./types";
+import type { ConnName, ConnStatus, NotifyEvents, BackfillResult, BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, UpdateCheck, UpdaterInfo, VaultSettings, VaultStatus, VaultTest } from "./types";
 import { demoEvents, demoUpdate } from "./demo";
 import defaultConfig from "../../config.json";
 
@@ -148,6 +148,23 @@ export interface Api {
   buildInfo(): Promise<BuildInfo>;
   checkUpdates(): Promise<UpdateCheck>;
   openLink(url: string): void;
+  /** In-app updater: look for a signed newer version. */
+  updaterCheck(): Promise<UpdaterInfo>;
+  /** Close open paper positions the normal way, download, install, restart. Progress is 0..1 or null when the size is unknown. */
+  updaterInstall(onStage: (stage: "closing" | "downloading" | "installing", progress: number | null) => void): Promise<void>;
+  cancelUpdate(): Promise<void>;
+  pickFolder(): Promise<string | null>;
+  notifyStatus(): Promise<ConnStatus[]>;
+  notifySave(conn: ConnName, fields: Record<string, string>): Promise<ConnStatus>;
+  notifyRemove(conn: ConnName): Promise<ConnStatus>;
+  notifySetEvents(conn: ConnName, events: NotifyEvents): Promise<ConnStatus>;
+  notifyTest(conn: ConnName): Promise<string>;
+  vaultStatus(): Promise<VaultStatus>;
+  vaultConnect(path: string): Promise<VaultStatus>;
+  vaultDisconnect(): Promise<VaultStatus>;
+  vaultSetToggles(s: VaultSettings): Promise<VaultStatus>;
+  vaultTest(): Promise<VaultTest>;
+  vaultBackfill(): Promise<BackfillResult>;
   setPaperFill(values: Record<string, unknown>): Promise<string>;
   learning(cmd: string): Promise<string>;
   extPairStart(): Promise<string>;
@@ -168,6 +185,8 @@ function openInTab(url: string) {
   if (/^https?:\/\//i.test(url)) window.open(url, "_blank", "noopener,noreferrer");
 }
 
+let pendingUpdate: import("@tauri-apps/plugin-updater").Update | null = null;
+
 function tauriApi(): Api {
   const call = async <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -184,6 +203,55 @@ function tauriApi(): Api {
     openLink: (url) => {
       call("open_link", { url }).catch(() => openInTab(url));
     },
+    updaterCheck: async () => {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const u = await check();
+      pendingUpdate = u;
+      return u ? { available: true, version: u.version, notes: u.body ?? "" } : { available: false, version: "", notes: "" };
+    },
+    updaterInstall: async (onStage) => {
+      const u = pendingUpdate;
+      if (!u) throw new Error("No update is waiting. Check for updates first.");
+      try {
+        onStage("closing", null);
+        await call("prepare_update");
+        let total = 0;
+        let done = 0;
+        onStage("downloading", null);
+        await u.downloadAndInstall((e) => {
+          if (e.event === "Started") total = e.data.contentLength ?? 0;
+          else if (e.event === "Progress") {
+            done += e.data.chunkLength;
+            onStage("downloading", total > 0 ? Math.min(1, done / total) : null);
+          } else if (e.event === "Finished") onStage("installing", 1);
+        });
+        onStage("installing", 1);
+        const { relaunch } = await import("@tauri-apps/plugin-process");
+        await relaunch();
+      } catch (e) {
+        await call("cancel_update").catch(() => {});
+        throw e;
+      }
+    },
+    cancelUpdate: async () => {
+      await call("cancel_update");
+    },
+    pickFolder: async () => {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const r = await open({ directory: true, multiple: false, title: "Choose your Obsidian vault folder" });
+      return typeof r === "string" ? r : null;
+    },
+    notifyStatus: () => call("notify_status"),
+    notifySave: (conn, fields) => call("notify_save", { conn, fields }),
+    notifyRemove: (conn) => call("notify_remove", { conn }),
+    notifySetEvents: (conn, events) => call("notify_set_events", { conn, events }),
+    notifyTest: (conn) => call("notify_test", { conn }),
+    vaultStatus: () => call("vault_status"),
+    vaultConnect: (path) => call("vault_connect", { path }),
+    vaultDisconnect: () => call("vault_disconnect"),
+    vaultSetToggles: (settings) => call("vault_set_toggles", { settings }),
+    vaultTest: () => call("vault_test"),
+    vaultBackfill: () => call("vault_backfill"),
     setPaperFill: (v) => call("set_paper_fill", { values: JSON.stringify(v) }),
     learning: (cmd) => call("learning_command", { cmd }),
     extPairStart: () => call("ext_pair_start"),
@@ -197,6 +265,11 @@ function tauriApi(): Api {
 }
 
 /** Demo and browser preview: nothing is stored anywhere. Demo pretends so the screens can be shown. */
+let demoVault: VaultStatus = { settings: { path: "", trades: true, coins: true, days: true, lessons: true, situations: true }, folderExists: false, looksLikeObsidian: false, notesFolder: "", lastError: "" };
+
+const ALL_ON: NotifyEvents = { buy: true, sell: true, dailySummary: true, learningChange: true, killSwitch: true, lossLimit: true, health: true, updateInstalled: true };
+const demoConns: ConnStatus[] = (["discord", "webhook"] as ConnName[]).map((conn) => ({ conn, configured: false, hints: {}, events: { ...ALL_ON }, lastError: "", lastOkMs: 0 }));
+
 function localApi(demo: boolean): Api {
   let saved = "";
   let startup: StartupView = { ...DEFAULT_STARTUP, pages: { ...DEFAULT_STARTUP.pages } };
@@ -224,12 +297,82 @@ function localApi(demo: boolean): Api {
       saved = "";
       return status();
     },
-    buildInfo: async () => ({ version: "0.1.0", sha: "unknown", shortSha: demo ? "a1b2c3d" : "unknown", branch: "", builtAt: 0, builtAtText: demo ? "2026-11-27 (DEMO)" : "unknown" }),
+    buildInfo: async () => ({ version: demo ? "0.1.42" : "0.1.0", sha: "unknown", shortSha: demo ? "a1b2c3d" : "unknown", branch: "", builtAt: 0, builtAtText: demo ? "2026-11-27 (DEMO)" : "unknown" }),
     checkUpdates: async () => {
       if (demo) return demoUpdate();
       throw new Error("Update checks work in the desktop app.");
     },
     openLink: openInTab,
+    // Demo: ?upd=none (up to date), ?upd=error, ?upd=downloading (frozen at 42%), ?upd=closing, otherwise an update is ready.
+    updaterCheck: async () => {
+      if (!demo) throw new Error("Updates work in the desktop app.");
+      const m = new URLSearchParams(window.location.search).get("upd");
+      if (m === "none") return { available: false, version: "", notes: "" };
+      if (m === "error") throw new Error("Could not fetch a valid release JSON from the remote (HTTP 404)");
+      return { available: true, version: "0.1.43", notes: "DEMO release notes" };
+    },
+    updaterInstall: async (onStage) => {
+      const m = new URLSearchParams(window.location.search).get("upd");
+      if (m === "closing") {
+        onStage("closing", null);
+        return new Promise<void>(() => {});
+      }
+      onStage("downloading", 0);
+      if (m === "downloading") {
+        onStage("downloading", 0.42);
+        return new Promise<void>(() => {});
+      }
+      for (let i = 1; i <= 20; i++) {
+        await new Promise((r) => setTimeout(r, 200));
+        onStage("downloading", i / 20);
+      }
+      onStage("installing", 1);
+      throw new Error("DEMO: nothing was installed and the app did not restart.");
+    },
+    cancelUpdate: async () => {},
+    pickFolder: async () => (demo ? "C:\\Users\\You\\Documents\\My Vault" : null),
+    notifyStatus: async () => demoConns,
+    notifySave: async (conn, fields) => {
+      if (!demo) throw new Error("Connectors work in the desktop app.");
+      const c = demoConns.find((x) => x.conn === conn)!;
+      for (const [k, v] of Object.entries(fields)) if (v.trim()) c.hints[k] = k.endsWith("url") ? "saved, discord.com/...a1b2" : "saved, ends in ...a1b2";
+      c.configured = Object.keys(c.hints).some((k) => k.endsWith("url"));
+      return { ...c };
+    },
+    notifyRemove: async (conn) => {
+      const c = demoConns.find((x) => x.conn === conn)!;
+      c.hints = {};
+      c.configured = false;
+      return { ...c };
+    },
+    notifySetEvents: async (conn, events) => {
+      const c = demoConns.find((x) => x.conn === conn)!;
+      c.events = events;
+      return { ...c };
+    },
+    notifyTest: async (conn) => {
+      if (!demo || !demoConns.find((x) => x.conn === conn)?.configured) throw new Error("Save the connection details first.");
+      return "Test message sent. Check the channel. (DEMO: nothing was really sent)";
+    },
+    vaultStatus: async () => demoVault,
+    vaultConnect: async (path) => {
+      if (!demo) throw new Error("Connectors work in the desktop app.");
+      demoVault = { ...demoVault, settings: { ...demoVault.settings, path }, folderExists: true, looksLikeObsidian: true, notesFolder: `${path}\\Claude Trader` };
+      return demoVault;
+    },
+    vaultDisconnect: async () => {
+      demoVault = { ...demoVault, settings: { ...demoVault.settings, path: "" }, folderExists: false, looksLikeObsidian: false, notesFolder: "" };
+      return demoVault;
+    },
+    vaultSetToggles: async (settings) => {
+      demoVault = { ...demoVault, settings: { ...settings, path: demoVault.settings.path } };
+      return demoVault;
+    },
+    vaultTest: async () => (demo && demoVault.settings.path ? { ok: true, message: "OK. Wrote and read back Claude Trader/Test note.md. Open Obsidian and look for the Claude Trader folder. (DEMO)" } : { ok: false, message: "Choose your vault folder first." }),
+    vaultBackfill: async () => {
+      if (!demo || !demoVault.settings.path) throw new Error("Choose your vault folder first.");
+      return { trades: 14, days: 3, coins: 12, lessons: 4, situations: 2, keptYours: 0 };
+    },
     setPaperFill: async () => {
       if (!demo) throw new Error("Saving settings only works in the desktop app.");
       return "saved";

@@ -340,6 +340,38 @@ impl Db {
         self.query_positions(w, &[&lane])
     }
 
+    /// Every closed real trade, any lane, oldest exit first (the Obsidian vault backfill reads this).
+    pub fn closed_trades_all(&self) -> Vec<Position> {
+        self.query_positions("state='CLOSED' AND kind='trade' ORDER BY exit_ms,id", &[])
+    }
+
+    /// Scam Shield decisions of one coin, oldest first (observation rows left out).
+    pub fn decisions_for_mint(&self, mint: &str) -> Vec<DecisionRow> {
+        let c = self.conn.lock().unwrap();
+        let Ok(mut st) = c.prepare("SELECT ts,mint,COALESCE(symbol,''),stage,outcome,reason,COALESCE(detail,''),COALESCE(verdict,'') FROM decisions WHERE mint=? AND stage!='observation' ORDER BY id") else { return vec![] };
+        st.query_map(params![mint], |r| Ok(DecisionRow { ts: r.get(0)?, mint: r.get(1)?, symbol: r.get(2)?, stage: r.get(3)?, outcome: r.get(4)?, reason: r.get(5)?, detail: r.get(6)?, verdict: r.get(7)? }))
+            .map(|it| it.flatten().collect())
+            .unwrap_or_default()
+    }
+
+    /// Real counts for one local day window `[from_ms, to_ms)`: (coins seen, coins blocked by Scam Shield, scored, picked, bought).
+    pub fn day_counts(&self, from_ms: i64, to_ms: i64) -> (u32, u32, u32, u32, u32) {
+        let c = self.conn.lock().unwrap();
+        let n = |sql: &str| -> u32 { c.query_row(sql, params![from_ms, to_ms], |r| r.get::<_, i64>(0)).unwrap_or(0).max(0) as u32 };
+        (
+            n("SELECT COUNT(*) FROM tokens_seen WHERE ts>=? AND ts<?"),
+            n("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND ts<? AND stage IN ('cheap-prefilter','chain','rugcheck','rugcheck-fallback') AND outcome='block'"),
+            n("SELECT COUNT(*) FROM scores WHERE ts>=? AND ts<?"),
+            n("SELECT COUNT(*) FROM scores WHERE ts>=? AND ts<? AND picked=1"),
+            n("SELECT COUNT(*) FROM positions WHERE entry_ms>=? AND entry_ms<? AND kind='trade'"),
+        )
+    }
+
+    pub fn token_name(&self, mint: &str) -> Option<(String, String, String, i64)> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT COALESCE(name,''),COALESCE(symbol,''),COALESCE(creator,''),ts FROM tokens_seen WHERE mint=?", params![mint], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))).ok()
+    }
+
     pub fn position_by_id(&self, id: i64) -> Option<Position> {
         self.query_positions("id=?", &[&id]).into_iter().next()
     }

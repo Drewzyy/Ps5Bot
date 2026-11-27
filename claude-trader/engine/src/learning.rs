@@ -654,6 +654,41 @@ pub fn init(db: &Db) {
     });
 }
 
+// ---- read-only views of the learning tables (the Obsidian vault writes notes from these; nothing is created here)
+
+pub fn journal_row_for(db: &Db, position_id: i64) -> Option<JournalRow> {
+    db.with_conn(|c| c.query_row("SELECT json FROM journal WHERE position_id=?", params![position_id], |r| r.get::<_, String>(0)).optional().ok().flatten()).and_then(|j| serde_json::from_str(&j).ok())
+}
+
+pub fn features_for(db: &Db, position_id: i64) -> Option<EntryFeatures> {
+    db.with_conn(|c| c.query_row("SELECT json FROM trade_features WHERE position_id=?", params![position_id], |r| r.get::<_, String>(0)).optional().ok().flatten()).and_then(|j| serde_json::from_str(&j).ok())
+}
+
+/// (review id, ts, trades, result)
+pub fn reviews_all(db: &Db) -> Vec<(i64, i64, u32, ReviewResult)> {
+    db.with_conn(|c| {
+        let Ok(mut st) = c.prepare("SELECT id,ts,trades,json FROM reviews ORDER BY id") else { return vec![] };
+        let rows: Vec<(i64, i64, u32, String)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get::<_, Option<u32>>(2)?.unwrap_or(0), r.get(3)?))).map(|it| it.flatten().collect()).unwrap_or_default();
+        rows.into_iter().filter_map(|(id, ts, n, j)| serde_json::from_str::<ReviewResult>(&j).ok().map(|r| (id, ts, n, r))).collect()
+    })
+}
+
+pub fn changes_all(db: &Db) -> Vec<ChangeRow> {
+    db.with_conn(|c| {
+        let Ok(mut st) = c.prepare("SELECT id,json FROM changes ORDER BY id") else { return vec![] };
+        let rows: Vec<(i64, String)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).map(|it| it.flatten().collect()).unwrap_or_default();
+        rows.into_iter().filter_map(|(id, j)| serde_json::from_str::<ChangeRow>(&j).ok().map(|mut r| { r.id = id; r })).collect()
+    })
+}
+
+/// (ts, kind, text, source_url, mint), oldest first.
+pub fn notes_all(db: &Db) -> Vec<(i64, String, String, String, String)> {
+    db.with_conn(|c| {
+        let Ok(mut st) = c.prepare("SELECT ts,kind,text,COALESCE(source_url,''),COALESCE(mint,'') FROM learning_notes ORDER BY id") else { return vec![] };
+        st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))).map(|it| it.flatten().collect()).unwrap_or_default()
+    })
+}
+
 pub struct Learner {
     db: Arc<Db>,
     hub: Option<Arc<Hub>>,

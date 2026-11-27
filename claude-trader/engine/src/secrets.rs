@@ -27,11 +27,15 @@ pub trait SecretBackend: Send + Sync {
 #[cfg(any(windows, target_os = "macos", target_os = "linux"))]
 pub struct KeyringBackend {
     label: &'static str,
+    account: &'static str,
 }
 
 #[cfg(any(windows, target_os = "macos", target_os = "linux"))]
 impl KeyringBackend {
     pub fn new() -> Self {
+        Self::with_account(ACCOUNT)
+    }
+    pub fn with_account(account: &'static str) -> Self {
         let label = if cfg!(windows) {
             "Windows Credential Manager"
         } else if cfg!(target_os = "macos") {
@@ -39,10 +43,10 @@ impl KeyringBackend {
         } else {
             "the system keyring"
         };
-        KeyringBackend { label }
+        KeyringBackend { label, account }
     }
     fn entry(&self) -> Result<keyring::Entry, String> {
-        keyring::Entry::new(SERVICE, ACCOUNT).map_err(|e| format!("keyring: {e}"))
+        keyring::Entry::new(SERVICE, self.account).map_err(|e| format!("keyring: {e}"))
     }
 }
 
@@ -82,6 +86,9 @@ pub struct FileBackend {
 impl FileBackend {
     pub fn new(dir: PathBuf) -> Self {
         FileBackend { path: dir.join("helius.key.enc") }
+    }
+    pub fn with_file(dir: PathBuf, file: &str) -> Self {
+        FileBackend { path: dir.join(file) }
     }
     fn derive(salt: &[u8]) -> [u8; 32] {
         use sha2::{Digest, Sha256};
@@ -257,6 +264,15 @@ impl KeyStore {
         KeyStore { primary, fallback: Arc::new(FileBackend::new(dir)) }
     }
 
+    /// Another secret kept the same way (OS vault first, encrypted file as the fallback), under its own name.
+    pub fn system_named(dir: PathBuf, _account: &'static str, file: &str) -> KeyStore {
+        #[cfg(any(windows, target_os = "macos", target_os = "linux"))]
+        let primary: Option<Arc<dyn SecretBackend>> = Some(Arc::new(KeyringBackend::with_account(_account)));
+        #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+        let primary: Option<Arc<dyn SecretBackend>> = None;
+        KeyStore { primary, fallback: Arc::new(FileBackend::with_file(dir, file)) }
+    }
+
     pub fn with_backends(primary: Option<Arc<dyn SecretBackend>>, fallback: Arc<dyn SecretBackend>) -> KeyStore {
         KeyStore { primary, fallback }
     }
@@ -282,6 +298,12 @@ impl KeyStore {
     /// Save after checking the key. Returns where it ended up. The key is written back and read once to prove it stuck.
     pub fn save(&self, key: &str) -> Result<String, String> {
         let key = validate_key(key)?;
+        self.save_raw(&key)
+    }
+
+    /// Save a value that was already checked by the caller (the connector secrets are one JSON blob).
+    pub fn save_raw(&self, key: &str) -> Result<String, String> {
+        let key = key.to_string();
         if let Some(p) = &self.primary {
             if p.set(&key).is_ok() && matches!(p.get(), Ok(Some(ref v)) if *v == key) {
                 let _ = self.fallback.delete(); // never keep a second copy around

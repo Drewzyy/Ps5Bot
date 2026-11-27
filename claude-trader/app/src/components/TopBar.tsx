@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Logo from "../Logo";
 import type { Page } from "../App";
 import type { KillState, StatsState } from "../types";
+import { UpdateButton } from "./UpdateUi";
+import { useUpdater } from "../updater";
 
 // Demo SOL price used only until the live price feed exists.
 const DEMO_SOL_USD = 150;
@@ -16,6 +18,7 @@ export default function TopBar({ page, go, mode, bankroll, stats, kill, askKill,
     return () => clearInterval(t);
   }, []);
 
+  const upd = useUpdater();
   const main = stats?.lanes[0];
   const buys = main?.buysToday ?? 0;
   const sells = main?.sellsToday ?? 0;
@@ -61,9 +64,9 @@ export default function TopBar({ page, go, mode, bankroll, stats, kill, askKill,
       <div className="spacer" />
       <nav className="nav">
         <button className={page === "dashboard" ? "active" : ""} onClick={() => go("dashboard")}>Dashboard</button>
-        <button className={page === "tips" ? "active" : ""} onClick={() => go("tips")}>Tips</button>
-        <button className={page === "settings" ? "active" : ""} onClick={() => go("settings")}>Settings</button>
+        <button className={page === "settings" ? "active" : ""} onClick={() => go("settings")}>Settings{upd.state.phase === "ready" && <span className="set-badge" data-testid="update-badge">Update ready</span>}</button>
       </nav>
+      <UpdateButton />
       {kill?.killed ? (
         <button className="kill-btn resume" onClick={askResume} title="Kill switch is on. Click to allow trading again.">Resume trading</button>
       ) : (

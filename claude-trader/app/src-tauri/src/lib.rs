@@ -81,9 +81,120 @@ async fn test_helius_key(key: Option<String>, paths: tauri::State<'_, AppPaths>)
 
 // ---------------------------------------------------------------- updates and links
 
+/// The app version is the one in tauri.conf.json (CI sets it to 0.1.<run number> for every build).
 #[tauri::command]
-fn build_info() -> BuildInfo {
-    engine::update::build_info()
+fn build_info(app: tauri::AppHandle) -> BuildInfo {
+    let mut b = engine::update::build_info();
+    b.version = app.package_info().version.to_string();
+    b
+}
+
+/// Step before installing an update: stop new entries and sell open paper positions through the normal exit path
+/// (NOT the kill switch: nothing persistent is set). Waits up to 2 minutes; returns how many are still open.
+#[tauri::command]
+async fn prepare_update(hub: tauri::State<'_, Arc<Hub>>) -> Result<u32, String> {
+    hub.command("update-close");
+    for _ in 0..120 {
+        let n: u32 = hub.command("open-count").parse().unwrap_or(0);
+        if n == 0 {
+            return Ok(0);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+    Ok(hub.command("open-count").parse().unwrap_or(0))
+}
+
+/// The update was cancelled or failed: trading carries on.
+#[tauri::command]
+fn cancel_update(hub: tauri::State<Arc<Hub>>) -> String {
+    hub.command("update-close-cancel")
+}
+
+// ---------------------------------------------------------------- Obsidian vault connector
+
+// ---------------------------------------------------------------- outgoing connectors (Discord, generic webhook)
+// Secrets go to the OS secure storage and never come back to the page: the page only gets masked hints.
+
+fn conn_of(name: &str) -> Result<engine::notify::Conn, String> {
+    engine::notify::Conn::parse(name).ok_or_else(|| "Unknown connector.".to_string())
+}
+
+fn is_paper() -> bool {
+    Config::from_json(DEFAULT_CONFIG).map(|c| c.mode == engine::config::Mode::Paper).unwrap_or(true)
+}
+
+#[tauri::command]
+fn notify_status(paths: tauri::State<AppPaths>, sec: tauri::State<Arc<engine::notify::ConnSecrets>>) -> Result<Vec<engine::notify::ConnStatus>, String> {
+    let db = open_db(&paths)?;
+    let now = engine::rpc::now_ms();
+    Ok(engine::notify::Conn::ALL.iter().map(|c| engine::notify::status(&db, &sec, *c, now)).collect())
+}
+
+#[tauri::command]
+fn notify_save(conn: String, fields: std::collections::BTreeMap<String, String>, paths: tauri::State<AppPaths>, sec: tauri::State<Arc<engine::notify::ConnSecrets>>, hub: tauri::State<Arc<Hub>>) -> Result<engine::notify::ConnStatus, String> {
+    let c = conn_of(&conn)?;
+    let db = open_db(&paths)?;
+    engine::notify::save(&db, &sec, c, &fields)?;
+    hub.log(format!("settings: {} connector saved", c.name()));
+    Ok(engine::notify::status(&db, &sec, c, engine::rpc::now_ms()))
+}
+
+#[tauri::command]
+fn notify_remove(conn: String, paths: tauri::State<AppPaths>, sec: tauri::State<Arc<engine::notify::ConnSecrets>>, hub: tauri::State<Arc<Hub>>) -> Result<engine::notify::ConnStatus, String> {
+    let c = conn_of(&conn)?;
+    let db = open_db(&paths)?;
+    engine::notify::remove(&db, &sec, c);
+    hub.log(format!("settings: {} connector removed", c.name()));
+    Ok(engine::notify::status(&db, &sec, c, engine::rpc::now_ms()))
+}
+
+#[tauri::command]
+fn notify_set_events(conn: String, events: engine::notify::Events, paths: tauri::State<AppPaths>, sec: tauri::State<Arc<engine::notify::ConnSecrets>>) -> Result<engine::notify::ConnStatus, String> {
+    let c = conn_of(&conn)?;
+    let db = open_db(&paths)?;
+    engine::notify::set_events(&db, c, events);
+    Ok(engine::notify::status(&db, &sec, c, engine::rpc::now_ms()))
+}
+
+#[tauri::command]
+async fn notify_test(conn: String, paths: tauri::State<'_, AppPaths>, sec: tauri::State<'_, Arc<engine::notify::ConnSecrets>>) -> Result<String, String> {
+    let c = conn_of(&conn)?;
+    let db = open_db(&paths)?;
+    engine::notify::send_test(&db, &sec, c, is_paper(), &engine::notify::HttpTransport, 1.0).await
+}
+
+#[tauri::command]
+fn vault_status(paths: tauri::State<AppPaths>) -> Result<engine::vault::VaultStatus, String> {
+    Ok(engine::vault::status(&open_db(&paths)?))
+}
+
+#[tauri::command]
+fn vault_connect(path: String, paths: tauri::State<AppPaths>, hub: tauri::State<Arc<Hub>>) -> Result<engine::vault::VaultStatus, String> {
+    let st = engine::vault::connect(&open_db(&paths)?, &path)?;
+    hub.log("settings: Obsidian vault connected".to_string());
+    Ok(st)
+}
+
+#[tauri::command]
+fn vault_disconnect(paths: tauri::State<AppPaths>, hub: tauri::State<Arc<Hub>>) -> Result<engine::vault::VaultStatus, String> {
+    hub.log("settings: Obsidian vault disconnected".to_string());
+    Ok(engine::vault::disconnect(&open_db(&paths)?))
+}
+
+#[tauri::command]
+fn vault_set_toggles(settings: engine::vault::VaultSettings, paths: tauri::State<AppPaths>) -> Result<engine::vault::VaultStatus, String> {
+    Ok(engine::vault::set_toggles(&open_db(&paths)?, &settings))
+}
+
+#[tauri::command]
+fn vault_test(paths: tauri::State<AppPaths>) -> Result<engine::vault::VaultTest, String> {
+    Ok(engine::vault::test(&open_db(&paths)?, engine::rpc::now_ms()))
+}
+
+#[tauri::command]
+async fn vault_backfill(paths: tauri::State<'_, AppPaths>) -> Result<engine::vault::BackfillResult, String> {
+    let db_path = paths.db.clone();
+    tauri::async_runtime::spawn_blocking(move || engine::vault::backfill(&engine::db::Db::open(&db_path)?)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -202,7 +313,9 @@ fn open_extension_folder(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .manage(KeepAwake::default())
         .invoke_handler(tauri::generate_handler![
@@ -215,6 +328,19 @@ pub fn run() {
             test_helius_key,
             build_info,
             check_for_updates,
+            prepare_update,
+            cancel_update,
+            notify_status,
+            notify_save,
+            notify_remove,
+            notify_set_events,
+            notify_test,
+            vault_status,
+            vault_connect,
+            vault_disconnect,
+            vault_set_toggles,
+            vault_test,
+            vault_backfill,
             open_link,
             set_paper_fill,
             learning_command,
@@ -233,6 +359,17 @@ pub fn run() {
             let dir = app.path().app_data_dir().ok().filter(|d| std::fs::create_dir_all(d).is_ok()).unwrap_or_else(|| std::path::PathBuf::from("."));
             let db_path = dir.join("claude-trader.db").to_string_lossy().to_string();
             app.manage(AppPaths { db: db_path.clone(), dir: dir.clone() });
+            app.manage(Arc::new(engine::notify::ConnSecrets::system(dir.clone())));
+            {
+                // "update installed": the version differs from the one at the last start (sent once the engine is up)
+                let (db3, ver) = (db_path.clone(), handle.package_info().version.to_string());
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(8)).await;
+                    if let Ok(db) = engine::db::Db::open(&db3) {
+                        engine::notify::on_app_start(&db, &ver, engine::rpc::now_ms());
+                    }
+                });
+            }
             let hub = Hub::new();
             app.manage(hub.clone());
             let mut rx = hub.subscribe();
@@ -281,6 +418,10 @@ pub fn run() {
             });
             Ok(())
         })
+        ;
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    let app = builder
         .build(tauri::generate_context!())
         .expect("error while building Claude Trader");
     app.run(|handle, event| {

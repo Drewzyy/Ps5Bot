@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { source } from "./source";
+import { source, isDemo } from "./source";
 import { useEngine } from "./useEngine";
 import type { Config } from "./types";
 import defaultConfig from "../../config.json";
@@ -10,11 +10,14 @@ import Widgets from "./components/Widgets";
 import SettingsPage from "./components/SettingsPage";
 import KillUi, { KillBanner } from "./components/Kill";
 import { FeedWarningBar } from "./components/Health";
-import { TipsPage, Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
+import { Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
+import { UpdaterProvider } from "./updater";
+import UpdateOverlay from "./components/UpdateUi";
 
-export type Page = "dashboard" | "settings" | "tips";
+export type Page = "dashboard" | "settings";
 
-const pageFromHash = (): Page => (window.location.hash === "#/settings" ? "settings" : window.location.hash === "#/tips" ? "tips" : "dashboard");
+// the old #/tips address now opens Settings (Tips live there)
+const pageFromHash = (): Page => (window.location.hash === "#/settings" || window.location.hash === "#/tips" ? "settings" : "dashboard");
 
 export default function App() {
   const [page, setPage] = useState<Page>(pageFromHash());
@@ -45,12 +48,16 @@ export default function App() {
   }, []);
 
   const go = (p: Page) => {
-    window.location.hash = p === "settings" ? "#/settings" : p === "tips" ? "#/tips" : "#/";
+    window.location.hash = p === "settings" ? "#/settings" : "#/";
     setPage(p);
   };
 
+  // ?demo=1&upd=confirm pretends one position is open, to show the warning dialog
+  const demoOpen = isDemo() && new URLSearchParams(window.location.search).get("upd") === "confirm" ? 1 : 0;
+  const openPositions = demoOpen || engine.positions.filter((p) => p.state !== "CLOSED" && !p.replay).length;
+
   return (
-    <>
+    <UpdaterProvider openPositions={openPositions}>
       <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
       <KillBanner kill={engine.kill} />
       <FeedWarningBar feed={engine.feed} />
@@ -64,13 +71,12 @@ export default function App() {
             <div className="section-title">Widgets</div>
             <Widgets config={config} openSettings={() => go("settings")} engine={engine} />
           </>
-        ) : page === "tips" ? (
-          <TipsPage config={config} replay={() => { go("dashboard"); setTour(true); }} />
         ) : (
-          <SettingsPage config={config} engine={engine} onConfig={setConfig} />
+          <SettingsPage config={config} engine={engine} onConfig={setConfig} replay={() => { go("dashboard"); setTour(true); }} />
         )}
       </main>
       {tour && page === "dashboard" && <Walkthrough config={config} onClose={closeTour} />}
-    </>
+      <UpdateOverlay />
+    </UpdaterProvider>
   );
 }

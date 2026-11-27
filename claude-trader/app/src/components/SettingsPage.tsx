@@ -7,8 +7,11 @@ import type { BuildInfo, Config, ConnTest, KeyStatus, StartupView, UpdateCheck }
 import type { EngineState } from "../useEngine";
 import { SECTIONS, flatten } from "../settingsMeta";
 import type { Row } from "../settingsMeta";
-import { SourceLink } from "./links";
 import { FeedHealthLine } from "./Health";
+import { TipsPage } from "../tips/Tips";
+import { useUpdater } from "../updater";
+import { ProgressBar, stageText, ACTIVE, FALLBACK_URL } from "./UpdateUi";
+import Connectors from "./Connectors";
 
 function show(v: unknown): string {
   if (typeof v === "boolean") return v ? "On" : "Off";
@@ -422,51 +425,54 @@ function StartupBrowser({ engine }: { engine: EngineState }) {
 
 function About() {
   const [info, setInfo] = useState<BuildInfo | null>(null);
-  const [up, setUp] = useState<UpdateCheck | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  const [fb, setFb] = useState<UpdateCheck | null>(null);
+  const u = useUpdater();
+  const { phase, version, progress, message, current, fallback } = u.state;
   useEffect(() => {
     api.buildInfo().then(setInfo).catch(() => {});
   }, []);
-  const check = async () => {
-    setBusy(true);
-    setErr("");
-    try {
-      setUp(await api.checkUpdates());
-    } catch (e) {
-      setErr(String(e instanceof Error ? e.message : e));
-    }
-    setBusy(false);
-  };
+  // the old GitHub page is only looked up when the updater fails
+  useEffect(() => {
+    if (phase === "error" && fallback && !fb) api.checkUpdates().then(setFb).catch(() => {});
+  }, [phase, fallback, fb]);
+  const checking = phase === "checking";
+  const active = ACTIVE.includes(phase);
+  const shown = info?.version ?? current;
   return (
     <div className="acc-pad">
       <div className="kvrows" data-testid="about">
-        <div><span className="k">App version</span><b>{info?.version ?? "..."}</b></div>
-        <div><span className="k">Build</span>{info ? `${info.shortSha}${info.branch ? ` on ${info.branch}` : ""}` : "..."}</div>
+        <div><span className="k">App version</span><b>{info ? `${info.version} (${info.shortSha})` : "..."}</b></div>
+        <div><span className="k">Branch</span>{info ? info.branch || "not recorded" : "..."}</div>
         <div><span className="k">Built on</span>{info?.builtAtText ?? "..."}</div>
       </div>
       <div className="btns">
-        <button className="btn" onClick={check} disabled={busy}>{busy ? "Checking" : "Check for updates"}</button>
+        <button className="btn" onClick={u.check} disabled={checking || active || phase === "confirm"}>{checking ? "Checking" : "Check for updates"}</button>
+        {phase === "ready" && <button className="btn" onClick={u.start}>Update and restart</button>}
       </div>
-      {err && <div className="result bad" role="status">{err}</div>}
-      {up && (
-        <div className={`result ${up.verdict === "update-available" ? "" : up.verdict === "up-to-date" ? "ok" : ""}`} role="status">
-          {up.verdict === "update-available" && <b>Update available. </b>}
-          {up.message.replace(/^Update available\.\s*/, "")} {up.demo && <span className="demotag">DEMO</span>}
-          {up.verdict === "update-available" && up.latest && (
+      {phase === "uptodate" && <div className="result ok" role="status">You're up to date (version {shown}).</div>}
+      {(phase === "ready" || phase === "confirm") && <div className="result" role="status"><b>Version {version} is ready.</b> Press Update and restart. Open paper positions are closed the normal way first.{u.openPositions > 0 && ` ${u.openPositions} position${u.openPositions === 1 ? " is" : "s are"} open now.`}</div>}
+      {active && (
+        <div className="result" role="status">
+          <div>{stageText(phase, version, u.openPositions, progress)}</div>
+          <ProgressBar value={phase === "closing" ? null : progress} />
+        </div>
+      )}
+      {phase === "error" && (
+        <div className="result bad" role="alert">
+          {message}
+          {fallback && (
             <>
               <div className="btns" style={{ marginTop: 8 }}>
-                <button className="btn" onClick={() => api.openLink(up.latest!.url)}>Open download page</button>
+                <button className="btn" onClick={() => api.openLink(fb?.latest?.url ?? FALLBACK_URL)}>Open download page</button>
               </div>
               <ol className="steps">
-                {up.steps.map((s) => <li key={s}>{s}</li>)}
+                {(fb?.steps ?? []).map((s) => <li key={s}>{s}</li>)}
               </ol>
             </>
           )}
-          {up.verdict !== "update-available" && up.latest && <div className="note">Newest build: {up.latest.shortSha || "unknown"}, <SourceLink url={up.latest.url} prefix="see" /></div>}
         </div>
       )}
-      <div className="note">The check only reads public information from GitHub. It sends nothing about you and never installs anything by itself.</div>
+      <div className="note">Updates are signed. The app only installs an update that matches its built-in key, and only after you press the button. Your settings, trade history and learning live in the app data folder and stay. It also checks quietly at start and every 6 hours.</div>
     </div>
   );
 }
@@ -488,7 +494,7 @@ function Appearance() {
 
 // ------------------------------------------------------------------ page
 
-export default function SettingsPage({ config, engine, onConfig }: { config: Config; engine: EngineState; onConfig: (c: Config) => void }) {
+export default function SettingsPage({ config, engine, onConfig, replay }: { config: Config; engine: EngineState; onConfig: (c: Config) => void; replay: () => void }) {
   const rows = flatten(config as unknown as Record<string, unknown>);
   const [open, setOpen] = useState<string[]>(readOpen);
   const toggle = (id: string) => {
@@ -501,9 +507,13 @@ export default function SettingsPage({ config, engine, onConfig }: { config: Con
     }
   };
   const isOpen = (id: string) => open.includes(id);
+  const showTips = () => {
+    if (!open.includes("tips")) toggle("tips");
+    setTimeout(() => document.querySelector('[data-section="tips"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   return (
     <div>
-      <h1 className="set-title">Settings</h1>
+      <h1 className="set-title">Settings <button className="help-q" onClick={showTips} aria-label="Tips and help" title="Tips and help">?</button></h1>
       <p className="set-sub">
         Every setting the app uses, in plain words. Open a section, then press the i next to any line to see what it does, a good value, and how to set it. Most values are read only and come from config.json.
       </p>
@@ -533,6 +543,10 @@ export default function SettingsPage({ config, engine, onConfig }: { config: Con
         <p className="acc-blurb">Outside services the app talks to. The key is kept in your computer's secure storage, never in config.json, logs or git.</p>
         <Connections engine={engine} />
       </Section>
+      <Section id="connectors" title="Connectors" summary="Obsidian, Discord, webhook" open={isOpen("connectors")} toggle={() => toggle("connectors")}>
+        <p className="acc-blurb">Optional links to other apps. They only copy facts the app has really recorded. Nothing here can place a trade.</p>
+        <Connectors />
+      </Section>
       <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
         <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>
         <StartupBrowser engine={engine} />
@@ -540,8 +554,11 @@ export default function SettingsPage({ config, engine, onConfig }: { config: Con
       <Section id="appearance" title="Appearance" summary="Light, dark or system" open={isOpen("appearance")} toggle={() => toggle("appearance")}>
         <Appearance />
       </Section>
-      <Section id="about" title="About and updates" summary="Version and update check" open={isOpen("about")} toggle={() => toggle("about")}>
+      <Section id="about" title="About and updates" summary="Version and update" open={isOpen("about")} toggle={() => toggle("about")}>
         <About />
+      </Section>
+      <Section id="tips" title="Tips and help" summary="Plain explanations, glossary, walkthrough" open={isOpen("tips")} toggle={() => toggle("tips")}>
+        <TipsPage config={config} replay={replay} />
       </Section>
     </div>
   );

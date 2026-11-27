@@ -63,13 +63,17 @@ impl EngineOpts {
         }
     }
 
-    /// Where the encrypted key file would live.
-    pub fn key_store(&self) -> crate::secrets::KeyStore {
-        let dir = match &self.secrets_dir {
+    /// The folder for secrets that fall back to an encrypted file.
+    pub fn secrets_path(&self) -> std::path::PathBuf {
+        match &self.secrets_dir {
             Some(d) => std::path::PathBuf::from(d),
             None => std::path::Path::new(&self.db_path).parent().filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(|| std::path::PathBuf::from(".")),
-        };
-        crate::secrets::KeyStore::system(dir)
+        }
+    }
+
+    /// Where the encrypted key file would live.
+    pub fn key_store(&self) -> crate::secrets::KeyStore {
+        crate::secrets::KeyStore::system(self.secrets_path())
     }
 
     /// Startup: if no environment override picked an endpoint, use the key saved in secure storage.
@@ -174,6 +178,8 @@ async fn fetch_sol_usd() -> Option<f64> {
 
 pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -> Result<(), String> {
     let db = Arc::new(Db::open(&opts.db_path)?);
+    // outgoing connectors (Discord, generic webhook): queues and workers, nothing is sent until set up in Settings
+    crate::notify::init(db.clone(), Arc::new(crate::notify::ConnSecrets::system(opts.secrets_path())), opts.config.mode == crate::config::Mode::Paper);
     let mut opts = opts;
     apply_user_overrides(&mut opts.config, &db);
     let rpc = Arc::new(Rpc::new(&opts.rpc_url, 6.0));
@@ -201,6 +207,10 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
             "kill" => tr.kill("dashboard"),
             "resume" => tr.resume_trading("dashboard"),
             "kill-state" => tr.kill_state().text,
+            // before an update is installed: sell open positions the normal way (not the persistent kill switch)
+            "update-close" => tr.close_for_update(),
+            "update-close-cancel" => tr.cancel_update_close(),
+            "open-count" => tr.open_count().to_string(),
             // the Helius key was saved or removed: switch the RPC and the trade feed to the new endpoint, no restart
             "reload-rpc" => {
                 if pinned || replay {
@@ -287,6 +297,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
 
     let mut tick = tokio::time::interval(Duration::from_secs(2));
     let mut health = crate::health::HealthTracker::default();
+    let mut last_warn = String::new();
     let mut stop = stop;
     let day_start = |n: i64| n - n.rem_euclid(86_400_000);
     loop {
@@ -302,12 +313,20 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
             },
             _ = tick.tick() => {
                 let now = now_ms();
+                crate::notify::maybe_daily_summary(&ctx.db, now);
                 // Memecoin Monitor: the new-coin feed AND the buy/sell data (a coin scores 0 without it)
                 let created = mon.created.load(Ordering::Relaxed);
                 let fh = feed_health(&ctx, &mut health, &rug_client, now);
                 hub.emit(EngineEvent::FeedHealth(fh.clone()));
                 if mon.connected.load(Ordering::Relaxed) {
                     let ago = (now - mon.last_msg_ms.load(Ordering::Relaxed)) / 1000;
+                    if fh.warn != last_warn {
+                        if !fh.warn.is_empty() {
+                            crate::vault::situation(&ctx.db, now, "feed-warning", "Feed health warning", &fh.warn, "");
+                            crate::notify::emit(crate::notify::Event::Health { ts: now, kind: "feed".into(), text: fh.warn.clone() });
+                        }
+                        last_warn = fh.warn.clone();
+                    }
                     if !fh.warn.is_empty() {
                         status(&hub, AgentId::MemecoinMonitor, StatusColor::Red, "No buy/sell data arriving: every coin scores 0");
                     } else if fh.watched == 0 {
@@ -401,6 +420,15 @@ fn record(ctx: &Ctx, t: &FeedMsg, stage: &str, d: &Decision) {
     }
     if evidence.is_empty() {
         evidence.push(ev("Token on Solscan", solscan_token(&t.mint)));
+    }
+    if stage == "rugcheck-fallback" {
+        // RugCheck was down for this coin: one note per hour is enough
+        let hour = (now / 3_600_000).to_string();
+        if ctx.db.kv_get("vault.rug_hour").as_deref() != Some(hour.as_str()) {
+            ctx.db.kv_set("vault.rug_hour", &hour);
+            crate::notify::emit(crate::notify::Event::Health { ts: now, kind: "rugcheck".into(), text: format!("RugCheck could not rate {}; the bot used its own on-chain checks.", t.symbol) });
+            crate::vault::situation(&ctx.db, now, "rugcheck-outage", "RugCheck outage", &format!("RugCheck could not rate {} (the on-chain fallback decided: {outcome}). {detail}", t.symbol), &t.mint);
+        }
     }
     ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: stage.into(), outcome: outcome.into(), reason: reason.clone(), detail: detail.clone(), verdict: d.verdict.into() });
     ctx.hub.emit(EngineEvent::Verdict { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: stage.into(), outcome: outcome.into(), reason: reason.clone(), detail: detail.clone(), verdict: d.verdict.into(), evidence });
@@ -661,6 +689,7 @@ async fn missed_watch(ctx: Arc<Ctx>, mint: String, symbol: String, score: f64, b
     let text = learning::missed_text(&symbol, score, &blocked_by, out);
     let src = ctx.source_for(&mint).unwrap_or_default();
     ctx.trader.learner.add_note(now_ms(), "missed", &text, &src, &mint);
+    crate::vault::missed_coin(&ctx.db, now_ms(), score, &text, &mint);
     ctx.hub.log(format!("LEARNING {text}"));
     ctx.trader.learner.emit(now_ms());
     ctx.trader.release_feed(&mint);

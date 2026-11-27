@@ -5,6 +5,13 @@ on:
     paths: ["claude-trader/**", ".github/workflows/windows-build.yml"]
   workflow_dispatch:
 
+# Releases (the in-app updater reads them) are created from this branch only, with the built-in GITHUB_TOKEN.
+permissions:
+  contents: write
+
+env:
+  RELEASE_BRANCH: claude/trader-build-prompt-v2-9pmbsi
+
 jobs:
   build:
     runs-on: windows-latest
@@ -38,7 +45,35 @@ jobs:
         shell: bash
         working-directory: claude-trader/extension
         run: node --test tests/core.test.js
+      - name: Test the CI helper scripts
+        shell: bash
+        working-directory: claude-trader
+        run: node --test scripts/ci-scripts.test.mjs
+      - name: Check the updater signing key
+        id: key
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Updater signing key missing::The secret TAURI_SIGNING_PRIVATE_KEY is not set, so this build is NOT signed and NO release is created. The normal artifacts are still built and uploaded. Add the secret (Settings > Secrets and variables > Actions) to switch on automatic updates."
+          fi
+      - name: Set the app version to 0.1.${{ github.run_number }}
+        shell: bash
+        working-directory: claude-trader
+        run: |
+          if [ "${{ steps.key.outputs.present }}" = "true" ]; then
+            node scripts/ci-set-version.mjs "0.1.${{ github.run_number }}" --updater
+          else
+            node scripts/ci-set-version.mjs "0.1.${{ github.run_number }}"
+          fi
       - name: Build Windows app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: npx tauri build
       - uses: actions/upload-artifact@v4
         with:
@@ -52,3 +87,33 @@ jobs:
             claude-trader/extension
             !claude-trader/extension/tests/**
             !claude-trader/extension/README.md
+      - name: Zip the Chrome extension
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/ext" && mkdir -p "$RUNNER_TEMP/ext/claude-trader-chrome-extension"
+          cp -r ../extension/. "$RUNNER_TEMP/ext/claude-trader-chrome-extension/"
+          rm -rf "$RUNNER_TEMP/ext/claude-trader-chrome-extension/tests" "$RUNNER_TEMP/ext/claude-trader-chrome-extension/README.md"
+          (cd "$RUNNER_TEMP/ext" && 7z a -tzip "$RUNNER_TEMP/claude-trader-chrome-extension.zip" claude-trader-chrome-extension > /dev/null)
+          ls -l "$RUNNER_TEMP/claude-trader-chrome-extension.zip"
+      - name: Create the GitHub release (signed update)
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', env.RELEASE_BRANCH) && steps.key.outputs.present == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="0.1.${{ github.run_number }}"
+          TAG="v$VERSION"
+          SETUP=$(ls ../target/release/bundle/nsis/*-setup.exe | head -n 1)
+          test -f "$SETUP.sig" || { echo "::error::missing $SETUP.sig (createUpdaterArtifacts did not run)"; exit 1; }
+          OUT="$RUNNER_TEMP/release" && rm -rf "$OUT" && mkdir -p "$OUT"
+          ASSET="Claude-Trader_${VERSION}_x64-setup.exe"
+          cp "$SETUP" "$OUT/$ASSET"
+          cp "$SETUP.sig" "$OUT/$ASSET.sig"
+          cp "$RUNNER_TEMP/claude-trader-chrome-extension.zip" "$OUT/claude-trader-chrome-extension.zip"
+          git log -1 --format=%B > "$OUT/notes.txt"
+          node ../scripts/make-latest-json.mjs --version "$VERSION" --sig-file "$OUT/$ASSET.sig" --notes-file "$OUT/notes.txt" \
+            --url "https://github.com/${{ github.repository }}/releases/download/$TAG/$ASSET" > "$OUT/latest.json"
+          cat "$OUT/latest.json"
+          gh release create "$TAG" "$OUT/$ASSET" "$OUT/$ASSET.sig" "$OUT/latest.json" "$OUT/claude-trader-chrome-extension.zip" \
+            --target "${{ github.sha }}" --title "Claude Trader $VERSION" --notes-file "$OUT/notes.txt" --latest
