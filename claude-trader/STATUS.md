@@ -43,6 +43,29 @@ A GitHub research pass (2026-11-28) found that several independent small studies
 ### The user's next steps
 1. Update the app and reload the Chrome extension (chrome://extensions, Reload) so the new hook list is used. 2. Leave the app running 1 to 2 weeks (Settings > Recording shows the files). 3. Then run `engine-cli backtest --db <path to claude-trader.db>` or give it `--data` the recordings folder and read each lane's holdout verdict. 4. Watch the lanes on the dashboard; the Deep sprint will mostly sit idle.
 
+## M3g: updater audit, extension link, stable extension folder, required pages (paper only)
+
+### Updater audit (against Tauri 2.14.1 plugin source and docs)
+- Checked: NSIS artifact `<productName>_<version>_x64-setup.exe` plus `.exe.sig` with `createUpdaterArtifacts: true` (no zip in v2); the signature field is the CONTENT of the .sig; the updater looks up `windows-x86_64-nsis` then `windows-x86_64`; passive install relaunches by itself (installer restarts the app); the plugin also compares a `version:` in the signed comment with latest.json `version`.
+- Found and fixed: only one platform key was written (now both, like tauri-action); the MSI was built for nothing (CI now `--bundles nsis`); nothing checked the signature before publishing (a wrong key would have shipped a release that cannot install). New `scripts/updater-verify.mjs` (pure Node minisign verify, tested with the real Tauri CLI output): before the release it checks the .sig against the pubkey in tauri.conf.json; after it, it downloads latest.json from `releases/latest/download`, checks version, platform keys, that the signature equals the uploaded .sig, that the URL resolves and the installer verifies. A failing release is deleted so the previous one stays latest. Kept our own release step instead of tauri-action (same output, extension zip and verification already there).
+- App: "Auto-update isn't set up yet. Add the signing key on GitHub (see Settings > About)" with steps on a 404 or missing release (`updaterText.ts`, tested); other errors are separate (offline, signature, unreadable file).
+- Asset names have no spaces; `assetUrl` percent-encodes anyway.
+
+### Extension link, stable folder, required pages
+- Engine: `extinstall.rs` (version compare, copy only when the version differs, atomic writes, manifest last, key kept), bridge `info`/`reload`/`testping`/`pages`/`openpages`, hub `ext-test` and `ext-open-pages` (own handler so a slow test never blocks the kill command). App copies to `%LOCALAPPDATA%\Claude Trader\chrome-extension` at start. CI bumps the manifest version with the app version. Repo manifest version is now 0.1.0.
+- UI: top-bar chip (hidden clock under 1400 px to fit), Settings > Startup and browser: versions, heartbeat, Test connection, updated notice, reload-once steps, checklist with Open missing pages. Side panel: connected line, updated line, checklist.
+- Tests: engine 7 `extinstall` + 6 new `bridge` tests; extension `pages.test.js` (tab reuse, toggles, gates, login probe, reload gate); `scripts/ci-scripts.test.mjs` (latest.json shape, signatures); app `extStatus.test.ts`, `updaterText.test.ts`.
+- Real run (Playwright Chromium, engine-cli feed, real extension, pairing): reload asked, manual-reload state, updated version announced, panel line, test ping answered in 1 ms, pages opened and not duplicated. Screenshots `docs/screenshots/ext-*`, `update-not-set-up-*` (chip states and the connection test are DEMO).
+
+### Not verified
+- No release exists and the secret is missing: real signing, release upload and the post-release check, the in-app download and passive install on Windows.
+- `chrome.runtime.reload()` itself: headless Chromium with --load-extension disables the extension on reload, so the reload step was checked only up to the message (and the restart path). Test in real Chrome.
+- x.com is unreachable here, so "Logged out" was tested on the content-script logic only, and the Windows paths (`local_data_dir`, `explorer.exe`).
+
+### User steps
+1. GitHub repo Settings > Secrets and variables > Actions > New secret `TAURI_SIGNING_PRIVATE_KEY` (your private key text, no password). Re-run windows-build.
+2. Install the new build. Settings > Startup and browser > Show the extension folder. In chrome://extensions remove the old Claude Trader extension, Load unpacked from THAT folder, pair again. Never load the install folder again.
+
 ## M3f — X Monitor and Thesis Finder (paper only, no keys, live stays locked)
 
 ### Built

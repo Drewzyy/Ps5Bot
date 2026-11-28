@@ -460,7 +460,11 @@ function wsApi(): Api {
   return {
     ...base,
     setPaperFill: async (v) => (await source.command(`set-paper-fill:${JSON.stringify(v)}`)),
-    extTest: async () => JSON.parse(await source.command("ext-test")) as ExtTest,
+    // this browser link only sends commands (no answer comes back), so the result is in the engine log; the desktop app shows it
+    extTest: async () => {
+      await source.command("ext-test");
+      return { ok: false, error: "The ping was sent. Its result is in the engine log here, and on screen in the desktop app." };
+    },
     extOpenPages: async () => await source.command("ext-open-pages"),
     recorderStatus: async () => JSON.parse(await source.command("recorder-status")) as RecorderStatus,
     setRecorder: async (v) => (await source.command(`set-recorder:${JSON.stringify(v)}`)),

@@ -93,3 +93,34 @@ test("the background worker only opens pages it builds from the list, and reload
   assert.match(bg, /case "reload"|v\.t === "reload"/);
   assert.equal((bg.match(/chrome\.runtime\.reload\(/g) || []).length, 1, "one place reloads the extension");
 });
+
+// ---- the x.com login probe in the content script (the checklist's "Logged out")
+
+import vm from "node:vm";
+function runXContent(url, text) {
+  const listeners = [];
+  const ctx = {
+    window: { addEventListener() {}, location: { origin: "https://x.com" } },
+    location: { href: url, pathname: new URL(url).pathname, origin: "https://x.com" },
+    document: { body: { innerText: text }, querySelector: () => null },
+    chrome: { runtime: { id: "me", sendMessage() {}, onMessage: { addListener: (f) => listeners.push(f) } } },
+    setTimeout() {}, setInterval() { return 1; }, clearInterval() {},
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(new URL("../lib/xparse.js", import.meta.url), "utf8"), ctx);
+  vm.runInContext(fs.readFileSync(new URL("../xcontent.js", import.meta.url), "utf8"), ctx);
+  return (msg, senderId = "me") => {
+    let out;
+    for (const f of listeners) f(msg, { id: senderId }, (r) => (out = JSON.parse(JSON.stringify(r))));
+    return out;
+  };
+}
+
+test("the x.com login probe says login for the sign-in page and ok for a logged-in page", () => {
+  assert.deepEqual(runXContent("https://x.com/home", "Sign in to X\nPhone, email")({ t: "xlogin" }), { state: "login" });
+  assert.deepEqual(runXContent("https://x.com/i/flow/login", "")({ t: "xlogin" }), { state: "login" });
+  assert.deepEqual(runXContent("https://x.com/home", "Home\nFor you\nFollowing")({ t: "xlogin" }), { state: "ok" });
+  // only this extension may ask
+  assert.equal(runXContent("https://x.com/home", "Home")({ t: "xlogin" }, "someone-else"), undefined);
+});

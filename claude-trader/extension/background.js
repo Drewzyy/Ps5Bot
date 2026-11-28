@@ -28,6 +28,11 @@ const store = chrome.storage;
 async function boot() {
   const { prefs: p } = await store.local.get("prefs");
   prefs = { ...DEFAULT_PREFS, ...(p || {}) };
+  // a different version than the last start means the files were updated (by the app, then a reload): remember it for the panel
+  const { lastVersion } = await store.local.get("lastVersion");
+  const cur = chrome.runtime.getManifest().version;
+  if (lastVersion && lastVersion !== cur) await store.local.set({ updatedNote: { from: lastVersion, to: cur, at: Date.now() } });
+  if (lastVersion !== cur) await store.local.set({ lastVersion: cur });
   const { updatedNote } = await store.local.get("updatedNote");
   if (updatedNote && Date.now() - updatedNote.at < 60 * 60 * 1000) state = { ...state, updated: updatedNote };
   const { cache } = await store.session.get("cache");
@@ -507,18 +512,8 @@ chrome.runtime.onConnect.addListener((port) => {
 // ------------------------------------------------------------------ start up and stay up
 
 chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
-  if (details && details.reason === "update") {
-    // the app asked for a reload and Chrome started the new files: remember it so the panel can say so
-    const to = chrome.runtime.getManifest().version;
-    if (details.previousVersion && details.previousVersion !== to) {
-      const note = { from: details.previousVersion, to, at: Date.now() };
-      store.local.set({ updatedNote: note });
-      state = { ...state, updated: note };
-      changed();
-    }
-  }
   connect();
 });
 chrome.runtime.onStartup.addListener(connect);

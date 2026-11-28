@@ -14,7 +14,7 @@ What it does:
 
 Chrome does not allow apps to install extensions for you, so this is by hand. It takes about a minute.
 
-1. Get the folder. Easiest: in the Claude Trader app open **Settings > Startup and browser > Install the Chrome extension** and press **Show the extension folder**. (Or download the `claude-trader-chrome-extension` artifact from the GitHub Actions run, and unzip it.)
+1. Get the folder. In the Claude Trader app open **Settings > Startup and browser > Install the Chrome extension** and press **Show the extension folder**. This is the STABLE folder (`%LOCALAPPDATA%\Claude Trader\chrome-extension`). Load the extension from THIS folder, never from the install directory (`Program Files`), because the app updates the files in it and the path never moves. (Without the app: download the `claude-trader-chrome-extension` artifact and unzip it.)
 2. In Chrome type `chrome://extensions` in the address bar and press Enter.
 3. Turn on **Developer mode** (top right).
 4. Press **Load unpacked** and choose the folder that holds `manifest.json`.
@@ -22,6 +22,19 @@ Chrome does not allow apps to install extensions for you, so this is by hand. It
 6. In the app press **Get pairing code** (same Settings section). Type the code in the side panel and press **Connect**.
 
 After that it connects by itself whenever the app is open. If the app is closed the panel says **Engine offline** and connects again when you start the app.
+
+## Updates (automatic)
+
+- At every start the app copies its bundled extension files into the stable folder, only when the bundled version differs. Files are written to a temp name and renamed, `manifest.json` last, the folder is never deleted and the manifest `key` (the pinned ID) is checked after the copy.
+- When a connected extension is older than the files on disk, the app sends `reload`, the extension calls `chrome.runtime.reload()` (at most once per 2 minutes) and reconnects with the new version. The app shows "Extension updated to vX".
+- If it comes back with the same old version, or is newer than the files, it is loaded from another folder. The app says "Please reload the extension from the new folder once": remove it in `chrome://extensions`, Load unpacked from the stable folder, pair again.
+- CI sets the manifest version to the app version (`0.1.<run>`).
+
+## Status and pages
+
+- The app's top bar shows "Extension connected" (green), "Extension not paired" (gray) or "Extension offline" (red). Click it for Settings > Startup and browser: versions, last heartbeat, **Test connection** (a ping through the extension with the latency).
+- The side panel says "Connected to Claude Trader vX".
+- Pages the bot needs: pump.fun home, x.com (logged in, only while X Monitor is on) and a Dexscreener chart per open position. At app start (once per browser session) and on **Open missing pages** the extension reuses open tabs, opens the rest (x.com pinned, in the background), and the checklist shows Open, Missing or Logged out. Pages switched off in the app are never opened. Logic: `lib/pages.js`, tests `tests/pages.test.js`.
 
 ## How it is kept safe
 
@@ -57,6 +70,7 @@ Not verified here: the real x.com (this sandbox cannot reach it). The parsers ar
 - `background.js` connection, badge, alerts, tabs.
 - `content.js`, `lib/mint.js` the coin card.
 - `sidepanel.html/.css/.js` the side panel.
+- `lib/pages.js` the needed pages and the checklist (tested in `tests/pages.test.js`).
 - `lib/core.js` pure logic (tested in `tests/core.test.js`).
 - `xhook.js`, `xcontent.js`, `xrunner.js`, `lib/xparse.js`, `lib/xjob.js`, `lib/xpace.js` the X Monitor (tested in `tests/xmon.test.js`). Run everything with `npm test` in this folder.
 
