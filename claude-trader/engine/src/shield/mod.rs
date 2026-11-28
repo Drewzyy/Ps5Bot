@@ -768,6 +768,64 @@ mod tests {
         assert!(fallback_core_gate(&flagged).iter().any(|r| r.blocks()), "a flag is not a pass");
     }
 
+    // ---- creator funder chain (SPEC 7c)
+
+    fn seed_funded(db: &Db, creator: &str, funder: &str, launches: u32, dead: u32) {
+        db.funder_put(creator, funder, 1, 1_000_000_000, now_ms(), "ok");
+        for i in 0..launches {
+            db.outcome_put(&format!("{creator}-{i}"), creator, 1, i < dead, 30.0, 5.0, 2);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_creator_funded_by_a_serial_dead_launcher_funder_is_blocked_from_the_cache_without_any_rpc_call() {
+        let s = shield(vec![], false);
+        seed_funded(&s.db, "bad1", "FUNDER", 3, 3);
+        seed_funded(&s.db, "bad2", "FUNDER", 2, 2);
+        seed_funded(&s.db, "fresh", "FUNDER", 0, 0); // the new creator: funded by the same wallet, cached
+        let r = s.funder_check("fresh").await;
+        assert!(r.blocks() && r.code == "FUNDER_SERIAL_DEAD", "{r:?}");
+        // the same creator through the whole chain stage decision: it is a Scam Shield block with the evidence link
+        let d = decide(vec![r]);
+        assert_eq!(d.verdict, "HIGH");
+        assert!(d.block.unwrap().evidence.iter().any(|e| e.url.contains("solscan.io/account/FUNDER")));
+    }
+
+    #[tokio::test]
+    async fn an_unreachable_rpc_gives_unknown_not_a_block_and_the_failure_is_cached_briefly() {
+        let s = shield(vec![], false);
+        let r = s.funder_check("brand-new-creator").await;
+        assert!(!r.blocks() && r.outcome == Outcome::Pass, "{r:?}");
+        let row = s.db.funder_get("brand-new-creator").expect("cached");
+        assert_eq!(row.3, "error");
+        // asked again within a minute: answered from the cache, no second RPC attempt (the stored time does not move)
+        let again = s.funder_check("brand-new-creator").await;
+        assert!(!again.blocks());
+        assert_eq!(s.db.funder_get("brand-new-creator").unwrap().2, row.2);
+    }
+
+    #[tokio::test]
+    async fn the_funder_check_can_be_switched_off_and_never_runs_for_an_empty_creator() {
+        let mut s = shield(vec![], false);
+        s.cfg.filters.funder.enabled = false;
+        seed_funded(&s.db, "bad1", "F", 3, 3);
+        seed_funded(&s.db, "bad2", "F", 3, 3);
+        seed_funded(&s.db, "fresh", "F", 0, 0);
+        assert!(!s.funder_check("fresh").await.blocks());
+        s.cfg.filters.funder.enabled = true;
+        assert!(!s.funder_check("").await.blocks());
+        assert!(s.funder_check("fresh").await.blocks());
+    }
+
+    #[tokio::test]
+    async fn rate_limited_rpc_pauses_funder_lookups_for_30_seconds() {
+        let s = shield(vec![], false);
+        s.funder_backoff_until_ms.store(now_ms() + 30_000, std::sync::atomic::Ordering::Relaxed);
+        let r = s.funder_check("someone-new").await;
+        assert!(!r.blocks());
+        assert!(s.db.funder_get("someone-new").is_none(), "skipped: no lookup, nothing cached");
+    }
+
     #[test]
     fn a_run_without_rugcheck_handle_is_unchanged() {
         // replays and old callers have no RugCheck handle: full size, no records

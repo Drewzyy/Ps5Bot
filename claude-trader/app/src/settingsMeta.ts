@@ -526,7 +526,7 @@ export const META: Record<string, Explain> = {
   ),
   "learning.shadowTrades": e(
     "Test a change for (trades)",
-    "A proposed change is first tried in a separate pretend lane next to the normal one. It is used only if it beats the normal lane over this many trades.",
+    "A proposed change is first tried in a separate pretend lane next to the normal one. It is used only if its trades show an average profit and the low end of the 95% range is above zero (at least 20 trades).",
     "30.",
     "Type a whole number. Higher is more careful."
   ),

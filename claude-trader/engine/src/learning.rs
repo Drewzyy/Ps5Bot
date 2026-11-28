@@ -8,9 +8,11 @@
 //! 2. Every N closed trades (config `learning.reviewEveryTrades`, 30) a review groups trades by feature buckets and
 //!    exit reasons. A pattern is reported only when the bucket AND the rest each have at least `minSample` (10)
 //!    trades and the win-rate gap is at least `minWinRateGapPts`. The review shows the counts and proposes a change.
-//! 3. A proposed change runs in a shadow paper lane for the next `shadowTrades` (30) main-lane trades, side by side.
-//!    It is applied only if it beats the main lane on net P/L and profit factor. In live mode it becomes a proposal
-//!    that needs the user's approval.
+//! 3. A proposed change runs in a shadow paper lane for the next `shadowTrades` (30) main-lane trades, side by side. The shadow
+//!    trades are the HOLDOUT: the change was found on earlier trades and has never seen these. It is applied only if, on that
+//!    holdout, there are at least `promotionMinTrades` (20) trades, the mean return per trade is above 0 AND the lower end of its
+//!    95% bootstrap range is above 0 (a result that could be luck is not promoted), and the mean is not worse than the main
+//!    lane's. In live mode it becomes a proposal that needs the user's approval.
 //! 4. Hard limits (not settings): only the whitelisted entry/exit thresholds and score weights can change, never by
 //!    more than 20% from the shipped value. Scam Shield, trade size, fees and loss limits are never touched.
 //! 5. Every applied change is logged with before/after, evidence and results, and can be undone.
@@ -557,6 +559,19 @@ pub fn shadow_beats(main: &ArmStat, shadow: &ArmStat, min_sample: u32) -> (bool,
     (net && pf, format!("{verdict} Test lane: {}. Main lane: {}.", show(shadow), show(main)))
 }
 
+/// The promotion rule (SPEC 4c): the holdout (shadow lane) trades must make money on average AND the lower 95% bootstrap bound of
+/// their mean return must be above 0, with at least `min_trades` trades. The shadow mean must also not be below the main lane's.
+/// Returns are fractions of the trade size (0.02 = +2%).
+pub fn promotion_verdict(main_returns: &[f64], shadow_returns: &[f64], min_trades: u32, resamples: u32) -> (bool, String) {
+    let min = min_trades.max(MIN_SAMPLE_FLOOR);
+    let (ok, why) = crate::stats::holdout_verdict(shadow_returns, min, resamples);
+    let main_mean = crate::stats::mean(main_returns);
+    let shadow_mean = crate::stats::mean(shadow_returns);
+    let worse = ok && shadow_mean < main_mean;
+    let text = format!("Test lane (holdout): {why} Main lane over the same period: {} trades, mean {:+.2}% per trade.{}", main_returns.len(), main_mean * 100.0, if worse { " The test lane's mean is below the main lane's, so it is not applied." } else { "" });
+    (ok && !worse, text)
+}
+
 // ============================================================================ the stateful part
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -703,6 +718,8 @@ pub struct Learner {
     rules: ReviewRules,
     review_every: u32,
     shadow_trades: u32,
+    promotion_min_trades: u32,
+    resamples: u32,
     enabled: bool,
     live: bool,
 }
@@ -720,6 +737,8 @@ impl Learner {
             rules: ReviewRules::from_config(baseline_cfg),
             review_every: baseline_cfg.learning.review_every_trades.max(1),
             shadow_trades: baseline_cfg.learning.shadow_trades.max(1),
+            promotion_min_trades: baseline_cfg.learning.promotion_min_trades,
+            resamples: baseline_cfg.learning.bootstrap_resamples.max(200),
             enabled: baseline_cfg.learning.enabled,
             live: baseline_cfg.mode == Mode::Live,
         }
@@ -892,13 +911,21 @@ impl Learner {
         (arm_stat(&pn(MAIN_LANE)), arm_stat(&pn(SHADOW_LANE)))
     }
 
+    /// Per-trade returns (net P/L divided by the trade size) of the main and the shadow lane since the test started.
+    fn returns_since(&self, ch: &ChangeRow) -> (Vec<f64>, Vec<f64>) {
+        let rt = |lane: &str| -> Vec<f64> { self.db.load_closed(lane, false).into_iter().filter(|p| p.exit_ms.unwrap_or(0) >= ch.start_ms && p.entry_ms >= ch.start_ms && p.size_sol > 0.0).map(|p| p.pnl_sol / p.size_sol).collect() };
+        (rt(MAIN_LANE), rt(SHADOW_LANE))
+    }
+
     fn conclude_shadow_if_ready(&self, now: i64) -> Vec<Effect> {
         let Some(mut ch) = self.active_shadow() else { return vec![] };
         let (main, shadow) = self.arms_since(&ch);
         if main.trades < ch.target {
             return vec![];
         }
-        let (beats, text) = shadow_beats(&main, &shadow, self.rules.min_sample);
+        let _ = shadow;
+        let (main_r, shadow_r) = self.returns_since(&ch);
+        let (beats, text) = promotion_verdict(&main_r, &shadow_r, self.promotion_min_trades, self.resamples);
         ch.result = text;
         ch.done_ms = now;
         let mut fx = vec![Effect::SetShadow(None)];
@@ -1256,6 +1283,28 @@ mod tests {
         assert!(!shadow_beats(&a, &arm_stat(&[0.02; 10]), 10).0);
     }
 
+    #[test]
+    fn promotion_needs_a_holdout_mean_above_zero_and_a_lower_bound_above_zero_with_enough_trades() {
+        let main: Vec<f64> = vec![-0.01; 25];
+        let strong: Vec<f64> = (0..30).map(|i| if i % 5 == 0 { -0.02 } else { 0.04 }).collect();
+        let (ok, why) = promotion_verdict(&main, &strong, 20, 4000);
+        assert!(ok, "{why}");
+        // the old 10 trade rule would have promoted this: 10 trades, 6 wins, better than main
+        let luck = [0.04, -0.03, 0.05, -0.04, 0.03, -0.02, 0.06, 0.02, -0.05, -0.01];
+        assert!(!promotion_verdict(&main, &luck, 10, 4000).0, "10 trades with a mean above 0 is not proof");
+        // enough trades but the mean is below 0
+        assert!(!promotion_verdict(&main, &[-0.01; 30], 20, 4000).0);
+        // fewer trades than the minimum, however good
+        let (ok, why) = promotion_verdict(&main, &[0.05; 12], 20, 4000);
+        assert!(!ok && why.contains("Not enough holdout trades"), "{why}");
+        // a configured minimum below the hard floor of 10 is raised to 10
+        assert!(!promotion_verdict(&main, &[0.05; 9], 3, 4000).0);
+        // better than 0 but worse than the main lane: not applied
+        let strong_main: Vec<f64> = vec![0.10; 25];
+        let (ok, why) = promotion_verdict(&strong_main, &strong, 20, 4000);
+        assert!(!ok && why.contains("below the main lane"), "{why}");
+    }
+
     // ---- the learner with a database
 
     fn learner(c: &Config) -> (Arc<Db>, Learner) {
@@ -1320,10 +1369,10 @@ mod tests {
         // the shadow lane's tuning has the candidate value
         assert!((l.shadow_tuned().unwrap().cfg.entry.curve_sol_min - 4.8).abs() < 1e-9);
 
-        // next 30 main trades: shadow lane did clearly better (12 trades, 10 wins)
+        // next 30 main trades: the shadow lane (the holdout) did clearly better (24 trades, 20 wins)
         let start = ch.start_ms;
-        for i in 0..12 {
-            let mut p = closed_pos(500 + i, SHADOW_LANE, if i < 10 { 0.02 } else { -0.01 }, "take-profit-1", 1.3, 1.25);
+        for i in 0..24 {
+            let mut p = closed_pos(500 + i, SHADOW_LANE, if i < 20 { 0.02 } else { -0.01 }, "take-profit-1", 1.3, 1.25);
             p.entry_ms = start + 10 + i; p.exit_ms = Some(start + 60 + i);
             p.id = db.insert_position(&p); db.save_position(&p);
         }
@@ -1337,7 +1386,7 @@ mod tests {
         }
         let s = l.snapshot(20);
         let applied = s.changes.iter().find(|c| c.status == "applied").expect("applied");
-        assert!(applied.result.contains("The test lane won on both"), "{}", applied.result);
+        assert!(applied.result.contains("the lower end is above 0"), "{}", applied.result);
         assert!(s.shadow.is_none());
         assert!(last_fx.iter().any(|e| matches!(e, Effect::SetMain(_))));
         assert!((l.current_main().cfg.entry.curve_sol_min - 4.8).abs() < 1e-9);
@@ -1356,7 +1405,7 @@ mod tests {
         let (db, l) = learner(&cfg());
         feed_trades(&db, &l, 30, |i| if i < 12 { if i < 2 { 0.01 } else { -0.012 } } else if i - 12 < 13 { 0.012 } else { -0.01 }, |i| if i < 12 { 4.2 } else { 8.0 }, 1);
         let start = l.snapshot(1).shadow.unwrap().start_ms;
-        for i in 0..11 {
+        for i in 0..22 {
             let mut p = closed_pos(600 + i, SHADOW_LANE, -0.02, "hard-stop", 1.0, 0.85);
             p.entry_ms = start + 10 + i; p.exit_ms = Some(start + 60 + i);
             p.id = db.insert_position(&p); db.save_position(&p);
@@ -1369,7 +1418,7 @@ mod tests {
             l.on_close(&p);
         }
         let s = l.snapshot(5);
-        assert!(s.changes.iter().any(|c| c.status == "rejected" && c.result.contains("The main lane did better")));
+        assert!(s.changes.iter().any(|c| c.status == "rejected" && c.result.contains("the mean is not above 0")));
         assert!(s.changes.iter().all(|c| c.status != "applied"));
         assert!((l.current_main().cfg.entry.curve_sol_min - 4.0).abs() < 1e-9);
     }
@@ -1381,8 +1430,8 @@ mod tests {
         let (db, l) = learner(&c);
         feed_trades(&db, &l, 30, |i| if i < 12 { if i < 2 { 0.01 } else { -0.012 } } else if i - 12 < 13 { 0.012 } else { -0.01 }, |i| if i < 12 { 4.2 } else { 8.0 }, 1);
         let start = l.snapshot(1).shadow.unwrap().start_ms;
-        for i in 0..12 {
-            let mut p = closed_pos(700 + i, SHADOW_LANE, 0.02, "take-profit-1", 1.3, 1.25);
+        for i in 0..24 {
+            let mut p = closed_pos(700 + i, SHADOW_LANE, if i < 20 { 0.02 } else { -0.01 }, "take-profit-1", 1.3, 1.25);
             p.entry_ms = start + 10 + i; p.exit_ms = Some(start + 60 + i);
             p.id = db.insert_position(&p); db.save_position(&p);
         }

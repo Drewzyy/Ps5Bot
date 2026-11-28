@@ -165,7 +165,7 @@ export function buildSteps(c: Config): Step[] {
       what: [
         "After each closed trade the app writes a short note with the real numbers: profit after fees, how long it held, why it sold, and how the coin looked when it was bought.",
         "Every 30 trades it looks for patterns. It only reports one if at least 10 trades back it up and the gap is large.",
-        "A change is tried in a separate pretend lane first and used only if it beats the normal one. It can never loosen Scam Shield, raise trade size or loosen loss limits, and every change has an Undo button.",
+        "A change is tried in a separate pretend lane first, on trades it has never seen. It is used only if those trades average a profit and the low end of the 95% range is above zero, so luck does not count. It can never loosen Scam Shield, raise trade size or loosen loss limits, and every change has an Undo button.",
       ],
       good: "Short notes with numbers, and few changes.",
       bad: "Many changes in a short time. That means the app is chasing luck. Use Undo.",
@@ -261,7 +261,7 @@ export const GLOSSARY: Term[] = [
   { term: "Smart follower (KOL)", def: "A well-known crypto account that follows a coin's X account. The spare X account must follow a few hundred KOLs for this to work." },
   { term: "Narrative", def: "Several coins launched from the same X post, account or community. The Thesis Finder shows these." },
   { term: "Helius", def: "A free service that gives the app a steadier line to the Solana network. You add a free key in Settings." },
-  { term: "Test lane", def: "A separate pretend lane that tries a proposed change next to the normal one. The change is used only if the test lane wins." },
+  { term: "Test lane", def: "A separate pretend lane that tries a proposed change next to the normal one. The change is used only if its trades show a real average profit, not luck." },
   { term: "Bankroll", def: "The pretend money the app trades with." },
   { term: "Bonding curve", def: "The price formula on pump.fun. Buying pushes price up, selling pushes it down." },
   { term: "Bundle", def: "Many wallets controlled by one person buying at launch to fake interest." },

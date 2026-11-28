@@ -114,12 +114,12 @@ export function LearningCard({ engine }: { engine: EngineState }) {
             <div className="jshadow">
               <b>Testing now:</b> {L.shadow.label}, {num(L.shadow.before)} to {num(L.shadow.after)}, in a separate pretend lane. Main lane {sp.mainDone} of {sp.target} trades.
               Test lane: {sp.shadow.trades} trades, net {sgn(sp.shadow.netSol)} SOL. Main lane: {sp.main.trades} trades, net {sgn(sp.main.netSol)} SOL.
-              It is used only if it beats the main lane on profit and profit factor.
+              It is used only if the test trades average a profit AND the low end of the 95% range is above zero, with at least 20 trades. Fewer trades or a lucky-looking result are not enough.
             </div>
           )}
           <h4 className="lh">Changes applied</h4>
           {L.changes.length === 0 ? (
-            <div className="empty">No changes yet. The first review happens after {L.reviewEvery} closed trades, and a change is made only if a test beats the current rules.</div>
+            <div className="empty">No changes yet. The first review happens after {L.reviewEvery} closed trades, and a change is made only if its test trades show a real average profit, not luck.</div>
           ) : (
             <div className="jlist">{L.changes.map((c) => <Change key={c.id} c={c} demo={L.demo} live={L.liveMode} />)}</div>
           )}

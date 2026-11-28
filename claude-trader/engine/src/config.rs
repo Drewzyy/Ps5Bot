@@ -492,6 +492,12 @@ impl Config {
         if self.learning.min_sample < 10 {
             return Err("learning.minSample cannot be below 10 trades".into());
         }
+        if self.learning.promotion_min_trades < 10 {
+            return Err("learning.promotionMinTrades cannot be below 10 trades".into());
+        }
+        if self.learning.bootstrap_resamples < 200 {
+            return Err("learning.bootstrapResamples cannot be below 200".into());
+        }
         if self.learning.min_win_rate_gap_pts < 20.0 {
             return Err("learning.minWinRateGapPts cannot be below 20 points".into());
         }

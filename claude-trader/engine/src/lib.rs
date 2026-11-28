@@ -33,6 +33,7 @@ pub mod notify;
 pub mod xmon;
 pub mod recorder;
 pub mod funder;
+pub mod stats;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};

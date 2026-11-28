@@ -101,7 +101,53 @@ pub fn fill_preset(name: &str) -> Option<crate::paper::FillParams> {
 }
 
 /// Settings the user changed in the app (stored in SQLite, never in config.json): today the paper fill realism.
+/// Check and store the recorder settings (Settings > Recording). Returns the checked values.
+pub fn save_recorder(db: &Db, json: &str) -> Result<crate::config::RecorderCfg, String> {
+    let v: serde_json::Value = serde_json::from_str(json).map_err(|_| "Could not read those values.".to_string())?;
+    let cur = db.kv_get("recorder.settings").and_then(|j| serde_json::from_str::<crate::config::RecorderCfg>(&j).ok()).unwrap_or_default();
+    let c = crate::config::RecorderCfg {
+        enabled: v["enabled"].as_bool().unwrap_or(cur.enabled),
+        retention_days: v["retentionDays"].as_u64().map(|x| x as u32).unwrap_or(cur.retention_days),
+        max_megabytes: v["maxMegabytes"].as_u64().map(|x| x as u32).unwrap_or(cur.max_megabytes),
+    };
+    if !(1..=365).contains(&c.retention_days) {
+        return Err("Keep the recordings for 1 to 365 days.".into());
+    }
+    if !(50..=50_000).contains(&c.max_megabytes) {
+        return Err("The size limit must be between 50 MB and 50,000 MB.".into());
+    }
+    db.kv_set("recorder.settings", &serde_json::to_string(&c).map_err(|e| e.to_string())?);
+    Ok(c)
+}
+
+/// Raise the paper fee model to the live Global values (the higher value wins, SPEC 6 fee model) and take over the block 0
+/// tax rate. Returns a plain sentence for the log.
+pub fn apply_global_fees(cfg: &mut Config, g: &crate::rpc::GlobalFees) -> String {
+    let mut notes = vec![];
+    let live = g.pump_pct_per_side();
+    if live > cfg.fees.model_pump_fun_pct_per_side + 1e-9 {
+        notes.push(format!("pump.fun fee per side raised from {}% to {live}% (Global: protocol {} bps + creator {} bps)", cfg.fees.model_pump_fun_pct_per_side, g.fee_bps, g.creator_fee_bps));
+        cfg.fees.model_pump_fun_pct_per_side = live;
+        cfg.fees.pump_fun_creator_pct_per_side = (g.creator_fee_bps as f64 / 100.0).min(live);
+    } else {
+        notes.push(format!("pump.fun fee per side {live}% on chain (protocol {} bps + creator {} bps), model keeps {}%", g.fee_bps, g.creator_fee_bps, cfg.fees.model_pump_fun_pct_per_side));
+    }
+    cfg.fees.block0_tax_bps = g.block0_tax_bps;
+    if g.block0_tax_bps > 0 {
+        notes.push(format!("block 0 tax is ON: {} bps extra protocol fee in a coin's creation slot (paper fee model includes it)", g.block0_tax_bps));
+    } else {
+        notes.push("block 0 tax is 0".into());
+    }
+    if g.buyback_bps > 0 {
+        notes.push(format!("buyback share {} bps (part of the protocol fee, not added)", g.buyback_bps));
+    }
+    notes.join("; ")
+}
+
 pub fn apply_user_overrides(cfg: &mut Config, db: &Db) {
+    if let Some(r) = db.kv_get("recorder.settings").and_then(|j| serde_json::from_str::<crate::config::RecorderCfg>(&j).ok()) {
+        cfg.recorder = r;
+    }
     if let Some(p) = db.kv_get("paperfill").and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok()) {
         let f = |k: &str, d: f64| p[k].as_f64().unwrap_or(d);
         let cand = crate::paper::FillParams { buy_fail_pct: f("buyFailPct", cfg.paper_fill.buy_fail_pct), sell_fail_pct: f("sellFailPct", cfg.paper_fill.sell_fail_pct), delay_ms_min: f("delayMsMin", cfg.paper_fill.delay_ms_min as f64) as u32, delay_ms_max: f("delayMsMax", cfg.paper_fill.delay_ms_max as f64) as u32, slippage_cap_pct: f("slippageCapPct", cfg.paper_fill.slippage_cap_pct) };
@@ -185,6 +231,14 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     apply_user_overrides(&mut opts.config, &db);
     let rpc = Arc::new(Rpc::new(&opts.rpc_url, 6.0));
     hub.log(format!("engine: rpc endpoint {}", rpc.masked_url()));
+    if opts.replay.is_none() {
+        // the live fee fields of the pump program (including the block 0 tax): the paper fee model follows them
+        match tokio::time::timeout(Duration::from_secs(6), rpc.global_fees()).await {
+            Ok(Ok(g)) => hub.log(format!("engine: pump Global account read: {}", apply_global_fees(&mut opts.config, &g))),
+            Ok(Err(e)) => hub.log(format!("engine: could not read the pump Global fee fields ({e}); using the fees in config.json")),
+            Err(_) => hub.log("engine: reading the pump Global fee fields timed out; using the fees in config.json"),
+        }
+    }
     let sol_usd = match opts.sol_usd {
         Some(p) => p,
         None => fetch_sol_usd().await.unwrap_or(150.0),
@@ -192,9 +246,17 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     hub.log(format!("engine: SOL price used for USD conversion: ${sol_usd:.2}"));
     let hub_log = hub.clone();
     let feed = if opts.replay.is_some() { TradeFeed::offline() } else { TradeFeed::spawn(rpc.ws_url(), Some(rpc.clone()), Arc::new(move |s| hub_log.log(s))) };
+    let rec_dir = std::path::Path::new(&opts.db_path).parent().map(|p| p.join("recordings")).filter(|_| opts.replay.is_none() && opts.db_path != ":memory:");
     let trader = Trader::new(opts.config.clone(), db.clone(), hub.clone(), feed, if opts.replay.is_some() { None } else { Some(rpc.clone()) }, sol_usd, std::path::PathBuf::from(&opts.logs_dir), opts.replay.is_some());
     if opts.clear_halt {
         trader.clear_halts();
+    }
+    // raw feed recording (SPEC 4f): every trade of a watched coin and every launch, compressed daily files for offline replay
+    let recorder = rec_dir.map(|d| crate::recorder::Recorder::new(d, opts.config.recorder.clone()));
+    if let Some(r) = &recorder {
+        trader.feed.store.set_recorder(r.clone());
+        r.spawn_flusher();
+        hub.log(format!("engine: recording the raw feed to {} (keeps {} days, at most {} MB)", r.dir().display(), r.cfg().retention_days, r.cfg().max_megabytes));
     }
     {
         let tr = trader.clone();
@@ -204,6 +266,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         let db2 = db.clone();
         let pinned = opts.rpc_pinned;
         let replay = opts.replay.is_some();
+        let rec2 = recorder.clone();
         hub.set_command_handler(Arc::new(move |cmd| match cmd {
             "kill" => tr.kill("dashboard"),
             "resume" => tr.resume_trading("dashboard"),
@@ -230,6 +293,25 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
                     "saved".into()
                 }
                 Err(e) => e,
+            },
+            c if c.starts_with("set-recorder:") => match save_recorder(&db2, &c["set-recorder:".len()..]) {
+                Ok(r) => {
+                    if let Some(rec) = &rec2 {
+                        rec.set_cfg(r.clone());
+                        rec.prune(now_ms());
+                    }
+                    hub2.log(format!("engine: recording settings changed: {}, keep {} days, at most {} MB", if r.enabled { "on" } else { "off" }, r.retention_days, r.max_megabytes));
+                    "saved".into()
+                }
+                Err(e) => e,
+            },
+            "recorder-status" => match &rec2 {
+                Some(r) => {
+                    let (files, bytes, newest) = r.disk_use();
+                    let c = r.cfg();
+                    serde_json::json!({"enabled": c.enabled, "retentionDays": c.retention_days, "maxMegabytes": c.max_megabytes, "files": files, "bytes": bytes, "newest": newest, "dir": r.dir().display().to_string()}).to_string()
+                }
+                None => serde_json::json!({"enabled": false, "files": 0, "bytes": 0, "off": true}).to_string(),
             },
             c if c.starts_with("undo-change:") || c.starts_with("approve-change:") => tr.learning_command(c),
             _ => format!("unknown command {cmd}"),
@@ -453,6 +535,9 @@ fn pulse(ctx: &Ctx, from: AgentId, to: AgentId, text: String, mint: &str) {
 async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     let t0 = now_ms();
     ctx.db.upsert_token(&t.mint, t0, &t.name, &t.symbol, &t.trader_public_key, t.market_cap_sol);
+    if let Some(r) = ctx.trader.feed.store.recorder() {
+        r.record_launch(t0, &t);
+    }
     ctx.hub.emit(EngineEvent::Token { ts: t0, mint: t.mint.clone(), symbol: t.symbol.clone(), name: t.name.clone(), creator: t.trader_public_key.clone(), mcap_sol: t.market_cap_sol });
     pulse(&ctx, AgentId::MemecoinMonitor, AgentId::ScamShield, format!("New coin {} handed to Scam Shield", t.symbol), &t.mint);
     ctx.checking.fetch_add(1, Ordering::Relaxed);
@@ -578,6 +663,17 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
         ctx.db.mark_trending(&t.mint);
     }
 
+    // Graded launch-slot check (SPEC 7b): measured and logged for EVERY coin that reaches the end of the watch, so we can see what
+    // really blocks. It blocks the buy only above the limits in `filters.graded`.
+    let (launch_exp, grade_res) = ctx.shield.launch_grade(&t.trader_public_key, &trades, &facts, ctx.trader.current_curve(&t.mint));
+    ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "launch-grade".into(), outcome: if grade_res.blocks() { "block" } else { "pass" }.into(), reason: if grade_res.blocks() { grade_res.code.clone() } else { String::new() }, detail: grade_res.detail.clone(), verdict: String::new() });
+    // how the coin ended the watch: the funder-chain reputation learns from it (SPEC 7c). Only when the feed is really delivering
+    // trades, so a dead feed cannot mark every coin dead.
+    if obs.mcap_sol > 0.0 || ctx.trader.feed.stats.trades_within(now, 120_000) > 0 {
+        let launch_mcap = if t.market_cap_sol > 0.0 { t.market_cap_sol } else { crate::pump::mcap_sol(t.v_sol_in_bonding_curve, t.v_tokens_in_bonding_curve) };
+        ctx.db.outcome_put(&t.mint, &t.trader_public_key, now, crate::funder::launch_died(peak, obs.mcap_sol, launch_mcap, obs.unique_buyers), peak, obs.mcap_sol, obs.unique_buyers);
+    }
+
     let mut gates = sc.gates.clone();
     let mut picked = sc.picked;
     // The paper variant (dip-40pct) shares the observation gate (score) but not the momentum entry gates.
@@ -585,6 +681,12 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
     let mut shadow_picked = shadow_sc.as_ref().map(|s| s.picked).unwrap_or(false);
     if (picked || dip_eligible || shadow_picked) && ctx.mon.no_buys() {
         gates.push("feed down: no buys".into());
+        picked = false;
+        dip_eligible = false;
+        shadow_picked = false;
+    }
+    if (picked || dip_eligible || shadow_picked) && grade_res.blocks() {
+        gates.push(format!("Scam Shield pre-buy: {}", grade_res.code));
         picked = false;
         dip_eligible = false;
         shadow_picked = false;
@@ -994,6 +1096,137 @@ mod tests {
         assert_eq!(score_rows, 1, "the funnel can see which gate stopped the coin");
     }
 
+
+    // ---------------------------------------------------------------- graded launch check, mayhem, Global fees (SPEC 7b, 7d)
+
+    fn good_report() -> Vec<Result<Option<serde_json::Value>, String>> {
+        vec![Ok(Some(serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [{"owner": "w1", "pct": 2.0}], "risks": [], "fileMeta": {"image": "i"}})))]
+    }
+
+    fn launch_buys(n: usize, tokens_m: f64, slot: u64, tag: &str) -> Vec<Trade> {
+        (0..n).map(|i| Trade { mint: create().mint, user: format!("{tag}{i}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"), is_buy: true, sol: 0.0, tokens: tokens_m * 1e6, slot, signature: format!("{tag}-sig{i}"), recv_ms: 1, v_sol: 30.0, v_tokens: 1.073e9, real_sol: 0.0, ..Default::default() }).collect()
+    }
+
+    fn grade_rows(ctx: &Ctx, mint: &str) -> Vec<(String, String, String)> {
+        decisions_of(ctx, mint, "launch-grade")
+    }
+
+    #[tokio::test]
+    async fn small_launch_slot_buyers_are_logged_and_do_not_stop_the_buy() {
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(299_999_999);
+        facts.launch_trades = launch_buys(2, 5.0, 299_999_999, "snipe"); // two sniped buys of 0.5% each
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx).is_some(), "two small first-block buyers no longer block the coin");
+        let rows = grade_rows(&ctx, &t.mint);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "pass");
+        assert!(rows[0].2.contains("launch-slot wallet(s)") && rows[0].2.contains("could pull"), "the graded numbers are logged: {}", rows[0].2);
+    }
+
+    #[tokio::test]
+    async fn a_launch_group_that_could_pull_over_16_sol_blocks_the_buy_and_the_numbers_are_logged() {
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(299_999_999);
+        facts.launch_trades = launch_buys(10, 40.0, 299_999_999, "bundle"); // 10 wallets, 4% each = 40% of supply
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx).is_none(), "bought a coin whose launch group could dump");
+        let rows = grade_rows(&ctx, &t.mint);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "block");
+        assert!(rows[0].2.contains("launch-slot wallet(s)"), "{}", rows[0].2);
+        let why: String = ctx.db.with_conn(|c| c.query_row("SELECT reason FROM decisions WHERE mint=? AND stage='launch-grade'", [&t.mint], |r| r.get(0)).unwrap());
+        assert!(why.starts_with("LAUNCH_"), "{why}");
+    }
+
+    #[tokio::test]
+    async fn the_launch_grade_is_logged_for_a_coin_that_is_not_bought_too() {
+        let ctx = test_ctx(good_report(), false);
+        let t = create(); // no trades at all
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, clean_facts(&ctx, &t)).await;
+        assert!(opened_size(&ctx).is_none());
+        let rows = grade_rows(&ctx, &t.mint);
+        assert_eq!(rows.len(), 1, "every coin that reaches the end of the watch gets its graded numbers recorded");
+    }
+
+    #[tokio::test]
+    async fn the_watch_records_how_the_coin_ended_for_the_funder_reputation() {
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, clean_facts(&ctx, &t)).await;
+        assert_eq!(ctx.db.creator_outcomes(&t.trader_public_key), (1, 0), "a busy coin that held its price did not die");
+        ctx.trader.feed.stats.record_trade(now_ms()); // the feed is alive: trades are arriving for other coins
+        let quiet = FeedMsg { mint: "QuietMint1111111111111111111111111111111111".into(), ..create() };
+        ctx.trader.hold_feed(&quiet.mint, &quiet.bonding_curve_key);
+        observe_and_trade(ctx.clone(), quiet.clone(), now_ms() - 61_000, clean_facts(&ctx, &quiet)).await;
+        // the feed is delivering trades (the busy coin's), so a coin with none of its own counts as dead
+        assert_eq!(ctx.db.creator_outcomes(&t.trader_public_key), (2, 1));
+    }
+
+    #[tokio::test]
+    async fn a_mayhem_coin_is_blocked_at_the_cheap_stage_and_never_enters_through_any_lane() {
+        let ctx = test_ctx(vec![], false);
+        let mut t = create();
+        t.is_mayhem_mode = true;
+        let a = decide(ctx.shield.stage_a(&t));
+        assert_eq!(a.block.as_ref().map(|b| b.code.as_str()), Some("MAYHEM_MODE"));
+        let mut q = create();
+        q.quote_mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".into();
+        assert_eq!(decide(ctx.shield.stage_a(&q)).block.map(|b| b.code), Some("NON_SOL_QUOTE".to_string()));
+        assert!(decide(ctx.shield.stage_a(&create())).block.map(|b| b.code != "MAYHEM_MODE" && b.code != "NON_SOL_QUOTE").unwrap_or(true));
+
+        // a coin that only shows itself as mayhem in its trade events: the entry guard stops every lane
+        let c = create();
+        seed_busy_coin(&ctx, &c);
+        ctx.trader.feed.store.add(Trade { mayhem: true, signature: "m1".into(), user: "someone".into(), ..ctx.trader.feed.store.snapshot(&c.mint)[0].clone() });
+        let pick = Pick { mint: c.mint.clone(), symbol: c.symbol.clone(), creator: c.trader_public_key.clone(), curve_key: c.bonding_curve_key.clone(), score: 99.0, features: Default::default(), size_factor: 1.0 };
+        for lane in ["momentum", "dip-40pct"] {
+            assert_eq!(ctx.trader.try_enter(lane, &pick).await.unwrap_err(), "MAYHEM_MODE");
+        }
+        assert_eq!(ctx.db.position_count(), 0);
+        let blocked: i64 = ctx.db.with_conn(|c| c.query_row("SELECT COUNT(*) FROM decisions WHERE reason='MAYHEM_MODE' AND stage='risk-gate'", [], |r| r.get(0)).unwrap());
+        assert_eq!(blocked, 2);
+    }
+
+    #[test]
+    fn global_fees_raise_the_model_only_when_higher_and_carry_the_block_0_tax() {
+        let mut cfg = Config::from_json(include_str!("../../config.json")).unwrap();
+        let same = crate::rpc::GlobalFees { fee_bps: 95, creator_fee_bps: 30, buyback_bps: 0, block0_tax_bps: 0, len: 1104 };
+        let note = apply_global_fees(&mut cfg, &same);
+        assert!((cfg.fees.model_pump_fun_pct_per_side - 1.25).abs() < 1e-12 && cfg.fees.block0_tax_bps == 0, "{note}");
+        assert!(note.contains("block 0 tax is 0"));
+        let higher = crate::rpc::GlobalFees { fee_bps: 125, creator_fee_bps: 50, buyback_bps: 10, block0_tax_bps: 300, len: 1104 };
+        let note = apply_global_fees(&mut cfg, &higher);
+        assert!((cfg.fees.model_pump_fun_pct_per_side - 1.75).abs() < 1e-12 && (cfg.fees.pump_fun_creator_pct_per_side - 0.5).abs() < 1e-12, "{note}");
+        assert_eq!(cfg.fees.block0_tax_bps, 300);
+        assert!(note.contains("block 0 tax is ON") && note.contains("raised"));
+        let lower = crate::rpc::GlobalFees { fee_bps: 50, creator_fee_bps: 20, buyback_bps: 0, block0_tax_bps: 0, len: 1104 };
+        apply_global_fees(&mut cfg, &lower);
+        assert!((cfg.fees.model_pump_fun_pct_per_side - 1.75).abs() < 1e-12, "the higher value stays (SPEC fee rule)");
+        assert_eq!(cfg.fees.block0_tax_bps, 0, "a tax that was switched off is read as off");
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn recorder_settings_are_checked_and_stored() {
+        let db = Db::open(":memory:").unwrap();
+        let c = save_recorder(&db, r#"{"retentionDays": 7, "maxMegabytes": 500}"#).unwrap();
+        assert_eq!((c.enabled, c.retention_days, c.max_megabytes), (true, 7, 500));
+        assert!(save_recorder(&db, r#"{"retentionDays": 0}"#).is_err());
+        assert!(save_recorder(&db, r#"{"maxMegabytes": 10}"#).is_err());
+        let off = save_recorder(&db, r#"{"enabled": false}"#).unwrap();
+        assert!(!off.enabled && off.retention_days == 7, "unchanged values stay");
+        let mut cfg = Config::from_json(include_str!("../../config.json")).unwrap();
+        apply_user_overrides(&mut cfg, &db);
+        assert!(!cfg.recorder.enabled && cfg.recorder.retention_days == 7);
+    }
 
     #[test]
     fn opts_default_to_public_rpc_without_keys() {

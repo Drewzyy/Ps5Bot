@@ -421,6 +421,18 @@ impl Trader {
             self.block(style, p, "UPDATING", "An update is being installed. No new entries.");
             return Err("UPDATING".into());
         }
+        // last line of defence for every lane: our curve math does not hold for mayhem or non-SOL-quote coins
+        {
+            let seen = self.feed.store.snapshot(&p.mint);
+            if seen.iter().any(|t| t.mayhem) {
+                self.block(style, p, "MAYHEM_MODE", "Mayhem-mode coin: its curve moves without trade events, so paper fills would be wrong.");
+                return Err("MAYHEM_MODE".into());
+            }
+            if seen.iter().any(|t| t.non_sol_quote) {
+                self.block(style, p, "NON_SOL_QUOTE", "The coin is paired with a token other than SOL: our curve math does not apply.");
+                return Err("NON_SOL_QUOTE".into());
+            }
+        }
         let Some(curve) = self.current_curve(&p.mint) else {
             self.block(style, p, "NO_CURVE_DATA", "No curve data for this coin yet.");
             return Err("no curve data".into());
