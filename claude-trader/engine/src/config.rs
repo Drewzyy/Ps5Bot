@@ -67,6 +67,30 @@ pub struct Sprint {
     pub max_open: u32,
 }
 
+impl Sprint {
+    /// The config the sprint lane runs on: the shipped config with the percent stops, the take-profit ladder and the fade exits
+    /// switched off and SOL-reserve stops switched on. Still on: dev sell, cabal dump, slow rug, migration and the sell at 90% of
+    /// graduation (SPEC 11b #9). Only the exits change here; Scam Shield and the entry gates are never part of a lane's config.
+    pub fn lane_config(&self, base: &Config) -> Config {
+        let mut c = base.clone();
+        let e = &mut c.exits;
+        e.tranches = vec![];
+        e.trailing_stop_pct = 100.0;
+        e.soft_stop_pct = -100.0;
+        e.hard_stop_pct = -100.0;
+        e.sell_below_average_entry = false;
+        e.max_hold_seconds = self.max_hold_seconds;
+        e.stall_exit.from_seconds = 1_000_000;
+        e.stall_exit.to_seconds = 1_000_001;
+        e.bleeder_exit.after_seconds = 1_000_000;
+        e.volume_taper.last_below_baseline_pct = 0.0;
+        e.momentum_death.min_buys_per_minute = 0.0;
+        e.whale_sell_pct_of_curve = 1000.0;
+        e.reserve_stops = Some(ReserveStops { below_entry_sol: self.stop_below_entry_sol, below_peak_sol: self.stop_below_peak_sol });
+        c
+    }
+}
+
 impl Default for Sprint {
     fn default() -> Self {
         Sprint {
@@ -394,6 +418,19 @@ pub struct Exits {
     pub exit_on_dev_sell: bool,
     pub sell_on_migration: bool,
     pub exit_loop_ms: u32,
+    /// Stops measured in SOL of real curve reserve instead of percent of price (used by the deep-curve sprint lane only).
+    #[serde(default)]
+    pub reserve_stops: Option<ReserveStops>,
+}
+
+/// Sell everything when the real SOL reserve of the curve falls `below_entry_sol` under its value at entry, or `below_peak_sol`
+/// under the highest value seen since entry. The research found graduating curves gave back up to 32 SOL on the way, so tighter
+/// stops sold winners early (UNVERIFIED, one small replay).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ReserveStops {
+    pub below_entry_sol: f64,
+    pub below_peak_sol: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -513,6 +550,16 @@ impl Config {
         if p.min_gap_secs < 5 || p.max_gap_secs < p.min_gap_secs || p.max_loads_per_hour == 0 || p.max_loads_per_hour > 200 {
             return Err("xMonitor.pacing: gaps must be at least 5 s (max not below min) and loads per hour between 1 and 200".into());
         }
+        let sp = &self.sprint;
+        if sp.real_sol_min >= sp.real_sol_max || sp.min_age_slots >= sp.max_age_slots || sp.real_sol_max >= 0.9 * crate::curve::GRADUATION_REAL_SOL {
+            return Err("sprint: the SOL range and the age range must be from low to high, and the top of the range must stay under 90% of graduation (76.5 SOL)".into());
+        }
+        if sp.stop_below_entry_sol <= 0.0 || sp.stop_below_peak_sol <= 0.0 || sp.max_open == 0 || sp.max_hold_seconds == 0 {
+            return Err("sprint: the stops, the open limit and the hold time must be above 0".into());
+        }
+        if self.filters.graded.max_launch_slot_pull_sol < 0.0 || self.filters.graded.max_single_wallet_pull_sol < 0.0 || !(0.0..=100.0).contains(&self.filters.graded.max_launch_group_supply_pct) {
+            return Err("filters.graded: limits cannot be negative and the supply share is a percent from 0 to 100".into());
+        }
         const STYLES: [&str; 5] = ["momentum", "snipe", "confirmation", "dip-40pct", "graduation-dip"];
         if !STYLES.contains(&self.entry.style.as_str()) {
             return Err(format!("entry.style must be one of {STYLES:?}"));
@@ -536,6 +583,56 @@ mod tests {
         assert_eq!(c.exits.max_hold_seconds, 300);
         assert_eq!(c.exits.hard_stop_pct, -15.0);
         assert_eq!(c.entry.style, "momentum");
+    }
+
+    #[test]
+    fn the_new_sections_have_the_researched_defaults_and_old_configs_without_them_still_load() {
+        let c = Config::from_json(CONFIG).unwrap();
+        assert_eq!((c.sprint.real_sol_min, c.sprint.real_sol_max, c.sprint.min_age_slots, c.sprint.max_age_slots, c.sprint.min_buyers), (39.0, 60.0, 40, 120, 30));
+        assert_eq!((c.sprint.max_launch_slot_pull_sol, c.sprint.max_single_wallet_pull_sol, c.sprint.stop_below_entry_sol, c.sprint.stop_below_peak_sol), (16.0, 11.0, 20.0, 40.0));
+        assert_eq!((c.filters.graded.max_launch_slot_pull_sol, c.filters.graded.max_single_wallet_pull_sol, c.filters.graded.max_launch_group_supply_pct), (16.0, 11.0, 40.0));
+        assert_eq!((c.learning.promotion_min_trades, c.recorder.retention_days), (20, 14));
+        // a config written before these sections existed
+        let mut v: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
+        for k in ["sprint", "recorder"] {
+            v.as_object_mut().unwrap().remove(k);
+        }
+        v["filters"].as_object_mut().unwrap().remove("graded");
+        v["filters"].as_object_mut().unwrap().remove("funder");
+        v["fees"].as_object_mut().unwrap().remove("block0TaxBps");
+        v["learning"].as_object_mut().unwrap().remove("promotionMinTrades");
+        v["learning"].as_object_mut().unwrap().remove("bootstrapResamples");
+        let old = Config::from_json(&v.to_string()).unwrap();
+        assert_eq!(old.sprint, c.sprint);
+        assert_eq!(old.filters.graded, c.filters.graded);
+        assert_eq!(old.learning.promotion_min_trades, 20);
+    }
+
+    #[test]
+    fn nonsense_sprint_and_learning_values_are_refused() {
+        let mut c = Config::from_json(CONFIG).unwrap();
+        c.sprint.real_sol_max = 80.0; // above 90% of graduation
+        assert!(c.validate().is_err());
+        let mut c = Config::from_json(CONFIG).unwrap();
+        c.sprint.min_age_slots = 130;
+        assert!(c.validate().is_err());
+        let mut c = Config::from_json(CONFIG).unwrap();
+        c.learning.promotion_min_trades = 5;
+        assert!(c.validate().is_err());
+        let mut c = Config::from_json(CONFIG).unwrap();
+        c.filters.graded.max_launch_group_supply_pct = 140.0;
+        assert!(c.validate().is_err());
+    }
+
+    #[test]
+    fn the_sprint_lane_config_swaps_percent_stops_for_reserve_stops_and_keeps_the_insider_exits() {
+        let base = Config::from_json(CONFIG).unwrap();
+        let l = base.sprint.lane_config(&base);
+        assert!(l.exits.tranches.is_empty() && l.exits.reserve_stops == Some(ReserveStops { below_entry_sol: 20.0, below_peak_sol: 40.0 }));
+        assert_eq!((l.exits.max_hold_seconds, l.exits.hard_stop_pct), (600, -100.0));
+        assert!(l.exits.exit_on_dev_sell && l.exits.sell_on_migration);
+        assert_eq!(base.exits.max_hold_seconds, 300, "the main lane keeps its 5 minutes");
+        assert!(base.exits.reserve_stops.is_none());
     }
 
     #[test]

@@ -46,6 +46,8 @@ pub struct Lane {
     pub tuned: std::sync::RwLock<Tuned>,
     live: Mutex<HashMap<i64, Position>>,
     recent: Mutex<VecDeque<PositionView>>,
+    /// position id -> (real SOL reserve at entry, highest since). Only lanes with `exits.reserveStops` use it (deep-sprint).
+    reserves: Mutex<HashMap<i64, (f64, f64)>>,
 }
 
 pub struct Trader {
@@ -97,6 +99,10 @@ impl Trader {
         let now = now_ms();
         let mut styles = vec!["momentum".to_string()];
         styles.push(cfg.entry.paper_variant.style.clone());
+        // the paper-only deep-curve sprint lane (SPEC 6c), with its own exits (SOL-reserve stops)
+        if cfg.sprint.enabled {
+            styles.push(cfg.sprint.style.clone());
+        }
         // the shadow lane only trades while a learning change is being tested (it is idle otherwise)
         styles.push(SHADOW_LANE.to_string());
         let tuned0 = Tuned::from_config(&cfg);
@@ -127,7 +133,8 @@ impl Trader {
                     }
                 }
                 r.halt = db.kv_get(&format!("halt:{s}")).filter(|h| !h.is_empty());
-                Arc::new(Lane { style: s.clone(), risk: Mutex::new(r), tuned: std::sync::RwLock::new(tuned0.clone()), live: Mutex::new(HashMap::new()), recent: Mutex::new(VecDeque::new()) })
+                let tuned = if cfg.sprint.enabled && *s == cfg.sprint.style { Tuned { cfg: cfg.sprint.lane_config(&cfg), weights: tuned0.weights } } else { tuned0.clone() };
+                Arc::new(Lane { style: s.clone(), risk: Mutex::new(r), tuned: std::sync::RwLock::new(tuned), live: Mutex::new(HashMap::new()), recent: Mutex::new(VecDeque::new()), reserves: Mutex::new(HashMap::new()) })
             })
             .collect();
         let killed = db.killed_at().is_some();
@@ -253,6 +260,11 @@ impl Trader {
     }
 
     /// Number of positions still open (bought or being sold) in every lane.
+    /// Positions a lane holds right now (open, selling or being bought).
+    pub fn lane_open(&self, style: &str) -> usize {
+        self.lane(style).map(|l| l.live.lock().unwrap().len()).unwrap_or(0)
+    }
+
     pub fn open_count(&self) -> usize {
         self.lanes.iter().map(|l| l.live.lock().unwrap().len()).sum()
     }
@@ -479,6 +491,10 @@ impl Trader {
                 pos.fill_buy(f.entry_price, f.tokens, mcap_usd, &f.fees, f.slippage_pct)?;
                 self.db.save_position(&pos);
                 self.learner.record_features(pos.id, style, &p.features);
+                if self.lane_cfg(style).exits.reserve_stops.is_some() {
+                    lane.reserves.lock().unwrap().insert(pos.id, (curve.real_sol, curve.real_sol));
+                    self.db.kv_set(&format!("entry_real:{}", pos.id), &curve.real_sol.to_string());
+                }
                 lane.live.lock().unwrap().insert(pos.id, pos.clone());
                 lane.risk.lock().unwrap().set_last_slippage(f.slippage_pct);
                 self.hub.log(format!(
@@ -576,7 +592,24 @@ impl Trader {
             let migrated = self.migrated.lock().unwrap().contains(&pos.mint);
             let real_sol = curve.map(|c| c.real_sol).unwrap_or(0.0);
             let market = Market { now_ms: now, price, real_sol, trades: &trades, feed_ok_since_ms: ok_since, migrated };
-            let action = exits::evaluate(&mut pos, &market, &self.lane_cfg(&style));
+            let lane_cfg = self.lane_cfg(&style);
+            // SOL-reserve stops (deep-sprint): the entry level comes from the fill (or SQLite after a restart), the peak is tracked here
+            let reserve = if lane_cfg.exits.reserve_stops.is_some() && real_sol > 0.0 {
+                let mut g = lane.reserves.lock().unwrap();
+                let e = g.entry(id).or_insert_with(|| {
+                    let known = self.db.kv_get(&format!("entry_real:{id}")).and_then(|v| v.parse::<f64>().ok());
+                    let entry = known.unwrap_or(real_sol);
+                    if known.is_none() {
+                        self.hub.log(format!("TRADE[{style}] {}: entry reserve not saved, using the reserve now ({real_sol:.1} SOL)", pos.symbol));
+                    }
+                    (entry, entry.max(real_sol))
+                });
+                e.1 = e.1.max(real_sol);
+                Some(exits::Reserve { entry_real_sol: e.0, peak_real_sol: e.1 })
+            } else {
+                None
+            };
+            let action = exits::evaluate_r(&mut pos, &market, &lane_cfg, reserve);
             // kill switch: sell everything that is left, whatever the exit rules say. A failed sell leaves the
             // position OPEN and this loop tries again every tick with the escalated fee (SPEC 11b #17).
             let action = if self.is_killed() && pos.tokens_remaining > 0.0 {
@@ -669,6 +702,7 @@ impl Trader {
             }
         }
         lane.live.lock().unwrap().remove(&pos.id);
+        lane.reserves.lock().unwrap().remove(&pos.id);
         self.release_feed(&pos.mint);
         self.hub.log(format!(
             "TRADE[{}] CLOSED {} reason={} pnl={:+.9} SOL ({:+.2}%) hold={}s fees={} SOL log={}",

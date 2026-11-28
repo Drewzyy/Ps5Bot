@@ -34,6 +34,7 @@ pub mod xmon;
 pub mod recorder;
 pub mod funder;
 pub mod stats;
+pub mod sprint;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};

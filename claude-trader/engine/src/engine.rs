@@ -7,6 +7,7 @@ use crate::events::*;
 use crate::hub::Hub;
 use crate::monitor::{self, Incoming, MonitorState};
 use crate::picker;
+use crate::sprint;
 use crate::pump::{solscan_token, FeedMsg, Trade};
 use crate::rpc::{now_ms, Rpc, TradeFeed};
 use crate::shield::rules::{ev, should_blacklist_creator, Outcome};
@@ -587,6 +588,10 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
         }
     }
     pulse(&ctx, AgentId::ScamShield, AgentId::TokenPicker, format!("Clean coin {} handed to Token Picker", t.symbol), &t.mint);
+    // the paper-only deep-curve sprint lane watches the same coin from its first seconds (it enters long before the 60 s window ends)
+    if ctx.cfg.sprint.enabled && ctx.trader.lane(&ctx.cfg.sprint.style).is_some() {
+        tokio::spawn(sprint_watch(ctx.clone(), t.clone(), t0, facts.clone()));
+    }
     observe_and_trade(ctx, t, t0, facts).await;
 }
 
@@ -803,6 +808,106 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
         pulse(&ctx, AgentId::TokenPicker, AgentId::Executor, format!("Pick {} (score {:.0}) handed to Executor", t.symbol, sc.score), &t.mint);
         status(&ctx.hub, AgentId::Executor, StatusColor::Amber, format!("Pick received: {}, buying on paper", t.symbol));
         let _ = ctx.trader.try_enter("momentum", &pick).await;
+    }
+    ctx.trader.release_feed(&t.mint);
+}
+
+/// The deep-curve sprint lane (SPEC 6c, paper only). Watches a coin once per second for up to 150 s and enters when `sprint::why_not`
+/// has nothing to say and Scam Shield (pre-buy checks, RugCheck or the on-chain fallback, X Monitor) agrees. One entry per coin.
+/// Every coin that reached the sprint window but was not entered gets one decision row (stage `sprint`) with the closest set of
+/// reasons, so the lane's real blockers are visible.
+async fn sprint_watch(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, facts: ChainFacts) {
+    sprint_watch_with(ctx, t, t0, facts, 1000, 150_000).await;
+}
+
+async fn sprint_watch_with(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: ChainFacts, tick_ms: u64, max_ms: i64) {
+    let sp = ctx.cfg.sprint.clone();
+    let style = sp.style.clone();
+    ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+    let launch_price = if t.v_tokens_in_bonding_curve > 0.0 { t.v_sol_in_bonding_curve / t.v_tokens_in_bonding_curve } else { 0.0 };
+    let mut closest: Option<Vec<String>> = None;
+    let mut reached_window = false;
+    let mut entered = false;
+    let mut why_stop = String::new();
+    loop {
+        tokio::time::sleep(Duration::from_millis(tick_ms)).await;
+        let now = now_ms();
+        if now - t0 >= max_ms {
+            break;
+        }
+        if ctx.mon.no_buys() || ctx.trader.is_killed() || ctx.trader.is_updating() {
+            why_stop = "feed down or trading stopped".into();
+            break;
+        }
+        let trades = ctx.trader.feed.store.snapshot(&t.mint);
+        let Some(last) = trades.iter().max_by_key(|x| (x.slot, x.recv_ms)).cloned() else { continue };
+        let create_slot = facts.create_slot;
+        let age_slots = create_slot.map(|c| last.slot.saturating_sub(c));
+        if sprint::window_over(&sp, age_slots, last.real_sol) {
+            why_stop = if last.real_sol > sp.real_sol_max { format!("curve already holds {:.1} SOL", last.real_sol) } else { "past the age window".into() };
+            break;
+        }
+        let curve = Some(crate::curve::Curve { v_sol: last.v_sol, v_tokens: last.v_tokens, real_sol: last.real_sol });
+        let (exposure, _) = ctx.shield.launch_grade(&t.trader_public_key, &trades, &facts, curve);
+        let mut all = facts.launch_trades.clone();
+        all.extend(trades.iter().cloned());
+        let inputs = sprint::Inputs {
+            age_slots,
+            real_sol: last.real_sol,
+            buyers: sprint::distinct_buyers(&all),
+            exposure: &exposure,
+            creator_sold: trades.iter().any(|x| !x.is_buy && x.user == t.trader_public_key),
+            excluded_type: trades.iter().any(|x| x.mayhem || x.non_sol_quote),
+            open_in_lane: ctx.trader.lane_open(&style),
+        };
+        let why = sprint::why_not(&sp, &inputs);
+        if last.real_sol >= sp.real_sol_min {
+            reached_window = true;
+        }
+        if !why.is_empty() {
+            if reached_window && closest.as_ref().map(|c| why.len() < c.len()).unwrap_or(true) {
+                closest = Some(why);
+            }
+            continue;
+        }
+        // every sprint rule holds: Scam Shield has the last word
+        let d = decide(ctx.shield.pre_buy(&trades, &facts).into_iter().collect());
+        if let Some(b) = &d.block {
+            closest = Some(vec![format!("Scam Shield pre-buy: {}", b.code)]);
+            break;
+        }
+        let (gate, recs) = ctx.shield.rug_gate(&t, &mut facts).await;
+        for (stage, dd) in &recs {
+            record(&ctx, &t, stage, dd);
+        }
+        let size_factor = match gate {
+            RugGate::Full => 1.0,
+            RugGate::Half => FALLBACK_SIZE_FACTOR,
+            RugGate::Block(code) => {
+                closest = Some(vec![format!("Scam Shield: RugCheck / on-chain check ({code})")]);
+                break;
+            }
+        };
+        let xe = ctx.xmon.evaluate(&t.mint, now);
+        if xe.is_blocked() {
+            closest = Some(vec![format!("X Monitor block: {}", xe.blocks.first().cloned().unwrap_or_default())]);
+            break;
+        }
+        let age_secs = (now - t0) as f64 / 1000.0;
+        let obs = picker::observe(&trades, &t.trader_public_key, t.initial_buy, launch_price, 0.0, age_secs, now);
+        let features = EntryFeatures { score: 0.0, buyers: obs.unique_buyers, buys: obs.buys, sells: obs.sells, ratio: obs.ratio, curve_sol: obs.curve_sol, age_seconds: age_secs, mcap_sol: obs.mcap_sol, picked_ms: now, source_url: ctx.source_for(&t.mint).unwrap_or_default(), x_community: Some(crate::xmon::XLog::from(&xe)) };
+        let pick = Pick { mint: t.mint.clone(), symbol: t.symbol.clone(), creator: t.trader_public_key.clone(), curve_key: t.bonding_curve_key.clone(), score: 0.0, features, size_factor };
+        let detail = format!("Sprint entry: {:.1} SOL in the curve, {} slots old, {} buyer wallets. {}", last.real_sol, age_slots.unwrap_or(0), inputs.buyers, exposure.summary());
+        ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "sprint".into(), outcome: "pass".into(), reason: String::new(), detail: detail.clone(), verdict: String::new() });
+        ctx.hub.log(format!("TRADE[{style}] {} {detail}", t.symbol));
+        pulse(&ctx, AgentId::TokenPicker, AgentId::Executor, format!("Sprint pick {} ({:.0} SOL deep) handed to Executor", t.symbol, last.real_sol), &t.mint);
+        entered = ctx.trader.try_enter(&style, &pick).await.is_ok();
+        break;
+    }
+    if !entered && reached_window {
+        let why = closest.unwrap_or_else(|| vec![if why_stop.is_empty() { "window closed".to_string() } else { why_stop }]);
+        let now = now_ms();
+        ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "sprint".into(), outcome: "block".into(), reason: "SPRINT_GATE".into(), detail: format!("Reached the sprint window but was not entered: {}", why.join("; ")), verdict: String::new() });
     }
     ctx.trader.release_feed(&t.mint);
 }
@@ -1226,6 +1331,122 @@ mod tests {
         let mut cfg = Config::from_json(include_str!("../../config.json")).unwrap();
         apply_user_overrides(&mut cfg, &db);
         assert!(!cfg.recorder.enabled && cfg.recorder.retention_days == 7);
+    }
+
+    // ---------------------------------------------------------------- deep-curve sprint lane (SPEC 6c)
+
+    /// A coin that fills fast: `n` distinct buyers, the curve going from 10 to `end_real` SOL, the newest trade `last_slot_off`
+    /// slots after the creation slot (1000). Constant product, so the numbers are a real curve.
+    fn deep_coin(ctx: &Ctx, t: &FeedMsg, n: u64, end_real: f64, last_slot_off: u64) {
+        ctx.trader.hold_feed(&t.mint, &t.bonding_curve_key);
+        let now = now_ms();
+        for i in 0..n {
+            let real = 10.0 + (end_real - 10.0) * (i + 1) as f64 / n as f64;
+            let v_sol = 30.0 + real;
+            let slot = 1000 + (last_slot_off * (i + 1)) / n;
+            ctx.trader.feed.store.add(Trade { mint: t.mint.clone(), user: format!("deepbuyer{i:03}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"), is_buy: true, sol: 1.0, tokens: 1.0e6, slot, signature: format!("deep{i}"), recv_ms: now - 20_000 + (i as i64) * 400, v_sol, v_tokens: 30.0 * 1.073e9 / v_sol, real_sol: real, ..Default::default() });
+        }
+    }
+
+    fn sprint_rows(ctx: &Ctx, mint: &str) -> Vec<(String, String, String)> {
+        decisions_of(ctx, mint, "sprint")
+    }
+
+    fn lane_positions(ctx: &Ctx, lane: &str) -> i64 {
+        ctx.db.with_conn(|c| c.query_row("SELECT COUNT(*) FROM positions WHERE lane=?", [lane], |r| r.get(0)).unwrap())
+    }
+
+    #[tokio::test]
+    async fn a_fast_filled_deep_coin_is_bought_in_the_sprint_lane_only() {
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 45.0, 70);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        facts.launch_trades = launch_buys(2, 5.0, 1000, "first"); // two small launch-slot buyers: they could pull well under 16 SOL
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 5_000).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 1, "the sprint lane bought it");
+        assert_eq!(lane_positions(&ctx, "momentum"), 0, "the main lane is untouched by the sprint lane");
+        let rows = sprint_rows(&ctx, &t.mint);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "pass");
+        assert!(rows[0].2.contains("45.0 SOL in the curve") && rows[0].2.contains("buyer wallets") && rows[0].2.contains("launch-slot wallet(s)"), "{}", rows[0].2);
+        // its own exits: SOL-reserve stops, not the main lane's percent stops
+        let lane_cfg = ctx.trader.lane_cfg("deep-sprint");
+        assert!(lane_cfg.exits.reserve_stops.is_some() && lane_cfg.exits.tranches.is_empty());
+        assert!(ctx.trader.lane_cfg("momentum").exits.reserve_stops.is_none());
+        // and its entry reserve was saved for the stops (and for a restart)
+        let id: i64 = ctx.db.with_conn(|c| c.query_row("SELECT id FROM positions WHERE lane='deep-sprint'", [], |r| r.get(0)).unwrap());
+        assert!(ctx.db.kv_get(&format!("entry_real:{id}")).is_some());
+    }
+
+    #[tokio::test]
+    async fn the_sprint_lane_does_not_enter_a_shallow_young_few_buyer_or_launch_dump_coin_and_logs_why() {
+        // too few buyers
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 20, 45.0, 70);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 400).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 0);
+        let rows = sprint_rows(&ctx, &t.mint);
+        assert_eq!(rows.len(), 1);
+        assert_eq!((rows[0].0.as_str(), rows[0].1.as_str()), ("block", "SPRINT_GATE"));
+        assert!(rows[0].2.contains("20 buyer wallets (needs 30)"), "{}", rows[0].2);
+
+        // plenty of buyers, but a launch-slot whale could pull more than 11 SOL
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 45.0, 70);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        facts.launch_trades = launch_buys(1, 300.0, 1000, "whale");
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 400).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 0);
+        let r = sprint_rows(&ctx, &t.mint);
+        assert!(r[0].2.contains("could pull") || r[0].2.contains("one launch-slot wallet"), "{}", r[0].2);
+
+        // too young: the coin got deep in under 40 slots ("every coin that got this deep in under 40 slots failed")
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 45.0, 30);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 400).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 0);
+        assert!(sprint_rows(&ctx, &t.mint)[0].2.contains("30 slots old"));
+
+        // a coin that never gets deep leaves no row at all (nothing to measure)
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 25.0, 70);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 400).await;
+        assert!(sprint_rows(&ctx, &t.mint).is_empty());
+    }
+
+    #[tokio::test]
+    async fn the_sprint_lane_respects_scam_shield_and_the_mayhem_exclusion() {
+        // a mayhem coin that only shows itself in its trade events
+        let ctx = test_ctx(good_report(), false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 45.0, 70);
+        ctx.trader.feed.store.add(Trade { mayhem: true, signature: "mm".into(), user: "other".into(), ..ctx.trader.feed.store.snapshot(&t.mint)[0].clone() });
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 400).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 0);
+        // RugCheck danger flag blocks it even though every sprint rule holds
+        let danger = serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [], "risks": [{"name": "Freeze Authority still enabled", "level": "danger"}], "fileMeta": {"image": "i"}});
+        let ctx = test_ctx(vec![Ok(Some(danger))], false);
+        let t = create();
+        deep_coin(&ctx, &t, 40, 45.0, 70);
+        let mut facts = clean_facts(&ctx, &t);
+        facts.create_slot = Some(1000);
+        sprint_watch_with(ctx.clone(), t.clone(), now_ms(), facts, 20, 600).await;
+        assert_eq!(lane_positions(&ctx, "deep-sprint"), 0, "Scam Shield has the last word");
     }
 
     #[test]

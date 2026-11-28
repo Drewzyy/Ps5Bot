@@ -48,8 +48,20 @@ fn buy_sol(trades: &[Trade], from: i64, to: i64) -> f64 {
     trades.iter().filter(|t| t.is_buy && t.recv_ms >= from && t.recv_ms < to).map(|t| t.sol).sum()
 }
 
+/// Real SOL reserve of the curve at entry and the highest seen since (for the SOL-reserve stops of the sprint lane).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Reserve {
+    pub entry_real_sol: f64,
+    pub peak_real_sol: f64,
+}
+
 /// Decide the next exit, if any. Updates the position's peak price and soft-stop timer.
 pub fn evaluate(pos: &mut Position, m: &Market, cfg: &Config) -> Option<ExitAction> {
+    evaluate_r(pos, m, cfg, None)
+}
+
+/// `evaluate` with the reserve numbers a lane that uses `exits.reserveStops` needs.
+pub fn evaluate_r(pos: &mut Position, m: &Market, cfg: &Config, reserve: Option<Reserve>) -> Option<ExitAction> {
     let ex = &cfg.exits;
     if !pos.note_price(m.price) && pos.last_price <= 0.0 {
         return None;
@@ -68,6 +80,18 @@ pub fn evaluate(pos: &mut Position, m: &Market, cfg: &Config) -> Option<ExitActi
     }
     if m.real_sol >= 0.9 * GRADUATION_REAL_SOL {
         return Some(ExitAction::all("graduation-90pct"));
+    }
+
+    // 1b. SOL-reserve stops (sprint lane): measured in SOL of real reserve, not in percent of price.
+    if let (Some(rs), Some(r)) = (&ex.reserve_stops, reserve) {
+        if m.real_sol > 0.0 {
+            if r.entry_real_sol - m.real_sol >= rs.below_entry_sol - EPS {
+                return Some(ExitAction::all("reserve-stop-entry"));
+            }
+            if r.peak_real_sol - m.real_sol >= rs.below_peak_sol - EPS {
+                return Some(ExitAction::all("reserve-stop-peak"));
+            }
+        }
     }
 
     // 2. Insiders: any dev sell, a whale sell of >= whaleSellPctOfCurve of the curve, a cabal dump, a slow rug.
@@ -169,9 +193,11 @@ pub struct Levels {
 
 pub fn levels(pos: &Position, cfg: &Config) -> Levels {
     let e = pos.entry_price;
+    // a lane with SOL-reserve stops has no percent stop lines to draw
+    let line = |pct: f64| if pct <= -99.0 { 0.0 } else { e * (1.0 + pct / 100.0) };
     Levels {
-        soft_stop: e * (1.0 + cfg.exits.soft_stop_pct / 100.0),
-        hard_stop: e * (1.0 + cfg.exits.hard_stop_pct / 100.0),
+        soft_stop: line(cfg.exits.soft_stop_pct),
+        hard_stop: line(cfg.exits.hard_stop_pct),
         take_profits: cfg.exits.tranches.iter().map(|t| e * (1.0 + t.at_pct / 100.0)).collect(),
     }
 }
@@ -185,6 +211,9 @@ pub fn next_action(pos: &Position, price: f64, now_ms: i64, cfg: &Config) -> Str
     if let Some(s) = pos.soft_since_ms {
         let wait = (ex.soft_stop_recovery_seconds as f64 - (now_ms - s) as f64 / 1000.0).max(0.0);
         return format!("Under the soft stop: sells in {wait:.0} s unless it recovers above {:+.0}%", ex.soft_stop_pct);
+    }
+    if let Some(rs) = &ex.reserve_stops {
+        return format!("Sprint: sells at 90% of graduation, or if the SOL in the curve falls {:.0} SOL under its entry level or {:.0} SOL under its peak (now {pct:+.1}%). Max hold in {left:.0} s", rs.below_entry_sol, rs.below_peak_sol);
     }
     let done = pos.tranches_done as usize;
     if done < ex.tranches.len() {
@@ -371,6 +400,50 @@ mod tests {
     fn tr_at(ms: i64, sol: f64) -> Trade {
         tr("buyer", true, ms, sol, 20.0)
     }
+
+    #[test]
+    fn reserve_stops_sell_when_the_real_reserve_falls_20_below_entry_or_40_below_the_peak() {
+        let mut c = cfg();
+        c.exits = Config::from_json(include_str!("../../config.json")).unwrap().sprint.lane_config(&c).exits;
+        let mut p = pos();
+        let tr: Vec<Trade> = vec![];
+        let at = |real: f64, secs: f64| Market { now_ms: T0 + (secs * 1000.0) as i64, price: 1.0e-7, real_sol: real, trades: &tr, feed_ok_since_ms: 0, migrated: false };
+        let r = |entry: f64, peak: f64| Some(Reserve { entry_real_sol: entry, peak_real_sol: peak });
+        // in at 45 SOL, now 30: 15 below entry, fine
+        assert!(evaluate_r(&mut p, &at(30.0, 10.0), &c, r(45.0, 45.0)).is_none());
+        // 25 SOL: 20 below entry
+        assert_eq!(evaluate_r(&mut p, &at(25.0, 11.0), &c, r(45.0, 45.0)).unwrap().reason, "reserve-stop-entry");
+        // climbed to 70 then fell to 31: 39 below the peak is fine, 29.9 is 40.1 below
+        assert!(evaluate_r(&mut p, &at(31.0, 12.0), &c, r(45.0, 70.0)).is_none());
+        assert_eq!(evaluate_r(&mut p, &at(29.9, 13.0), &c, r(45.0, 70.0)).unwrap().reason, "reserve-stop-peak");
+        // a 15 percent price drop does not sell this lane (the percent stops are off), the main lane's config would
+        let mut p2 = pos();
+        let m = Market { now_ms: T0 + 20_000, price: p2.entry_price * 0.80, real_sol: 44.0, trades: &tr, feed_ok_since_ms: 0, migrated: false };
+        assert!(evaluate_r(&mut p2, &m, &c, r(45.0, 45.0)).is_none());
+        let mut p3 = pos();
+        assert_eq!(evaluate(&mut p3, &m, &cfg()).unwrap().reason, "hard-stop");
+        // 90% of graduation still sells it: that is the exit this lane is built around
+        let mut p4 = pos();
+        let grad = Market { now_ms: T0 + 30_000, price: p4.entry_price * 2.0, real_sol: 76.6, trades: &tr, feed_ok_since_ms: 0, migrated: false };
+        assert_eq!(evaluate_r(&mut p4, &grad, &c, r(45.0, 76.6)).unwrap().reason, "graduation-90pct");
+        // without reserve numbers (restart before the entry level was known) the reserve stops simply do not run
+        let mut p5 = pos();
+        assert!(evaluate_r(&mut p5, &at(1.0, 40.0), &c, None).is_none());
+        // and the main lane config has no reserve stops at all
+        assert!(cfg().exits.reserve_stops.is_none());
+    }
+
+    #[test]
+    fn the_sprint_lane_holds_past_five_minutes_but_not_past_its_own_limit() {
+        let mut c = cfg();
+        c.exits = Config::from_json(include_str!("../../config.json")).unwrap().sprint.lane_config(&c).exits;
+        let tr: Vec<Trade> = vec![];
+        let mut p = pos();
+        let m = |secs: f64| Market { now_ms: T0 + (secs * 1000.0) as i64, price: 1.0e-7, real_sol: 50.0, trades: &tr, feed_ok_since_ms: T0, migrated: false };
+        assert!(evaluate_r(&mut p, &m(400.0), &c, Some(Reserve { entry_real_sol: 50.0, peak_real_sol: 50.0 })).is_none());
+        assert_eq!(evaluate_r(&mut p, &m(600.0), &c, Some(Reserve { entry_real_sol: 50.0, peak_real_sol: 50.0 })).unwrap().reason, "max-hold");
+    }
+
 
     #[test]
     fn momentum_death_after_90_s_with_under_half_a_buy_per_minute() {

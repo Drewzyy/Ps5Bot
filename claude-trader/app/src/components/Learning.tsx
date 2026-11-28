@@ -25,7 +25,7 @@ function Entry({ r }: { r: JournalRow }) {
         <span className="jts">{when(r.ts)}</span>
         <b className={r.pnlSol >= 0 ? "jpos" : "jneg"}>{r.headline}</b>
         <span className="jsym">{r.symbol}</span>
-        {r.lane !== "momentum" && <span className="chip lane">{r.lane === "dip-40pct" ? "Dip variant" : r.lane}</span>}
+        {r.lane !== "momentum" && <span className="chip lane">{r.lane === "dip-40pct" ? "Dip variant" : r.lane === "deep-sprint" ? "Deep sprint" : r.lane}</span>}
         <span className="jmeta">{r.exitReason.replace(/-/g, " ")}, held {Math.round(r.holdSeconds)} s</span>
       </div>
       <div className="jfeat">

@@ -207,14 +207,14 @@ impl Db {
     pub fn summary(&self, since_ms: i64) -> (u32, u32, u32, Vec<ReasonCount>) {
         let c = self.conn.lock().unwrap();
         let checked: u32 = c
-            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor')", params![since_ms], |r| r.get(0))
+            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint')", params![since_ms], |r| r.get(0))
             .unwrap_or(0);
         let blocked: u32 = c
-            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor') AND outcome='block'", params![since_ms], |r| r.get(0))
+            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint') AND outcome='block'", params![since_ms], |r| r.get(0))
             .unwrap_or(0);
         let mut by = vec![];
         if let Ok(mut st) = c.prepare(
-            "SELECT reason, COUNT(*) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor') AND outcome='block' GROUP BY reason ORDER BY COUNT(*) DESC",
+            "SELECT reason, COUNT(*) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint') AND outcome='block' GROUP BY reason ORDER BY COUNT(*) DESC",
         ) {
             if let Ok(rows) = st.query_map(params![since_ms], |r| Ok(ReasonCount { reason: r.get(0)?, count: r.get(1)? })) {
                 by = rows.flatten().collect();
