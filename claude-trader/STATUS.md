@@ -1,5 +1,45 @@
 # Claude Trader — STATUS
 
+## M3h: everything on the D: drive (one data folder, installer folder page, move tool) (paper only, no keys, live stays locked)
+
+### Installer (checked against the Tauri bundler's `installer.nsi`, dev branch, read 2026-11-28; NOT run on Windows)
+- Directory page: shown in a normal install, skipped only in passive mode (`/P`, which the updater uses). So the user can pick `D:\...` on the folder page. Default when nothing is chosen: `%LOCALAPPDATA%\Claude Trader` (the bundler's per-user default; the exact default can differ by Tauri version).
+- `bundle.windows.nsis.installMode` is now set explicitly to `currentUser` (it was already the default): no admin prompt, and installing under a folder the user owns on D: needs no admin. `perMachine` or `both` would need admin even for a per-user install, so they are not used.
+- Updates go to the SAME folder: on install the NSIS script writes the install dir to `HKCU\Software\<publisher>\Claude Trader` (`WriteRegStr SHCTX "${MANUPRODUCTKEY}" "" $INSTDIR`) and `RestorePreviousInstallLocation` reads it back at start (`/D=` on the command line wins). The updater runs the installer passively, so it lands in the chosen folder without asking. Not tested on Windows. Uninstall note: the "delete app data" tick would remove `%APPDATA%\app.claudetrader.desktop` (the default data root and the pointer) but not a data root on D:.
+
+### One data root (`engine/src/datadir.rs`)
+- `DataLayout` is the only place that knows paths: `claude-trader.db`, `paper-logs/`, `recordings/`, the encrypted key fallback (`helius.key.enc` and the connector `*.enc` files), `chrome-extension/`, `logs/`, `cache/`, `webview/`. Audit (grep for `app_data_dir`, `local_data_dir`, `paper-logs`, `recordings`, `extinstall`): fixed (1) the installed app wrote `paper-logs` to a path relative to the working directory (so wherever Windows started it), (2) the extension folder was under `%LOCALAPPDATA%\Claude Trader` (now `<root>\chrome-extension`), (3) recordings and the key file derived the root by hand from the database path (now `EngineOpts::layout()`). `logs/` and `cache/` are reserved: nothing writes files there today (the engine log is in memory).
+- Pointer file `data-location.json` (`{dataRoot, previousRoot}`) in the default app config folder; read, atomic write, missing, corrupt and unavailable-folder cases handled (an unavailable D: falls back to the default with a warning and leaves the pointer alone, so plugging the drive back in restores it).
+- The WebView2 cache is under `<root>\webview`: `tauri.conf.json` has `create: false` and `lib.rs` builds the window with `WebviewWindowBuilder::from_config(...).data_directory(...)` (supported on Windows). On the very first launch the window uses a small `webview-boot` folder in the default root until the choice is made; it is deleted at the next start once the data is elsewhere. One-time effect: the window's browser storage (accordion state, theme, "tour seen") starts empty once, because the old WebView2 folder in `%LOCALAPPDATA%\app.claudetrader.desktop` is no longer used (that old folder is left and can be deleted by hand).
+- First launch (no pointer, no database): the app asks "Where should Claude Trader keep its data?" with the default shown, Choose folder, Use the default. Nothing is created before the answer (`open_db` and `get_config` refuse while the question is open). Existing installs (database already in the default folder) are not asked.
+
+### Settings > Storage and the move
+- Shows the data folder, size, free space, what is stored where, Show folder, Move to another folder.
+- Move (`storage_move`): checks the destination first (empty, or an existing data folder, or refused when not empty; not inside the current folder; free space against the size plus 10% and 32 MB; permission errors in plain words), pauses trading through the same `update-close` path as the updater (open paper positions are sold normally; if they will not close in 2 minutes nothing is moved), stops the engine and waits for it, copies (database via `VACUUM INTO`, the window cache is not copied), verifies (same files and sizes, `PRAGMA integrity_check`, same tables and row counts), writes the pointer LAST, restarts. Any failure before the pointer removes what was copied, leaves the old folder and pointer alone and starts the engine again. Choosing a folder that already holds `claude-trader.db` (a reinstall) switches to it without copying, after its integrity check.
+- "Delete old copy" appears after the restart (the old path is kept in the pointer). It re-checks the new database first and removes only the app's own names (database, paper-logs, recordings, chrome-extension, logs, cache, webview, `*.enc`); other files are left and listed; the folder holding the pointer is never removed. "Keep it" forgets the old path.
+- Extension: after a move the folder differs from the one saved at the last start, so a bar and the Storage section show "Chrome extension moved. Reload it once from the new folder" with 4 steps (remove, Load unpacked, pair again), Show folder and "Done, I reloaded it". Existing installs see this once too, because the extension folder moved from `%LOCALAPPDATA%\Claude Trader\chrome-extension` to `<root>\chrome-extension`.
+- Tips entry "Where does the app keep its files, and can I put them on D:?" (what is stored where, how to move, and that Chrome's own downloads go where `chrome://settings/downloads` says, which the app cannot change). SPEC 4g.
+
+### What stays on C: and why
+- The pointer file (a few bytes, in `%APPDATA%\app.claudetrader.desktop`): it must be at a fixed place to find the rest.
+- Windows Credential Manager entries (Helius key, webhook secrets): OS managed, cannot be moved. The encrypted file fallback IS in the data root.
+- The app install folder unless chosen on the installer's folder page; the installer itself runs from where it was downloaded; Chrome (its profile and its downloads); the old WebView2 folder from before this version (unused).
+
+### Verification (commands actually run)
+- `cargo test --workspace`: 375 engine tests pass (was 359). Extension node tests 59 pass, `scripts/ci-scripts.test.mjs` 10 pass, `check-live-gate.sh` ok (unchanged; the only new `unsafe` is one `GetDiskFreeSpaceExW` call, not live code). New `datadir` tests (16): every path under the root, engine options use the layout, pointer read/write/missing/corrupt, resolve (default, first run, pointer, unavailable folder, corrupt pointer), destination checks, non-empty destination refused untouched, low disk space before copying, copy then verify then switch with the source untouched, failed copy removes the partial copy and keeps the pointer, unwritable pointer undoes the copy, existing-data folder switch, delete-old guards (never before a sound copy, only our names, pointer folder survives), WAL database copies whole, extension-moved detection.
+- `npm run build` ok. DEMO screenshots viewed: `docs/screenshots/storage-section.png`, `storage-move-dialog.png`, `storage-move-not-empty.png`, `storage-first-run.png`, `storage-after-move.png`.
+
+### NOT verified (needs Windows)
+- The NSIS folder page, the registry read-back on update, a real install on D:, the folder picker, `data_directory` on real WebView2, `GetDiskFreeSpaceExW` (compiled only on Linux, where `df` is used), the move on a real second drive, Explorer's Show folder, the app restart after a move (`AppHandle::restart`), and stopping and restarting the engine in place after a failed move (the engine re-binds the extension bridge port; only compiled, not run).
+- The backtester's default `--db` path (`<db folder>/recordings`) is unchanged and matches the new layout.
+
+### The user's steps to move to D:
+1. Update to this build. On the installer's "choose install location" page pick `D:\ClaudeTrader` if the app itself should be on D: too (the update button installs into the same folder afterwards).
+2. Start the app. New install: answer the first-run question with Choose folder, pick `D:\ClaudeTraderData`. Existing install: Settings > Storage > Move to another folder, pick `D:\ClaudeTraderData` (a new or empty folder), press Move and restart.
+3. After the restart check Settings > Storage shows the D: path, then press Delete old copy.
+4. Follow "Chrome extension moved": chrome://extensions, remove the old one, Load unpacked from `D:\ClaudeTraderData\chrome-extension` (Show folder opens it), pair again.
+5. Chrome downloads: chrome://settings/downloads > Location > Change to a D: folder (the app cannot do this).
+
 ## M3g — Feed correctness, evidence, learning rule, new signals and a deep-curve paper lane (paper only, no keys, live stays locked)
 
 ### Why

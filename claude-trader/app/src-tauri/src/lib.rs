@@ -7,16 +7,79 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 mod startup;
+mod storage;
+use engine::datadir::{self, DataLayout};
 use startup::KeepAwake;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 const DEFAULT_CONFIG: &str = include_str!("../../../config.json");
 
-/// Where this app keeps its database and (only if the OS vault fails) the encrypted key file.
-struct AppPaths {
-    db: String,
-    dir: std::path::PathBuf,
-    /// The stable Chrome extension folder (`%LOCALAPPDATA%\Claude Trader\chrome-extension`): the one the person loads in Chrome.
-    ext_dir: std::path::PathBuf,
+/// Where this app keeps everything: one data root (see `engine::datadir`). The only file outside it is the small
+/// pointer in `config_dir` that says where the root is.
+pub struct AppPaths {
+    pub db: String,
+    /// The data root (same as `layout.root()`).
+    pub dir: std::path::PathBuf,
+    pub layout: DataLayout,
+    /// The default data root (the app data folder).
+    pub default_root: std::path::PathBuf,
+    /// Where the pointer file lives (the default app config folder).
+    pub config_dir: std::path::PathBuf,
+    pub warning: Option<String>,
+    first: AtomicBool,
+}
+
+impl AppPaths {
+    pub fn first_run(&self) -> bool {
+        self.first.load(Ordering::SeqCst)
+    }
+    pub fn set_first_run(&self, v: bool) {
+        self.first.store(v, Ordering::SeqCst)
+    }
+}
+
+/// The running engine: a stop signal and its task, so the data folder can be moved while nothing writes.
+#[derive(Default)]
+pub struct EngineCtl {
+    stop: Mutex<Option<tokio::sync::watch::Sender<bool>>>,
+    task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+}
+
+impl EngineCtl {
+    /// Tell the engine to stop and wait (at most 30 s) until its task has ended.
+    pub async fn stop_and_wait(&self) {
+        let tx = self.stop.lock().unwrap().take();
+        if let Some(tx) = tx {
+            let _ = tx.send(true);
+        }
+        let h = self.task.lock().unwrap().take();
+        if let Some(h) = h {
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(30), h).await;
+        }
+    }
+}
+
+/// Start the engine on the current data root.
+pub fn start_engine(handle: &tauri::AppHandle) -> Result<(), String> {
+    let paths = handle.state::<AppPaths>();
+    let hub = handle.state::<Arc<Hub>>().inner().clone();
+    let cfg = Config::from_json(DEFAULT_CONFIG)?;
+    // every path (logs, recordings, key file) comes from the data root through the database path
+    let opts = EngineOpts::new(cfg, &paths.db);
+    // the Helius key saved in secure storage (the HELIUS_API_KEY / CT_RPC_URL environment values still override it)
+    let mut opts = opts.with_saved_key();
+    opts.bridge_addr = Some(format!("127.0.0.1:{}", engine::bridge::DEFAULT_PORT));
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+    let task = tauri::async_runtime::spawn(async move {
+        if let Err(e) = run_engine(opts, hub, stop_rx).await {
+            eprintln!("engine stopped: {e}");
+        }
+    });
+    let ctl = handle.state::<EngineCtl>();
+    *ctl.stop.lock().unwrap() = Some(stop_tx);
+    *ctl.task.lock().unwrap() = Some(task);
+    Ok(())
 }
 
 fn store(p: &AppPaths) -> KeyStore {
@@ -27,7 +90,8 @@ fn store(p: &AppPaths) -> KeyStore {
 #[tauri::command]
 fn get_config(paths: tauri::State<AppPaths>) -> Result<serde_json::Value, String> {
     let c = Config::from_json(DEFAULT_CONFIG)?;
-    let c = match engine::db::Db::open(&paths.db) {
+    // on the very first launch nothing may be created before the person has chosen the data folder
+    let c = match if paths.first_run() { Err("first run".to_string()) } else { engine::db::Db::open(&paths.db) } {
         Ok(db) => effective_config(&c, &Arc::new(db)),
         Err(_) => c,
     };
@@ -247,7 +311,10 @@ fn learning_command(cmd: String, hub: tauri::State<Arc<Hub>>) -> String {
 
 // ---------------------------------------------------------------- Chrome extension and startup
 
-fn open_db(paths: &AppPaths) -> Result<engine::db::Db, String> {
+pub(crate) fn open_db(paths: &AppPaths) -> Result<engine::db::Db, String> {
+    if paths.first_run() {
+        return Err("Choose where to keep the data first.".into());
+    }
     engine::db::Db::open(&paths.db)
 }
 
@@ -311,8 +378,8 @@ fn get_startup(app: tauri::AppHandle, paths: tauri::State<AppPaths>) -> Result<S
 
 /// The stable folder when it holds the extension, else the bundled one (so the button always opens something real).
 fn shown_extension_folder(app: &tauri::AppHandle, paths: &AppPaths) -> std::path::PathBuf {
-    if paths.ext_dir.join("manifest.json").is_file() {
-        paths.ext_dir.clone()
+    if paths.layout.extension().join("manifest.json").is_file() {
+        paths.layout.extension()
     } else {
         extension_folder(app)
     }
@@ -355,11 +422,6 @@ fn ext_open_pages(hub: tauri::State<Arc<Hub>>) -> String {
     hub.command("ext-open-pages")
 }
 
-/// Where the stable extension folder lives: next to the app's other local data, not in the install folder.
-fn stable_extension_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
-    app.path().local_data_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")).join("Claude Trader").join("chrome-extension")
-}
-
 // ---------------------------------------------------------------- X Monitor settings (on/off, pause, pacing)
 
 #[tauri::command]
@@ -371,6 +433,66 @@ fn get_xmon_settings(paths: tauri::State<AppPaths>) -> Result<engine::xmon::XSet
 #[tauri::command]
 fn set_xmon_settings(settings: engine::xmon::XSettings, paths: tauri::State<AppPaths>) -> Result<(), String> {
     settings.save(&open_db(&paths)?)
+}
+
+/// Everything that needs the data folder: the Chrome extension copy, startup choices and the engine.
+/// Called at start, or after the first-run question was answered with the default folder.
+pub(crate) fn boot(handle: &tauri::AppHandle) {
+    let paths = handle.state::<AppPaths>();
+    let hub = handle.state::<Arc<Hub>>().inner().clone();
+    let db_path = paths.db.clone();
+    let ext_dir = paths.layout.extension();
+    // Put the bundled extension files in the stable folder (only when the version differs), and tell the bridge what is on disk.
+    // Chrome loads the extension from there, so a reload picks up the new files without any manual copying.
+    let ext_note = match engine::extinstall::sync(&extension_folder(handle), &ext_dir) {
+        Ok(r) => {
+            if let Ok(db) = engine::db::Db::open(&db_path) {
+                // the folder differs from the one Chrome was told about: the data folder moved, so Chrome must load it again
+                let before = engine::extinstall::InstallInfo::load(&db);
+                if datadir::extension_moved(&before.folder, &ext_dir) {
+                    db.kv_set(storage::EXT_NOTICE_KEY, "1");
+                }
+                engine::extinstall::InstallInfo { app_version: handle.package_info().version.to_string(), disk_version: r.to.clone(), folder: ext_dir.to_string_lossy().to_string() }.save(&db);
+            }
+            if r.skipped { format!("extension files are current (v{})", r.to) } else { format!("extension files updated to v{} in {} ({} file(s))", r.to, ext_dir.display(), r.copied.len()) }
+        }
+        Err(e) => format!("could not write the extension folder: {e}"),
+    };
+    {
+        // "update installed": the version differs from the one at the last start (sent once the engine is up)
+        let (db3, ver) = (db_path.clone(), handle.package_info().version.to_string());
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(8)).await;
+            if let Ok(db) = engine::db::Db::open(&db3) {
+                engine::notify::on_app_start(&db, &ver, engine::rpc::now_ms());
+            }
+        });
+    }
+    hub.log(format!("startup: {ext_note}"));
+    hub.log(format!("storage: data folder is {}", paths.layout.root().display()));
+    // startup choices: keep the PC awake, and start Chrome (unless the extension is already connected, which means Chrome is open)
+    if let Ok(db) = engine::db::Db::open(&db_path) {
+        let st = engine::startup::StartupSettings::load(&db);
+        handle.state::<KeepAwake>().set(st.keep_awake);
+        if st.open_chrome {
+            let hub3 = hub.clone();
+            let db3 = db_path.clone();
+            tauri::async_runtime::spawn(async move {
+                // give an already running Chrome 4 seconds to connect its extension; if it does, Chrome is open and nothing is started
+                tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+                let up = hub3.snapshot().iter().any(|e| matches!(e, engine::EngineEvent::Extension { connected: true, .. }));
+                if !up {
+                    if let Ok(db) = engine::db::Db::open(&db3) {
+                        let msg = startup::open_browser(&engine::startup::StartupSettings::load(&db));
+                        hub3.log(format!("startup: {msg}"));
+                    }
+                }
+            });
+        }
+    }
+    if let Err(e) = start_engine(handle) {
+        hub.log(format!("engine: could not start: {e}"));
+    }
 }
 
 pub fn run() {
@@ -418,39 +540,38 @@ pub fn run() {
             ext_test,
             ext_open_pages,
             get_xmon_settings,
-            set_xmon_settings
+            set_xmon_settings,
+            storage::get_storage,
+            storage::storage_check,
+            storage::storage_show_folder,
+            storage::storage_ack_extension,
+            storage::storage_move,
+            storage::storage_first_run,
+            storage::storage_delete_old,
+            storage::storage_keep_old
         ])
         .setup(|app| {
             let handle = app.handle().clone();
-            // Live engine: Memecoin Monitor -> Scam Shield -> Token Picker -> paper trader. Paper only.
-            let dir = app.path().app_data_dir().ok().filter(|d| std::fs::create_dir_all(d).is_ok()).unwrap_or_else(|| std::path::PathBuf::from("."));
-            let db_path = dir.join("claude-trader.db").to_string_lossy().to_string();
-            let ext_dir = stable_extension_dir(&handle);
-            app.manage(AppPaths { db: db_path.clone(), dir: dir.clone(), ext_dir: ext_dir.clone() });
-            // Put the bundled extension files in the stable folder (only when the version differs), and tell the bridge what is on disk.
-            // Chrome loads the extension from there, so a reload picks up the new files without any manual copying.
-            let ext_note = match engine::extinstall::sync(&extension_folder(&handle), &ext_dir) {
-                Ok(r) => {
-                    if let Ok(db) = engine::db::Db::open(&db_path) {
-                        engine::extinstall::InstallInfo { app_version: handle.package_info().version.to_string(), disk_version: r.to.clone(), folder: ext_dir.to_string_lossy().to_string() }.save(&db);
-                    }
-                    if r.skipped { format!("extension files are current (v{})", r.to) } else { format!("extension files updated to v{} in {} ({} file(s))", r.to, ext_dir.display(), r.copied.len()) }
+            // ONE data root for everything the app writes (see engine::datadir). The default is the app data folder; the
+            // person can choose another (D:) on first run or in Settings > Storage. A tiny pointer in the default
+            // config folder says where it is.
+            let default_root = app.path().app_data_dir().ok().filter(|d| std::fs::create_dir_all(d).is_ok()).unwrap_or_else(|| std::path::PathBuf::from("."));
+            let config_dir = app.path().app_config_dir().ok().filter(|d| std::fs::create_dir_all(d).is_ok()).unwrap_or_else(|| default_root.clone());
+            let r = datadir::resolve(&default_root, &config_dir);
+            let layout = r.layout.clone();
+            let db_path = layout.db().to_string_lossy().to_string();
+            // the very first launch asks before anything is created in the data folder
+            if !r.first_run {
+                let _ = std::fs::create_dir_all(layout.root());
+                // a boot cache from an earlier first run is no longer needed
+                if !datadir::same_path(&default_root, layout.root()) {
+                    let _ = std::fs::remove_dir_all(default_root.join("webview-boot"));
                 }
-                Err(e) => format!("could not write the extension folder: {e}"),
-            };
-            app.manage(Arc::new(engine::notify::ConnSecrets::system(dir.clone())));
-            {
-                // "update installed": the version differs from the one at the last start (sent once the engine is up)
-                let (db3, ver) = (db_path.clone(), handle.package_info().version.to_string());
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(8)).await;
-                    if let Ok(db) = engine::db::Db::open(&db3) {
-                        engine::notify::on_app_start(&db, &ver, engine::rpc::now_ms());
-                    }
-                });
             }
+            app.manage(AppPaths { db: db_path, dir: layout.root().to_path_buf(), layout: layout.clone(), default_root: default_root.clone(), config_dir, warning: r.warning.clone(), first: AtomicBool::new(r.first_run) });
+            app.manage(EngineCtl::default());
+            app.manage(Arc::new(engine::notify::ConnSecrets::system(layout.secrets())));
             let hub = Hub::new();
-            hub.log(format!("startup: {ext_note}"));
             app.manage(hub.clone());
             let mut rx = hub.subscribe();
             let h2 = handle.clone();
@@ -465,37 +586,17 @@ pub fn run() {
                     }
                 }
             });
-            let cfg = Config::from_json(DEFAULT_CONFIG).expect("bundled config.json is valid");
-            let mut opts = EngineOpts::new(cfg, &db_path);
-            opts.secrets_dir = Some(dir.to_string_lossy().to_string());
-            // the Helius key saved in secure storage (the HELIUS_API_KEY / CT_RPC_URL environment values still override it)
-            let mut opts = opts.with_saved_key();
-            opts.bridge_addr = Some(format!("127.0.0.1:{}", engine::bridge::DEFAULT_PORT));
-            // startup choices: keep the PC awake, and start Chrome (unless the extension is already connected, which means Chrome is open)
-            let st = engine::startup::StartupSettings::load(&engine::db::Db::open(&db_path).expect("database opens"));
-            handle.state::<KeepAwake>().set(st.keep_awake);
-            if st.open_chrome {
-                let hub3 = hub.clone();
-                let db3 = db_path.clone();
-                tauri::async_runtime::spawn(async move {
-                    // give an already running Chrome 4 seconds to connect its extension; if it does, Chrome is open and nothing is started
-                    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-                    let up = hub3.snapshot().iter().any(|e| matches!(e, engine::EngineEvent::Extension { connected: true, .. }));
-                    if !up {
-                        if let Ok(db) = engine::db::Db::open(&db3) {
-                            let msg = startup::open_browser(&engine::startup::StartupSettings::load(&db));
-                            hub3.log(format!("startup: {msg}"));
-                        }
-                    }
-                });
+            if let Some(w) = &r.warning {
+                hub.log(format!("storage: {w}"));
             }
-            let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
-            app.manage(stop_tx); // keep the sender alive for the life of the app
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = run_engine(opts, hub, stop_rx).await {
-                    eprintln!("engine stopped: {e}");
-                }
-            });
+            // The window is made here (tauri.conf.json has create:false) so its WebView2 cache lives under the data root.
+            let wcfg = app.config().app.windows.first().cloned().ok_or("no window in tauri.conf.json")?;
+            let wdir = storage::webview_dir(&layout, &default_root, r.first_run);
+            let _ = std::fs::create_dir_all(&wdir);
+            tauri::WebviewWindowBuilder::from_config(app, &wcfg)?.data_directory(wdir).build()?;
+            if !r.first_run {
+                boot(&handle);
+            }
             Ok(())
         })
         ;

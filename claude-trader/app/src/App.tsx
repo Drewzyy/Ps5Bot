@@ -13,6 +13,7 @@ import { FeedWarningBar } from "./components/Health";
 import { Walkthrough, markWalkthroughSeen, walkthroughSeen } from "./tips/Tips";
 import { UpdaterProvider } from "./updater";
 import UpdateOverlay from "./components/UpdateUi";
+import { ExtensionMovedBar, FirstRunPrompt } from "./components/Storage";
 
 export type Page = "dashboard" | "settings";
 
@@ -61,6 +62,7 @@ export default function App() {
       <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} extension={engine.extension} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
       <KillBanner kill={engine.kill} />
       <FeedWarningBar feed={engine.feed} />
+      <ExtensionMovedBar />
       <KillUi ask={ask} close={() => setAsk(null)} killed={!!engine.kill?.killed} />
       <main className="page">
         {page === "dashboard" ? (
@@ -77,6 +79,7 @@ export default function App() {
       </main>
       {tour && page === "dashboard" && <Walkthrough config={config} onClose={closeTour} />}
       <UpdateOverlay />
+      <FirstRunPrompt />
     </UpdaterProvider>
   );
 }

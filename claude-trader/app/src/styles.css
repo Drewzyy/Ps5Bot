@@ -583,3 +583,9 @@ label.chk input { width: 16px; height: 16px; accent-color: var(--green); }
 @media (max-width: 1500px) { .ext-chip { padding: 5px 9px; font-size: 12px; gap: 5px; } }
 /* narrow windows: the clock goes first, so the bar still fits on one line */
 @media (max-width: 1400px) { .topbar .stat.clock { display: none; } }
+
+/* Settings > Storage */
+code.path { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; word-break: break-all; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.plain td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--line); }
+table.plain td.num { white-space: nowrap; text-align: right; color: var(--muted); }

@@ -14,7 +14,7 @@ The user is not technical. Every label, hint and error is plain language. The da
 - The repo already holds an unrelated PS5 bot (README.md, PS5bot-master.zip). Leave those files alone.
 - All Claude Trader code lives in `claude-trader/`.
 - `claude-trader/STATUS.md` is the handoff doc, updated at the end of every milestone.
-- `claude-trader/paper-logs/` holds paper-trade JSONL (gitignored).
+- `claude-trader/paper-logs/` holds paper-trade JSONL (gitignored) when running from source. The installed app keeps `paper-logs/` inside its data root (see 4g).
 - `claude-trader/config.json` holds the strategy config (section 6).
 
 ## 3. Missing inputs (known gaps)
@@ -116,6 +116,8 @@ User decision: read x.com with the Chrome extension and a spare logged-in X acco
 ## 4f. Raw feed recording and offline replay (added 2026-11-28)
 
 **Why.** The learning loop used to decide on 30 trades. Fills priced at an order book that is already bought out, buyer counts that include trades after the entry, and an "oracle" that was not a ceiling made fake profits in the one open replay study found (cavalheiroeth/pumpfun-sniping-lab, 0 stars, claims unverified, design sound). To judge any change we need the exact feed to replay.
+
+**4g. One data folder** (`engine/src/datadir.rs`). Every file the app writes is under one root (`DataLayout`): `claude-trader.db`, `paper-logs/`, `recordings/`, the encrypted key fallback `*.enc`, `chrome-extension/`, `logs/`, `cache/` and `webview/` (the WebView2 cache, set with `WebviewWindowBuilder::data_directory`; `tauri.conf.json` has `create: false` and the window is built in setup). The default root is the Tauri app data folder. A pointer file `data-location.json` in the app config folder holds `{dataRoot, previousRoot}`. First launch with no pointer and no database asks where to keep the data before anything is created. Moving: pause trading (open paper positions sold through the normal exit path), stop the engine, copy (database via `VACUUM INTO`), verify (file set, sizes, `PRAGMA integrity_check`, table row counts), write the pointer last, restart. A failure before the pointer removes the partial copy and changes nothing. A non-empty destination is refused; a folder that already holds `claude-trader.db` is switched to without copying. The old folder is only deleted by a separate step that first re-checks the new database, and it removes only the app's own names. Not movable by design: the pointer, Windows Credential Manager, the install folder, Chrome downloads.
 
 **Recording** (`engine/src/recorder.rs`). Every trade of a watched coin (after the store drops repeats), every launch, the creation slot of each coin that got past the chain stage, the creation-slot trades read from the chain and explicit gap records are appended to `recordings/feed-YYYY-MM-DD.jsonl.gz` (UTC day) in the app data folder next to the database. Lines are buffered and flushed every 5 s as one gzip member each (concatenated members are one valid gzip stream), so a crash loses seconds. Gap record: written when the trade socket reconnects, from the time of the last message to the reconnect. Retention (Settings > Recording, `recorder` in config.json): delete files older than `retentionDays` (14), then the oldest until under `maxMegabytes` (2000). Nothing leaves the PC.
 

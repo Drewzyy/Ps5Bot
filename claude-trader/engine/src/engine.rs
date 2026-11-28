@@ -55,7 +55,7 @@ impl EngineOpts {
             feed_url: monitor::PUMPPORTAL_WS.into(),
             relax_egress: false,
             sol_usd: None,
-            logs_dir: "paper-logs".into(),
+            logs_dir: crate::datadir::DataLayout::beside_db(db_path).paper_logs().to_string_lossy().to_string(),
             clear_halt: false,
             replay: None,
             secrets_dir: None,
@@ -64,12 +64,22 @@ impl EngineOpts {
         }
     }
 
+    /// The one data folder layout (see `datadir`): every path below comes from it.
+    pub fn layout(&self) -> crate::datadir::DataLayout {
+        crate::datadir::DataLayout::beside_db(&self.db_path)
+    }
+
     /// The folder for secrets that fall back to an encrypted file.
     pub fn secrets_path(&self) -> std::path::PathBuf {
         match &self.secrets_dir {
             Some(d) => std::path::PathBuf::from(d),
-            None => std::path::Path::new(&self.db_path).parent().filter(|p| !p.as_os_str().is_empty()).map(|p| p.to_path_buf()).unwrap_or_else(|| std::path::PathBuf::from(".")),
+            None => self.layout().secrets(),
         }
+    }
+
+    /// Where the raw feed recorder writes. None for an in-memory database.
+    pub fn recordings_dir(&self) -> Option<std::path::PathBuf> {
+        (self.db_path != ":memory:").then(|| self.layout().recordings())
     }
 
     /// Where the encrypted key file would live.
@@ -247,7 +257,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     hub.log(format!("engine: SOL price used for USD conversion: ${sol_usd:.2}"));
     let hub_log = hub.clone();
     let feed = if opts.replay.is_some() { TradeFeed::offline() } else { TradeFeed::spawn(rpc.ws_url(), Some(rpc.clone()), Arc::new(move |s| hub_log.log(s))) };
-    let rec_dir = std::path::Path::new(&opts.db_path).parent().map(|p| p.join("recordings")).filter(|_| opts.replay.is_none() && opts.db_path != ":memory:");
+    let rec_dir = opts.recordings_dir().filter(|_| opts.replay.is_none());
     let trader = Trader::new(opts.config.clone(), db.clone(), hub.clone(), feed, if opts.replay.is_some() { None } else { Some(rpc.clone()) }, sol_usd, std::path::PathBuf::from(&opts.logs_dir), opts.replay.is_some());
     if opts.clear_halt {
         trader.clear_halts();

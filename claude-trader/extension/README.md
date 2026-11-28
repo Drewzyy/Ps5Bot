@@ -14,7 +14,7 @@ What it does:
 
 Chrome does not allow apps to install extensions for you, so this is by hand. It takes about a minute.
 
-1. Get the folder. In the Claude Trader app open **Settings > Startup and browser > Install the Chrome extension** and press **Show the extension folder**. This is the STABLE folder (`%LOCALAPPDATA%\Claude Trader\chrome-extension`). Load the extension from THIS folder, never from the install directory (`Program Files`), because the app updates the files in it and the path never moves. (Without the app: download the `claude-trader-chrome-extension` artifact and unzip it.)
+1. Get the folder. In the Claude Trader app open **Settings > Startup and browser > Install the Chrome extension** and press **Show the extension folder**. This is the STABLE folder (`chrome-extension` inside the app's data folder, shown in Settings > Storage; by default `%APPDATA%\app.claudetrader.desktop\chrome-extension`). Load the extension from THIS folder, never from the install directory (`Program Files`), because the app updates the files in it and the path never moves. (Without the app: download the `claude-trader-chrome-extension` artifact and unzip it.)
 2. In Chrome type `chrome://extensions` in the address bar and press Enter.
 3. Turn on **Developer mode** (top right).
 4. Press **Load unpacked** and choose the folder that holds `manifest.json`.

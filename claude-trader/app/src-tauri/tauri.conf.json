@@ -12,6 +12,8 @@
   "app": {
     "windows": [
       {
+        "label": "main",
+        "create": false,
         "title": "Claude Trader",
         "width": 1280,
         "height": 860,
@@ -33,6 +35,11 @@
     ],
     "resources": {
       "../../extension": "extension"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   },
   "plugins": {

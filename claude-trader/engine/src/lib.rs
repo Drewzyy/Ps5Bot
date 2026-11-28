@@ -33,6 +33,7 @@ pub mod vault;
 pub mod notify;
 pub mod xmon;
 pub mod recorder;
+pub mod datadir;
 pub mod funder;
 pub mod stats;
 pub mod sprint;

@@ -17,6 +17,7 @@ import { OPEN_KEY as NAV_OPEN_KEY, SECTION_EVENT } from "../nav";
 import { ProgressBar, stageText, ACTIVE, FALLBACK_URL } from "./UpdateUi";
 import Connectors from "./Connectors";
 import { XMonitorSettings } from "./XMonitor";
+import { StorageSection } from "./Storage";
 
 function show(v: unknown): string {
   if (typeof v === "boolean") return v ? "On" : "Off";
@@ -712,6 +713,9 @@ export default function SettingsPage({ config, engine, onConfig, replay }: { con
       </Section>
       <Section id="recording" title="Recording" summary="Raw feed files for offline replay" open={isOpen("recording")} toggle={() => toggle("recording")}>
         <Recording />
+      </Section>
+      <Section id="storage" title="Storage" summary="Where the app keeps its data" open={isOpen("storage")} toggle={() => toggle("storage")}>
+        <StorageSection openPositions={engine.positions.filter((p) => p.state !== "CLOSED" && !p.replay).length} />
       </Section>
       <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
         <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>

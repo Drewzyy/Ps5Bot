@@ -182,6 +182,55 @@ export interface Api {
   extOpenPages(): Promise<string>;
   getXmonSettings(): Promise<XSettings>;
   setXmonSettings(s: XSettings): Promise<void>;
+  // ---- Storage (the one data folder)
+  storageGet(): Promise<StorageView>;
+  /** Folder picker for the data folder. */
+  pickDataFolder(): Promise<string | null>;
+  storageCheck(dest: string): Promise<MoveCheck>;
+  /** Pauses trading, copies, verifies, switches the pointer and restarts the app. */
+  storageMove(dest: string): Promise<MoveReport>;
+  /** First launch: null keeps the default folder, a path chooses another (the app restarts). */
+  storageFirstRun(dest: string | null): Promise<void>;
+  storageDeleteOld(): Promise<{ removed: string[]; kept: string[] }>;
+  storageKeepOld(): Promise<void>;
+  storageShowFolder(): Promise<void>;
+  storageAckExtension(): Promise<void>;
+}
+
+export interface StorageItem {
+  name: string;
+  path: string;
+  bytes: number;
+}
+export interface StorageView {
+  root: string;
+  defaultRoot: string;
+  isDefault: boolean;
+  firstRun: boolean;
+  warning: string | null;
+  previousRoot: string | null;
+  totalBytes: number;
+  freeBytes: number | null;
+  items: StorageItem[];
+  pointerFile: string;
+  extensionFolder: string;
+  extensionNotice: boolean;
+}
+export interface MoveCheck {
+  dest: string;
+  kind: "empty" | "existingData" | "notEmpty";
+  count?: number;
+  ok: boolean;
+  message: string;
+  needBytes: number;
+  freeBytes: number | null;
+}
+export interface MoveReport {
+  oldRoot: string;
+  newRoot: string;
+  files: number;
+  bytes: number;
+  mode: "copied" | "existing";
 }
 
 /** Raw feed recording: settings and what is on disk. */
@@ -261,6 +310,19 @@ function tauriApi(): Api {
       const r = await open({ directory: true, multiple: false, title: "Choose your Obsidian vault folder" });
       return typeof r === "string" ? r : null;
     },
+    storageGet: () => call("get_storage"),
+    pickDataFolder: async () => {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const r = await open({ directory: true, multiple: false, title: "Choose the folder for Claude Trader's data" });
+      return typeof r === "string" ? r : null;
+    },
+    storageCheck: (dest) => call("storage_check", { dest }),
+    storageMove: (dest) => call("storage_move", { dest }),
+    storageFirstRun: (dest) => call("storage_first_run", { dest }),
+    storageDeleteOld: () => call("storage_delete_old"),
+    storageKeepOld: () => call("storage_keep_old"),
+    storageShowFolder: () => call("storage_show_folder"),
+    storageAckExtension: () => call("storage_ack_extension"),
     notifyStatus: () => call("notify_status"),
     notifySave: (conn, fields) => call("notify_save", { conn, fields }),
     notifyRemove: (conn) => call("notify_remove", { conn }),
@@ -357,6 +419,29 @@ function localApi(demo: boolean): Api {
       throw new Error("DEMO: nothing was installed and the app did not restart.");
     },
     cancelUpdate: async () => {},
+    storageGet: async () => {
+      if (!demo) throw new Error("Storage is shown in the desktop app.");
+      return demoStorage();
+    },
+    pickDataFolder: async () => (demo ? "D:\\ClaudeTraderData" : null),
+    storageCheck: async (dest) => demoMoveCheck(dest),
+    storageMove: async (dest) => {
+      needApp();
+      const c = demoMoveCheck(dest);
+      if (!c.ok) throw new Error(c.message);
+      await new Promise((r) => setTimeout(r, 900));
+      throw new Error("DEMO: nothing was moved.");
+    },
+    storageFirstRun: async () => {
+      needApp();
+    },
+    storageDeleteOld: async () => {
+      needApp();
+      return { removed: ["claude-trader.db", "paper-logs", "recordings"], kept: [] };
+    },
+    storageKeepOld: async () => {},
+    storageShowFolder: async () => {},
+    storageAckExtension: async () => {},
     pickFolder: async () => (demo ? "C:\\Users\\You\\Documents\\My Vault" : null),
     notifyStatus: async () => demoConns,
     notifySave: async (conn, fields) => {
@@ -453,6 +538,43 @@ function localApi(demo: boolean): Api {
       xset = { ...s };
     },
   };
+}
+
+const demoQ = (k: string) => new URLSearchParams(window.location.search).get(k);
+const DEMO_ROOT = "C:\\Users\\You\\AppData\\Roaming\\app.claudetrader.desktop";
+
+function demoStorage(): StorageView {
+  const moved = demoQ("moved") === "1";
+  const root = moved ? "D:\\ClaudeTraderData" : DEMO_ROOT;
+  const items: StorageItem[] = [
+    { name: "Database", path: `${root}\\claude-trader.db`, bytes: 18_400_000 },
+    { name: "Paper trade logs", path: `${root}\\paper-logs`, bytes: 1_250_000 },
+    { name: "Raw feed recordings", path: `${root}\\recordings`, bytes: 410_000_000 },
+    { name: "Encrypted key file", path: `${root}\\helius.key.enc`, bytes: 0 },
+    { name: "Chrome extension", path: `${root}\\chrome-extension`, bytes: 310_000 },
+    { name: "Window cache", path: `${root}\\webview`, bytes: 42_000_000 },
+  ];
+  return {
+    root,
+    defaultRoot: DEMO_ROOT,
+    isDefault: !moved,
+    firstRun: demoQ("first") === "1",
+    warning: null,
+    previousRoot: moved ? DEMO_ROOT : null,
+    totalBytes: items.reduce((a, b) => a + b.bytes, 0),
+    freeBytes: 612_000_000_000,
+    items,
+    pointerFile: `${DEMO_ROOT}\\data-location.json`,
+    extensionFolder: `${root}\\chrome-extension`,
+    extensionNotice: moved,
+  };
+}
+
+function demoMoveCheck(dest: string): MoveCheck {
+  const base = { dest, needBytes: 520_000_000, freeBytes: 612_000_000_000 as number | null };
+  if (dest.toLowerCase().includes("photos")) return { ...base, kind: "notEmpty", count: 3, ok: false, message: `${dest} is not empty (3 items). Pick an empty folder, or make a new one such as D:\\ClaudeTraderData. To use data from an earlier install, pick the folder that holds claude-trader.db.` };
+  if (dest.toLowerCase().includes("older")) return { ...base, kind: "existingData", ok: true, message: `${dest} already holds Claude Trader data. The app will switch to it. Your current data stays where it is until you delete it.` };
+  return { ...base, kind: "empty", ok: true, message: `472.0 MB of data will be copied to ${dest}.` };
 }
 
 function wsApi(): Api {
