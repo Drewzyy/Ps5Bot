@@ -5,6 +5,7 @@ import { LearningCard } from "./Learning";
 import { SourceLink } from "./links";
 import { reasonLabel } from "../reasons";
 import { FunnelCard } from "./Health";
+import { XCommunityCard, ThesisCard } from "./XMonitor";
 
 const solscan = (mint: string) => `https://solscan.io/token/${mint}`;
 const shortMint = (m: string) => `${m.slice(0, 4)}..${m.slice(-4)}`;
@@ -134,6 +135,10 @@ export default function Widgets({ config, openSettings, engine }: { config: Conf
   return (
     <div className="grid">
       <FunnelCard engine={engine} />
+
+      <XCommunityCard engine={engine} />
+
+      <ThesisCard engine={engine} />
 
       <Watchlist rows={engine.watchlist} links={engine.links} />
 

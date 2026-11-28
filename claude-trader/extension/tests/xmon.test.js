@@ -444,7 +444,7 @@ test("runner: opens one background tab, collects the page data, returns a struct
   assert.equal(r.log.created, 1);
   const res = r.log.sent.find((m) => m.t === "xresult");
   assert.equal(res.ok, true);
-  assert.equal(res.id, 5);
+  assert.equal(res.jobId, 5);
   assert.equal(res.user.followers, 8431);
   assert.equal(res.posts.length, 5);
 });
@@ -544,7 +544,7 @@ test("runner: the cache answers a repeat job without opening a page", async () =
   await r.runner.runJob({ id: 2, kind: "profile", key: "x", url: "https://x.com/x" });
   assert.equal(r.log.navigations.length, 1, "no second page load inside 30 minutes");
   const second = r.log.sent.filter((m) => m.t === "xresult")[1];
-  assert.equal(second.id, 2);
+  assert.equal(second.jobId, 2);
   assert.equal(second.cached, true);
   assert.equal(second.state, "suspended");
 });

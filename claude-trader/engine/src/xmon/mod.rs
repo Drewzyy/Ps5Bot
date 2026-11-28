@@ -514,7 +514,7 @@ impl XMon {
         let job = {
             let mut g = self.inner.lock().unwrap();
             g.last_contact = now;
-            let Some(j) = g.jobs.iter_mut().find(|j| j.id == res.id && j.state == XJobState::Running) else {
+            let Some(j) = g.jobs.iter_mut().find(|j| j.id == res.job_id && j.state == XJobState::Running) else {
                 return Err("No such job is running.".into());
             };
             j.finished_ms = now;
@@ -1041,7 +1041,7 @@ mod tests {
     }
 
     fn profile_result(id: u64, handle: &str, rest: &str, followers: u64) -> XResult {
-        XResult { id, kind: "profile".into(), key: handle.to_lowercase(), ok: true, state: "ok".into(), user: Some(user(handle, rest, followers)), posts: vec![XTweet { id: "1".into(), text: "Moon Bear $MOONB".into(), views: 10_000, likes: 250, author: Some(user(handle, rest, followers)), ..Default::default() }], ..Default::default() }
+        XResult { job_id: id, kind: "profile".into(), key: handle.to_lowercase(), ok: true, state: "ok".into(), user: Some(user(handle, rest, followers)), posts: vec![XTweet { id: "1".into(), text: "Moon Bear $MOONB".into(), views: 10_000, likes: 250, author: Some(user(handle, rest, followers)), ..Default::default() }], ..Default::default() }
     }
 
     fn run_next(x: &XMon, now: i64) -> XJob {
@@ -1076,7 +1076,7 @@ mod tests {
         x.note_coin("M1", "MOONB", "Moon Bear", "https://x.com/moonbearsol", T0);
         x.queue_coin("M1", T0);
         let j = run_next(&x, T0 + 1000);
-        x.submit(XResult { id: j.id, ok: false, state: "timeout".into(), error: "No data arrived in time.".into(), ..Default::default() }, T0 + 30_000).unwrap();
+        x.submit(XResult { job_id: j.id, ok: false, state: "timeout".into(), error: "No data arrived in time.".into(), ..Default::default() }, T0 + 30_000).unwrap();
         assert_eq!(x.job_counts().failed, 1);
         let e = x.evaluate("M1", T0 + 31_000);
         assert_eq!(e.status, XStatus::Unknown);
@@ -1238,7 +1238,7 @@ mod tests {
         assert_eq!(j.kind, "tweet");
         let author = user("alphacalls", "99887766", 182_000);
         let tweet = XTweet { id: "1861500000000000001".into(), text: "New one to watch: $COPY5 the moon bear".into(), views: 215_000, likes: 3100, replies: 410, reposts: 640, quotes: 55, created_at_ms: T0 - 30 * MIN, author: Some(author), ..Default::default() };
-        x.submit(XResult { id: j.id, kind: "tweet".into(), key: "1861500000000000001".into(), ok: true, state: "ok".into(), tweet: Some(tweet), ..Default::default() }, T0 + 25_000).unwrap();
+        x.submit(XResult { job_id: j.id, kind: "tweet".into(), key: "1861500000000000001".into(), ok: true, state: "ok".into(), tweet: Some(tweet), ..Default::default() }, T0 + 25_000).unwrap();
         let e = x.evaluate("C5", T0 + 30_000);
         assert_eq!((e.rank, e.clones), (6, 7));
         assert_eq!(e.status, XStatus::Blocked);
@@ -1336,7 +1336,7 @@ mod tests {
         x.queue_coin("C1", T0 + 30_000);
         let j = run_next(&x, T0 + 31_000);
         let tweet = XTweet { id: "1861500000000000001".into(), text: "New one to watch:   $MOONB,\nthe bear that went to the moon".into(), views: 215_000, created_at_ms: T0 - 25 * MIN, author: Some(user("alphacalls", "99887766", 182_000)), ..Default::default() };
-        x.submit(XResult { id: j.id, ok: true, state: "ok".into(), tweet: Some(tweet), ..Default::default() }, T0 + 40_000).unwrap();
+        x.submit(XResult { job_id: j.id, ok: true, state: "ok".into(), tweet: Some(tweet), ..Default::default() }, T0 + 40_000).unwrap();
         let s = x.story(&x.coin("C1").unwrap()).unwrap();
         assert_eq!(s.text, "New one to watch: $MOONB, the bear that went to the moon");
         assert_eq!(s.author, "alphacalls");
@@ -1376,7 +1376,7 @@ mod tests {
         x.queue_coin("A", T0);
         let j = run_next(&x, T0 + 1000);
         // the extension claims the answer is for another account: it is stored under the job's own key
-        x.submit(XResult { id: j.id, kind: "profile".into(), key: "victim".into(), ok: true, state: "ok".into(), user: Some(user("moonbearsol", "111", 5)), ..Default::default() }, T0 + 2000).unwrap();
+        x.submit(XResult { job_id: j.id, kind: "profile".into(), key: "victim".into(), ok: true, state: "ok".into(), user: Some(user("moonbearsol", "111", 5)), ..Default::default() }, T0 + 2000).unwrap();
         assert!(x.result("profile:victim").is_none());
         assert!(x.result("profile:moonbearsol").is_some());
     }

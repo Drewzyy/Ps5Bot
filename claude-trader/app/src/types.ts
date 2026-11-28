@@ -57,7 +57,105 @@ export type EngineEvent =
   | { type: "skipped"; executor: string; checks: { name: string; why: string }[] }
   | { type: "extension"; ts: number; paired: boolean; connected: boolean; lastSeenMs: number }
   | ({ type: "feed-health" } & FeedHealth)
-  | ({ type: "funnel" } & Funnel);
+  | ({ type: "funnel" } & Funnel)
+  | ({ type: "x-monitor" } & XMonitorView);
+
+/** Mirrors engine/src/xmon/mod.rs XMonitorView: X Monitor and Thesis Finder. */
+export interface XMonitorView {
+  ts: number;
+  enabled: boolean;
+  paused: boolean;
+  mode: string;
+  /** working | waiting | paused | not-logged-in | off */
+  state: string;
+  statusLine: string;
+  thesisLine: string;
+  extAlive: boolean;
+  loggedIn: boolean | null;
+  pausedReason: string;
+  pausedUntilMs: number;
+  loadsLastHour: number;
+  maxPerHour: number;
+  jobs: { queued: number; running: number; done: number; failed: number; stale: number };
+  checkedHour: number;
+  rising: XRising[];
+  latest: XCheckRow[];
+  stories: XStory[];
+  narratives: XNarrative[];
+  /** True for seeded screenshot data. */
+  demo?: boolean;
+}
+
+export interface XRising {
+  handle: string;
+  name: string;
+  url: string;
+  followers: number;
+  gain: number;
+  gainPct: number;
+  minutes: number;
+  why: string;
+  symbol: string;
+}
+
+export interface XCheckRow {
+  ts: number;
+  mint: string;
+  symbol: string;
+  kind: string;
+  handle: string;
+  url: string;
+  linkLabel: string;
+  /** ready | unknown | blocked | nolink | off */
+  status: string;
+  score: number;
+  points: number;
+  reason: string;
+  flags: string[];
+  blocks: string[];
+  rank: number;
+  clones: number;
+}
+
+export interface XStory {
+  mint: string;
+  symbol: string;
+  name: string;
+  ts: number;
+  kind: string;
+  url: string;
+  handle: string;
+  author: string;
+  text: string;
+  reach: number;
+  views: number;
+  tweetAgeMin: number | null;
+  rank: number;
+  clones: number;
+  cluster: string;
+}
+
+export interface XNarrative {
+  key: string;
+  label: string;
+  kind: string;
+  url: string;
+  count: number;
+  symbols: string[];
+  firstMs: number;
+  lastMs: number;
+  text: string;
+}
+
+/** Mirrors engine/src/xmon/mod.rs XSettings (the user's X Monitor choices). */
+export interface XSettings {
+  enabled: boolean;
+  paused: boolean;
+  minGapSecs: number;
+  maxGapSecs: number;
+  maxLoadsPerHour: number;
+  cacheMinutes: number;
+}
 
 /** Mirrors engine/src/events.rs FeedHealthView: is buy/sell data reaching the Token Picker? */
 export interface FeedHealth {

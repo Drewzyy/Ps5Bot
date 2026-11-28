@@ -702,6 +702,58 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn x_monitor_jobs_and_results_travel_over_the_bridge_and_only_after_pairing() {
+        let (b, _h, db, _f, addr, _) = start().await;
+        let x = crate::xmon::XMon::new(db.clone(), Hub::new(), crate::config::XMonitor::default());
+        b.set_xmon(x.clone());
+        let now = now_ms();
+        x.note_coin("M1", "MOONB", "Moon Bear", "https://x.com/moonbearsol", now);
+        // an unsigned connection can neither take a job nor send a result
+        let mut raw = connect(addr, Some(&extension_origin())).await.unwrap();
+        say(&mut raw, json!({"t": "xnext", "id": 1})).await;
+        assert_eq!(next_t(&mut raw, "auth").await["ok"], false);
+        let (mut ws, _tok) = paired_client(addr, &db).await;
+        let settings = next_t(&mut ws, "settings").await;
+        assert_eq!(settings["xmonitor"]["enabled"], true);
+        assert_eq!(settings["xmonitor"]["pace"]["maxLoadsPerHour"], 120);
+        // the first request marks the extension as alive, then jobs can be queued and handed out
+        say(&mut ws, json!({"t": "xnext", "id": 1, "loggedIn": true})).await;
+        assert!(next_t(&mut ws, "xjob").await["job"].is_null());
+        assert_eq!(x.queue_coin("M1", now_ms()), 2);
+        say(&mut ws, json!({"t": "xnext", "id": 2, "loggedIn": true})).await;
+        let r = next_t(&mut ws, "xjob").await;
+        let job = r["job"].clone();
+        assert_eq!(job["kind"], "profile");
+        assert_eq!(job["url"], "https://x.com/moonbearsol");
+        assert_eq!(job["state"], "running");
+        // a result for a job that is not running is refused
+        say(&mut ws, json!({"t": "xresult", "jobId": 999, "ok": true, "state": "ok", "user": {"restId": "111", "screenName": "moonbearsol", "followers": 8431, "createdAtMs": 1, "unknownField": 5}})).await;
+        assert_eq!(next_t(&mut ws, "error").await["error"], "No such job is running.");
+        say(&mut ws, json!({"t": "xresult", "jobId": job["id"], "ok": true, "state": "ok", "user": {"restId": "111", "screenName": "moonbearsol", "followers": 8431, "createdAtMs": 1}})).await;
+        assert_eq!(next_t(&mut ws, "ok").await["t"], "ok");
+        assert_eq!(x.job_counts().done, 1);
+        // garbage that is not a result is answered with an error, not a crash
+        say(&mut ws, json!({"t": "xresult", "jobId": "nope", "user": 5})).await;
+        assert_eq!(next_t(&mut ws, "error").await["t"], "error");
+        // a verdict for a coin the bot knows carries the X view
+        let v = b.verdict("M1");
+        assert!(v.x.is_some());
+    }
+
+    #[test]
+    fn there_is_still_no_buy_or_sell_request_and_the_x_requests_are_listed() {
+        let src = include_str!("bridge.rs");
+        let body = &src[..src.find("#[cfg(test)]\nmod tests").unwrap()];
+        for t in ["\"xnext\"", "\"xstatus\"", "\"xresult\"", "\"verdict\"", "\"check\"", "\"cmd\""] {
+            assert!(body.contains(&format!("{t} =>")), "{t}");
+        }
+        for bad in ["\"buy\" =>", "\"sell\" =>", "\"trade\" =>", "\"order\" =>"] {
+            assert!(!body.contains(bad), "{bad}");
+        }
+        assert_eq!(ALLOWED_COMMANDS, ["kill", "resume"]);
+    }
+
+    #[tokio::test]
     async fn only_the_pinned_extension_origin_can_connect() {
         let (_b, _h, _d, _f, addr, _) = start().await;
         for bad in [Some("https://pump.fun"), Some("https://evil.example"), Some("http://127.0.0.1:1420"), Some("http://localhost"), Some("chrome-extension://abcdefghijklmnopabcdefghijklmnop"), Some("chrome-extension://jihnmdnpkeglfhoombfjhdfbmiopnljjx"), Some("null"), None] {

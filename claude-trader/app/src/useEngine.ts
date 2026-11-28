@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { source } from "./source";
-import type { FeedHealth, Funnel, LearningSnapshot, SourceLinks, KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
+import type { XMonitorView, FeedHealth, Funnel, LearningSnapshot, SourceLinks, KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
 
 export interface EngineState {
   agents: Record<string, AgentState>;
@@ -28,11 +28,13 @@ export interface EngineState {
   feed: FeedHealth | null;
   /** Where coins dropped off today. */
   funnel: Funnel | null;
+  /** X Monitor and Thesis Finder view. */
+  xmon: XMonitorView | null;
   /** True once real engine events (not the browser mock) have arrived. */
   live: boolean;
 }
 
-const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, learning: null, links: {}, skipped: null, extension: null, feed: null, funnel: null, live: false };
+const initial: EngineState = { agents: {}, activity: [], decisions: {}, pulses: [], watchlist: [], shield: null, verdicts: [], positions: [], stats: null, kill: null, learning: null, links: {}, skipped: null, extension: null, feed: null, funnel: null, xmon: null, live: false };
 const WATCH_MAX = 300;
 const FLUSH_MS = 300; // UI updates throttled to about 3 per second
 
@@ -65,6 +67,7 @@ export function useEngine(): EngineState {
           extension: prev.extension,
           feed: prev.feed,
           funnel: prev.funnel,
+          xmon: prev.xmon,
           live: prev.live,
         };
         let watch: Map<string, WatchRow> | null = null;
@@ -128,6 +131,9 @@ export function useEngine(): EngineState {
           } else if (e.type === "funnel") {
             const { type: _t, ...f } = e;
             next.funnel = f as Funnel;
+          } else if (e.type === "x-monitor") {
+            const { type: _t, ...x } = e;
+            next.xmon = x as XMonitorView;
           } else if (e.type === "shield-summary") {
             next.shield = { checked: e.checked, blocked: e.blocked, passed: e.passed, byReason: e.byReason };
           } else if (e.type === "pulse") {

@@ -1,4 +1,4 @@
-import type { ConnName, ConnStatus, NotifyEvents, BackfillResult, BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, UpdateCheck, UpdaterInfo, VaultSettings, VaultStatus, VaultTest } from "./types";
+import type { ConnName, ConnStatus, NotifyEvents, BackfillResult, BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, XSettings, UpdateCheck, UpdaterInfo, VaultSettings, VaultStatus, VaultTest } from "./types";
 import { demoEvents, demoUpdate } from "./demo";
 import defaultConfig from "../../config.json";
 
@@ -33,7 +33,7 @@ function mockSource(): DataSource {
     kind: "mock",
     subscribe(cb) {
       if (isDemo()) for (const e of demoEvents()) cb(e);
-      for (const a of AGENTS) if (!(isDemo() && a === "memecoin-monitor")) cb({ type: "status", agent: a, color: "grey", line: "Idle (demo)" });
+      for (const a of AGENTS) if (!(isDemo() && (a === "memecoin-monitor" || a === "x-monitor" || a === "thesis-finder"))) cb({ type: "status", agent: a, color: "grey", line: "Idle (demo)" });
       const routes: [typeof AGENTS[number], typeof AGENTS[number], string][] = [
         ["memecoin-monitor", "scam-shield", "New launch handed to Scam Shield"],
         ["scam-shield", "token-picker", "Clean token handed to Token Picker"],
@@ -174,6 +174,8 @@ export interface Api {
   setAutostart(on: boolean): Promise<boolean>;
   openChromeNow(): Promise<string>;
   openExtensionFolder(): Promise<void>;
+  getXmonSettings(): Promise<XSettings>;
+  setXmonSettings(s: XSettings): Promise<void>;
 }
 
 const EXT_ID = "jihnmdnpkeglfhoombfjhdfbmiopnljj";
@@ -261,6 +263,8 @@ function tauriApi(): Api {
     setAutostart: (on) => call("set_autostart", { on }),
     openChromeNow: () => call("open_chrome_now"),
     openExtensionFolder: () => call("open_extension_folder"),
+    getXmonSettings: () => call("get_xmon_settings"),
+    setXmonSettings: (settings) => call("set_xmon_settings", { settings }),
   };
 }
 
@@ -273,6 +277,7 @@ const demoConns: ConnStatus[] = (["discord", "webhook"] as ConnName[]).map((conn
 function localApi(demo: boolean): Api {
   let saved = "";
   let startup: StartupView = { ...DEFAULT_STARTUP, pages: { ...DEFAULT_STARTUP.pages } };
+  let xset: XSettings = { enabled: true, paused: false, minGapSecs: 8, maxGapSecs: 15, maxLoadsPerHour: 120, cacheMinutes: 30 };
   const needApp = () => {
     if (!demo) throw new Error("This only works in the desktop app.");
   };
@@ -401,6 +406,12 @@ function localApi(demo: boolean): Api {
       return "DEMO: Chrome is starting.";
     },
     openExtensionFolder: async () => needApp(),
+    getXmonSettings: async () => xset,
+    setXmonSettings: async (s) => {
+      needApp();
+      if (s.minGapSecs < 5 || s.maxGapSecs < s.minGapSecs || s.maxLoadsPerHour < 1 || s.maxLoadsPerHour > 200) throw new Error("Those pacing numbers are outside the safe range.");
+      xset = { ...s };
+    },
   };
 }
 

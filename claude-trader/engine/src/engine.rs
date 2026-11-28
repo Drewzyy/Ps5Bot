@@ -887,6 +887,82 @@ mod tests {
         assert!((opened_size(&ctx).expect("bought") - normal).abs() < 1e-9);
     }
 
+    /// Give the coin an X profile that the extension has "read". With `reuse`, an earlier coin used the same account.
+    fn seed_x(ctx: &Ctx, t: &FeedMsg, reuse: bool) {
+        use crate::xmon::{model::*, ExtStatus};
+        let now = now_ms();
+        ctx.xmon.set_ext_status(ExtStatus { logged_in: Some(true), ..Default::default() }, now);
+        let user = XUser { rest_id: "111".into(), screen_name: "moonbearsol".into(), name: "Moon Bear".into(), created_at_ms: now - 90 * 86_400_000, followers: 8000, following: 100, statuses: 300, ..Default::default() };
+        let res = |id: u64| XResult { job_id: id, kind: "profile".into(), key: "moonbearsol".into(), ok: true, state: "ok".into(), user: Some(user.clone()), posts: vec![XTweet { id: "1".into(), text: "Moon Bear is live".into(), views: 10_000, likes: 250, author: Some(user.clone()), ..Default::default() }], ..Default::default() };
+        if reuse {
+            ctx.xmon.note_coin("EARLIER", "OLDCOIN", "Old Coin", "https://x.com/moonbearsol", now - 3_600_000);
+        }
+        ctx.xmon.note_coin(&t.mint, &t.symbol, &t.name, "https://x.com/moonbearsol", now - 61_000);
+        assert!(ctx.xmon.queue_coin(&t.mint, now) > 0);
+        let j = ctx.xmon.next_job(now).unwrap();
+        ctx.xmon.submit(res(j.id), now).unwrap();
+        if reuse {
+            ctx.db.with_conn(|c| c.execute("UPDATE x_coins SET rest_id='111' WHERE mint='EARLIER'", []).unwrap());
+        }
+    }
+
+    fn decisions_of(ctx: &Ctx, mint: &str, stage: &str) -> Vec<(String, String, String)> {
+        ctx.db.with_conn(|c| c.prepare("SELECT outcome, reason, detail FROM decisions WHERE mint=? AND stage=?").unwrap().query_map([mint, stage], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap().flatten().collect())
+    }
+
+    #[tokio::test]
+    async fn an_x_hard_block_stops_a_coin_that_would_be_bought_and_is_recorded() {
+        let report = serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [{"owner": "w1", "pct": 2.0}], "risks": [], "fileMeta": {"image": "i"}});
+        let ctx = test_ctx(vec![Ok(Some(report))], false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        seed_x(&ctx, &t, true);
+        let facts = clean_facts(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx).is_none(), "a reused X account is a hard block");
+        let d = decisions_of(&ctx, &t.mint, "x-monitor");
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].0, "block");
+        assert_eq!(d[0].1, "X_BLOCK");
+        assert!(d[0].2.contains("blocked this coin"), "{}", d[0].2);
+        let obs = decisions_of(&ctx, &t.mint, "observation");
+        assert!(obs[0].2.contains("X Monitor block"), "{}", obs[0].2);
+        // the Scam Shield summary does not count X rows as scam blocks
+        let (_, blocked, _, by) = ctx.db.summary(0);
+        assert_eq!(blocked, 0);
+        assert!(by.iter().all(|r| r.reason != "X_BLOCK"));
+    }
+
+    #[tokio::test]
+    async fn x_unknown_changes_nothing_and_x_ready_is_saved_with_the_trade() {
+        let report = || serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [{"owner": "w1", "pct": 2.0}], "risks": [], "fileMeta": {"image": "i"}});
+        // X never connected: the coin is bought as before, and the decision says unknown
+        let ctx = test_ctx(vec![Ok(Some(report()))], false);
+        let t = create();
+        seed_busy_coin(&ctx, &t);
+        ctx.xmon.note_coin(&t.mint, &t.symbol, &t.name, "https://x.com/moonbearsol", now_ms());
+        let facts = clean_facts(&ctx, &t);
+        observe_and_trade(ctx.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx).is_some(), "unknown is not a block");
+        let d = decisions_of(&ctx, &t.mint, "x-monitor");
+        assert_eq!(d[0].0, "pass");
+        assert!(d[0].2.contains("unknown"), "{}", d[0].2);
+        // X ready: bought, and every component is saved with the position
+        let ctx2 = test_ctx(vec![Ok(Some(report()))], false);
+        seed_busy_coin(&ctx2, &t);
+        seed_x(&ctx2, &t, false);
+        let facts = clean_facts(&ctx2, &t);
+        observe_and_trade(ctx2.clone(), t.clone(), now_ms() - 61_000, facts).await;
+        assert!(opened_size(&ctx2).is_some());
+        let id = ctx2.db.with_conn(|c| c.query_row("SELECT id FROM positions ORDER BY id LIMIT 1", [], |r| r.get::<_, i64>(0)).unwrap());
+        let f = crate::learning::features_for(&ctx2.db, id).unwrap();
+        let x = f.x_community.expect("x community saved with the entry");
+        assert_eq!(x.status, "ready");
+        assert!(x.points > 0 && x.points <= 15);
+        assert!(x.components.engagement > 0.0);
+        assert_eq!(x.handle, "moonbearsol");
+    }
+
     #[tokio::test]
     async fn rugcheck_danger_flag_stops_the_watch_early_and_nothing_is_bought() {
         let danger = serde_json::json!({"rugged": false, "creator": "c", "token": {"supply": 1.0e15}, "topHolders": [], "risks": [{"name": "Copycat token", "level": "danger", "description": "x"}]});

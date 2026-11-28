@@ -535,3 +535,28 @@ label.chk input { width: 16px; height: 16px; accent-color: var(--green); }
   .topbar { gap: 8px; padding: 8px 10px; }
   .stat .v small { margin-left: 3px; font-size: 11px; }
 }
+
+/* X Monitor and Thesis Finder */
+.xh { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 0 6px; }
+.xlist { display: grid; gap: 6px; }
+.xrow { display: grid; grid-template-columns: 70px 76px 84px 120px 1fr auto; gap: 8px; align-items: center; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.xrow .xt { color: var(--muted); font-size: 12px; }
+.xrow .xs { color: var(--heading); }
+.xrow .xv { color: var(--heading); font-variant-numeric: tabular-nums; font-size: 12px; }
+.xrow .xn { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.xchip.ready { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.chip.xchip.blocked { background: var(--red-bg); border-color: var(--red-line); color: var(--red); }
+.chip.xchip.unknown, .chip.xchip.nolink, .chip.xchip.off { background: var(--surface); color: var(--muted); }
+.xnarr { border: 1px solid var(--green); border-radius: 10px; padding: 8px 10px; margin: 6px 0; font-size: 13px; background: color-mix(in srgb, var(--green) 8%, var(--card)); }
+.xstory { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.xstory .xsh { display: flex; gap: 8px; align-items: center; }
+.xstory .xsh .srclink { margin-left: auto; }
+.xstory .xtxt { margin: 4px 0; font-size: 13px; color: var(--heading); }
+.xstory .xmeta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.xdir { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 10px 0; background: var(--surface); }
+.xdir ol { margin: 6px 0 6px 18px; display: grid; gap: 4px; font-size: 13px; }
+.xgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 10px 0; }
+.xnum { display: grid; gap: 3px; font-size: 13px; color: var(--heading); }
+.xnum input { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--card); color: var(--heading); width: 100%; }
+.xnum small { color: var(--muted); }
+@media (max-width: 800px) { .xrow { grid-template-columns: 1fr 1fr; } .xrow .xn { white-space: normal; grid-column: 1 / -1; } }

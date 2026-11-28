@@ -21,6 +21,7 @@ export const SECTIONS: { key: string; title: string; blurb: string }[] = [
   { key: "fees", title: "Fees", blurb: "The costs the app expects to pay on each trade." },
   { key: "paperFill", title: "Paper fill realism", blurb: "Makes pretend trades behave like real ones, including failures." },
   { key: "risk", title: "Risk limits", blurb: "Hard limits that protect your money." },
+  { key: "xMonitor", title: "X Monitor", blurb: "How a coin's X community is scored and when it is blocked. Starting guesses from research." },
   { key: "learning", title: "Learning", blurb: "How the app reviews its own closed trades and tests changes." },
 ];
 
@@ -540,6 +541,156 @@ export const META: Record<string, Explain> = {
     "A group must win this many percentage points more or less often than the other trades before it counts as a pattern.",
     "25. The app will not accept a number below 20.",
     "Type a number of 20 or more."
+  ),
+  "xMonitor.weights.kol": e(
+    "X weight: smart followers (KOLs)",
+    "How many points (out of the weights' total) a coin earns for being followed by crypto KOLs that the spare X account follows. It is the strongest sign of a real community. This is a starting guess from research, not a tested value.",
+    "30. Needs the spare account to follow a few hundred KOLs.",
+    "Type a number of 0 or more. The seven weights are rescaled to a 0 to 100 score, so only their proportions matter."
+  ),
+  "xMonitor.weights.engagement": e(
+    "X weight: engagement quality",
+    "Likes, replies and reposts per view (or per follower). About 1 to 5 percent is healthy. Much lower means a dead audience. A huge rate on a tiny account looks fake. This is a starting guess from research, not a tested value.",
+    "20.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.weights.replies": e(
+    "X weight: reply authenticity",
+    "How many of the replies to the linked post look real. Repeated, generic, emoji-only replies and brand-new accounts count against it. This is a starting guess from research, not a tested value.",
+    "10. Only works when the coin links a post.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.weights.growth": e(
+    "X weight: organic follower growth",
+    "Whether followers grew in step with engagement. A fast jump with no engagement scores zero. The app keeps follower counts per account in its database. This is a starting guess from research, not a tested value.",
+    "10.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.weights.integrity": e(
+    "X weight: account and handle integrity",
+    "Account age, no sign of a rename, and an account that never belonged to an earlier coin. Also whether the handle matches the name or the coin. This is a starting guess from research, not a tested value.",
+    "10.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.weights.community": e(
+    "X weight: X Community presence",
+    "A real X Community with at least 100 members and recent posts. A big community with almost no posts looks fake. This is a starting guess from research, not a tested value.",
+    "10. No community scores zero, never negative.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.weights.narrative": e(
+    "X weight: narrative strength",
+    "How far the source post's author reaches and how old the account is, lowered if this coin is a late copy of the same post. This is a starting guess from research, not a tested value.",
+    "10.",
+    "Type a number of 0 or more."
+  ),
+  "xMonitor.pointsFactor": e(
+    "Points per community point",
+    "The token score gets round(community score times this) points. 0.15 means a perfect 100 adds 15.",
+    "0.15. The app refuses anything above 0.15.",
+    "Lower it to trust X less. It cannot be raised above 0.15."
+  ),
+  "xMonitor.maxPoints": e(
+    "Most points X can add",
+    "The ceiling on what X can add to the token score.",
+    "15. The app refuses anything above 15, so X alone can never buy a coin.",
+    "Lower it to trust X less."
+  ),
+  "xMonitor.blockBotReplyPct": e(
+    "Block at this share of bot replies (%)",
+    "If this share of the sampled replies looks like bots, the coin is blocked. This is a starting guess from research, not a tested value.",
+    "30 percent.",
+    "Type a percentage. Lower is stricter."
+  ),
+  "xMonitor.minReplySample": e(
+    "Smallest reply sample",
+    "Fewer replies than this are too few to judge, so they never block a coin and earn no points.",
+    "8.",
+    "Type a whole number."
+  ),
+  "xMonitor.maxCloneRank": e(
+    "Latest allowed copy rank",
+    "Many coins copy the same X post or community. Only the first few are worth anything. A coin later than this place is blocked. This is a starting guess from research, not a tested value.",
+    "5.",
+    "Type a whole number. Lower is stricter."
+  ),
+  "xMonitor.maxClones": e(
+    "Most copies allowed",
+    "If more coins than this link the same post or community, every one of them is blocked as a copy farm.",
+    "10.",
+    "Type a whole number."
+  ),
+  "xMonitor.cloneWindowHours": e(
+    "Same story window (hours)",
+    "Coins linking the same post or community within this time count as copies of each other.",
+    "24.",
+    "Type a whole number of hours."
+  ),
+  "xMonitor.bigAccountFollowers": e(
+    "Big account (followers)",
+    "A post by an account this big must mention the coin's name, ticker or address, or the coin is blocked. Borrowing a famous post is a common trick. This is a starting guess from research, not a tested value.",
+    "50,000.",
+    "Type a number of followers."
+  ),
+  "xMonitor.topTierFollowers": e(
+    "Top-tier KOL (followers)",
+    "One smart follower this big counts as full marks for the smart follower part.",
+    "200,000.",
+    "Type a number of followers."
+  ),
+  "xMonitor.trendMinCoins": e(
+    "Coins that make a narrative",
+    "Several coins launched from the same post, community or account within the window make a trending narrative in Thesis Finder.",
+    "3.",
+    "Type a whole number."
+  ),
+  "xMonitor.trendWindowMinutes": e(
+    "Narrative window (minutes)",
+    "How far back Thesis Finder looks for launches from the same story.",
+    "60.",
+    "Type a number of minutes."
+  ),
+  "xMonitor.maxAgeMinutes": e(
+    "Oldest X data used (minutes)",
+    "X data older than this is stale. It counts as unknown, never as a pass: no points and no block.",
+    "30.",
+    "Type a number of minutes."
+  ),
+  "xMonitor.jobWaitSecs": e(
+    "Drop a waiting page after (seconds)",
+    "A page the extension has not started by now is dropped as stale, because the coin has moved on.",
+    "120.",
+    "Type a number of seconds."
+  ),
+  "xMonitor.blockWhenNoXLink": e(
+    "Block coins with no X link",
+    "When on, a coin with no usable X link is blocked while X Monitor is working. When off, it just gets no X points.",
+    "Off. Many real coins only have a website or Telegram.",
+    "Switch on to be stricter."
+  ),
+  "xMonitor.pacing.minGapSecs": e(
+    "Default shortest wait (seconds)",
+    "Starting value for the shortest wait between pages. You can change the live value in this section.",
+    "8.",
+    "Use the pacing boxes above."
+  ),
+  "xMonitor.pacing.maxGapSecs": e(
+    "Default longest wait (seconds)",
+    "Starting value for the longest wait between pages.",
+    "15.",
+    "Use the pacing boxes above."
+  ),
+  "xMonitor.pacing.maxLoadsPerHour": e(
+    "Default pages per hour",
+    "Starting value for the hourly page limit.",
+    "120.",
+    "Use the pacing boxes above."
+  ),
+  "xMonitor.pacing.cacheMinutes": e(
+    "Default cache time (minutes)",
+    "Starting value for how long a page's data is kept before it is read again.",
+    "30.",
+    "Use the pacing boxes above."
   ),
   "risk.liveMinSolReserve": e(
     "Keep in wallet (SOL)",

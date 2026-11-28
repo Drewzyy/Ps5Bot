@@ -312,6 +312,19 @@ fn open_extension_folder(app: tauri::AppHandle) -> Result<(), String> {
     startup::show_folder(&extension_folder(&app))
 }
 
+// ---------------------------------------------------------------- X Monitor settings (on/off, pause, pacing)
+
+#[tauri::command]
+fn get_xmon_settings(paths: tauri::State<AppPaths>) -> Result<engine::xmon::XSettings, String> {
+    Ok(engine::xmon::XSettings::load(&open_db(&paths)?, &engine::config::XPacing::default()))
+}
+
+/// Saved in SQLite; the engine and the extension pick it up within a couple of seconds. Hard floors are checked here.
+#[tauri::command]
+fn set_xmon_settings(settings: engine::xmon::XSettings, paths: tauri::State<AppPaths>) -> Result<(), String> {
+    settings.save(&open_db(&paths)?)
+}
+
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -351,7 +364,9 @@ pub fn run() {
             set_startup,
             set_autostart,
             open_chrome_now,
-            open_extension_folder
+            open_extension_folder,
+            get_xmon_settings,
+            set_xmon_settings
         ])
         .setup(|app| {
             let handle = app.handle().clone();

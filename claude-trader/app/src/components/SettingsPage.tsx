@@ -12,6 +12,7 @@ import { TipsPage } from "../tips/Tips";
 import { useUpdater } from "../updater";
 import { ProgressBar, stageText, ACTIVE, FALLBACK_URL } from "./UpdateUi";
 import Connectors from "./Connectors";
+import { XMonitorSettings } from "./XMonitor";
 
 function show(v: unknown): string {
   if (typeof v === "boolean") return v ? "On" : "Off";
@@ -550,6 +551,14 @@ export default function SettingsPage({ config, engine, onConfig, replay }: { con
       <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
         <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>
         <StartupBrowser engine={engine} />
+      </Section>
+      <Section id="xmonitor" title="X Monitor" summary="Spare X account, pacing, pause" open={isOpen("xmonitor")} toggle={() => toggle("xmonitor")}>
+        <p className="acc-blurb">Reads X for each coin that links to it, through the Chrome extension. It is optional and it only reads.</p>
+        <XMonitorSettings engine={engine} />
+        <p className="acc-blurb"><b>Scoring weights and limits.</b> These are starting guesses from research, not measured values. The journal logs every part so they can be tuned later.</p>
+        <div className="set-list">
+          {rows.filter((r) => r.section === "xMonitor").map((r) => <SettingRow key={r.display} row={r} />)}
+        </div>
       </Section>
       <Section id="appearance" title="Appearance" summary="Light, dark or system" open={isOpen("appearance")} toggle={() => toggle("appearance")}>
         <Appearance />

@@ -246,7 +246,8 @@ pub struct XSmart {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct XResult {
-    pub id: u64,
+    /// The job this answers (not `id`: that field belongs to the bridge's own request numbering).
+    pub job_id: u64,
     pub kind: String,
     pub key: String,
     pub ok: bool,
@@ -373,7 +374,7 @@ mod tests {
     #[test]
     fn results_are_cleaned_and_unknown_fields_are_ignored() {
         let json = serde_json::json!({
-            "id": 7, "kind": "tweet", "key": "1", "ok": true, "state": "ok", "extraThing": 1,
+            "jobId": 7, "kind": "tweet", "key": "1", "ok": true, "state": "ok", "extraThing": 1,
             "tweet": { "id": "1861500000000000001", "text": "x".repeat(5000), "views": 100, "author": { "screenName": "a".repeat(100), "followers": 5 } },
             "replies": (0..200).map(|i| serde_json::json!({"id": i.to_string(), "text": "y".repeat(3000)})).collect::<Vec<_>>(),
             "smart": { "count": 99999999, "handles": (0..100).map(|i| serde_json::json!({"handle": format!("h{i}")})).collect::<Vec<_>>() }

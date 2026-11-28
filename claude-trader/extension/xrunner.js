@@ -113,12 +113,12 @@ export function createXRunner(deps) {
   async function runJob(job) {
     const t0 = now();
     if (!jobUrlOk(job)) {
-      await ask({ t: "xresult", id: job && job.id, ok: false, state: "bad_job", error: "The app sent an address that is not an x.com page this extension may open." });
+      await ask({ t: "xresult", jobId: job && job.id, ok: false, state: "bad_job", error: "The app sent an address that is not an x.com page this extension may open." });
       return;
     }
     const cached = pacer.cacheGet(`${job.kind}:${job.key}`, t0);
     if (cached) {
-      await ask({ ...cached, id: job.id, cached: true });
+      await ask({ ...cached, jobId: job.id, cached: true });
       return;
     }
     const c = newCollector(job, t0);
@@ -130,7 +130,7 @@ export function createXRunner(deps) {
       current.tabId = tabId;
     } catch (e) {
       current = null;
-      await ask({ t: "xresult", id: job.id, ok: false, state: "tab", error: "Could not open a background tab in Chrome." });
+      await ask({ t: "xresult", jobId: job.id, ok: false, state: "tab", error: "Could not open a background tab in Chrome." });
       await persist();
       return;
     }

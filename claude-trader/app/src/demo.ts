@@ -1,4 +1,4 @@
-import type { ChangeRow, EngineEvent, JournalRow, LearningSnapshot, UpdateCheck } from "./types";
+import type { ChangeRow, EngineEvent, JournalRow, LearningSnapshot, UpdateCheck, XMonitorView } from "./types";
 
 /**
  * Seeded DEMO data for screenshots (open the page with ?demo=1). None of it is real. Every screen that shows it
@@ -105,6 +105,38 @@ export function demoUpdate(): UpdateCheck {
   };
 }
 
+/** DEMO X Monitor view for screenshots. Every handle, number and post here is made up. */
+export function demoXmon(): XMonitorView {
+  const post = "https://x.com/alphacalls/status/1861500000000000001";
+  return {
+    ts: NOW, enabled: true, paused: false, mode: "ready", state: "working",
+    statusLine: "Checked 34 accounts this hour, 2 rising",
+    thesisLine: "1 narrative trending: Same post (3 coins)",
+    extAlive: true, loggedIn: true, pausedReason: "", pausedUntilMs: 0, loadsLastHour: 71, maxPerHour: 120,
+    jobs: { queued: 1, running: 1, done: 48, failed: 3, stale: 2 },
+    checkedHour: 34,
+    rising: [
+      { handle: "moonbearsol", name: "Moon Bear", url: "https://x.com/moonbearsol", followers: 8431, gain: 2100, gainPct: 33.2, minutes: 38, why: "up 33% in 38 minutes", symbol: "MOONB" },
+      { handle: "glowbear_x", name: "Glow Bear", url: "https://x.com/glowbear_x", followers: 3120, gain: 0, gainPct: 0, minutes: 0, why: "about 1,560 followers a day", symbol: "GLOWB" },
+    ],
+    latest: [
+      { ts: NOW - 40_000, mint: "DEMO1", symbol: "MOONB", kind: "profile", handle: "moonbearsol", url: "https://x.com/moonbearsol", linkLabel: "X profile", status: "ready", score: 72.4, points: 11, reason: "", flags: ["6 smart follower(s) (@cobie_fan_acc, @solana_whale_x, @degen_daily)"], blocks: [], rank: 0, clones: 0 },
+      { ts: NOW - 95_000, mint: "DEMO2", symbol: "COPY2", kind: "status", handle: "alphacalls", url: post, linkLabel: "X post", status: "blocked", score: 61.0, points: 0, reason: "Copy #6 of 7 coins linking the same post.", flags: [], blocks: ["Copy #6 of 7 coins linking the same post. Only the first 5 count."], rank: 6, clones: 7 },
+      { ts: NOW - 150_000, mint: "DEMO3", symbol: "PEPEX", kind: "profile", handle: "pepex", url: "https://x.com/pepex", linkLabel: "X profile", status: "blocked", score: 0, points: 0, reason: "This X account used to be @pepe_old (same account id). It was renamed.", flags: [], blocks: ["This X account used to be @pepe_old (same account id). It was renamed."], rank: 0, clones: 0 },
+      { ts: NOW - 210_000, mint: "DEMO4", symbol: "GLOWB", kind: "community", handle: "", url: "https://x.com/i/communities/1861700000000000007", linkLabel: "X community", status: "unknown", score: 0, points: 0, reason: "X data is not ready yet (the page is waiting its turn).", flags: [], blocks: [], rank: 1, clones: 1 },
+    ],
+    stories: [
+      { mint: "DEMO1", symbol: "MOONB", name: "Moon Bear", ts: NOW - 40_000, kind: "profile", url: "https://x.com/moonbearsol", handle: "moonbearsol", author: "moonbearsol", text: "gm bears. building in public, no promises. $MOONB", reach: 8431, views: 9800, tweetAgeMin: null, rank: 0, clones: 0, cluster: "author:moonbearsol" },
+      { mint: "DEMO5", symbol: "COPY1", name: "Moon Bear 1", ts: NOW - 300_000, kind: "status", url: post, handle: "alphacalls", author: "alphacalls", text: "New one to watch: $MOONB, the bear that went to the moon. CA below.", reach: 182000, views: 215000, tweetAgeMin: 25, rank: 1, clones: 3, cluster: "tweet:1861500000000000001" },
+      { mint: "DEMO6", symbol: "COPY2", name: "Moon Bear 2", ts: NOW - 240_000, kind: "status", url: post, handle: "alphacalls", author: "alphacalls", text: "New one to watch: $MOONB, the bear that went to the moon. CA below.", reach: 182000, views: 215000, tweetAgeMin: 29, rank: 2, clones: 3, cluster: "tweet:1861500000000000001" },
+    ],
+    narratives: [
+      { key: "tweet:1861500000000000001", label: "Same post", kind: "post", url: post, count: 3, symbols: ["COPY1", "COPY2", "COPY3"], firstMs: NOW - 300_000, lastMs: NOW - 120_000, text: "New one to watch: $MOONB, the bear that went to the moon. CA below." },
+    ],
+    demo: true,
+  };
+}
+
 export function demoEvents(): EngineEvent[] {
   const ev: EngineEvent[] = [{ type: "extension", ts: NOW, paired: false, connected: false, lastSeenMs: 0 }];
   const coins: [string, string, string, string, string][] = [
@@ -127,6 +159,9 @@ export function demoEvents(): EngineEvent[] {
     { name: "Other buyers racing you", why: "In paper your buy does not move the price for anyone else and nobody beats you to a fill." },
   ] });
   ev.push({ type: "learning", ...demoLearning });
+  ev.push({ type: "x-monitor", ...demoXmon() });
+  ev.push({ type: "status", agent: "x-monitor", color: "green", line: "Checked 34 accounts this hour, 2 rising" });
+  ev.push({ type: "status", agent: "thesis-finder", color: "green", line: "1 narrative trending: Same post (3 coins)" });
   // ?nodata=1 shows the "no buy/sell data" warning, otherwise a healthy feed. Both are DEMO numbers.
   const nodata = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("nodata") === "1";
   ev.push(nodata

@@ -86,7 +86,7 @@ export function isComplete(c, now, graceMs = 4000) {
 
 /** The structured result sent to the app. `ok` is true when we learned something about the target (even "it does not exist"). */
 export function buildResult(c, now) {
-  const base = { t: "xresult", id: c.job.id, kind: c.job.kind, key: c.job.key, source: c.source, ms: Math.max(0, now - c.startedAt), drift: c.drift };
+  const base = { t: "xresult", jobId: c.job.id, kind: c.job.kind, key: c.job.key, source: c.source, ms: Math.max(0, now - c.startedAt), drift: c.drift };
   if (c.state === "limited" || c.state === "locked" || c.state === "login") return { ...base, ok: false, state: c.state, error: stateText(c.state) };
   if (c.state === "not_found" || c.state === "suspended") return { ...base, ok: true, state: c.state, error: "" };
   const have = c.user || c.tweet || c.community || c.smart;
