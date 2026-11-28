@@ -26,6 +26,7 @@ pub mod update;
 pub mod exec;
 pub mod learning;
 pub mod startup;
+pub mod extinstall;
 pub mod bridge;
 pub mod health;
 pub mod vault;

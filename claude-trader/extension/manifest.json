@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Claude Trader",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Side panel, coin checks, tab help and an optional read-only X Monitor for the Claude Trader desktop app. Paper trading only.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4IhOj4ylH2D6YH6x39x0VRNDvQ0uFL7e1991CtjJrEpGGU7Yy9V3gv46jtNyvcHKlt1gWkyAsFazIB11gYvObmwcylVfzi4XdBSVZ0qNZ+zPpzK2wMXpBQeS3L6/qZKxx91TOEw0Sr6K8CLX3jwHOsPIs6Em9rngr0D476aTmU7pfgscV9HZn8WYkQV8tWjhBAA+/g81aPh+Vs5ac3H83vGu31zxKWXNrCXela+YzZDb0YtMSudcfa7R/UmoBfyTJ9U4G86H1tm75UUItMo2tvkGTnypoJa9QCZxXZpmSRfM7njF9gfOfpJ3rxxwvqxSQHvqGICzIWi8sRi5lzZAzQIDAQAB",
   "minimum_chrome_version": "116",

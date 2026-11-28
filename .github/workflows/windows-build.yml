@@ -74,7 +74,8 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-        run: npx tauri build
+        # NSIS only: the in-app updater uses the NSIS setup.exe, and skipping the MSI avoids a WiX download that can fail.
+        run: npx tauri build --bundles nsis
       - uses: actions/upload-artifact@v4
         with:
           name: claude-trader-windows
@@ -95,8 +96,19 @@ jobs:
           rm -rf "$RUNNER_TEMP/ext/claude-trader-chrome-extension/tests" "$RUNNER_TEMP/ext/claude-trader-chrome-extension/README.md"
           (cd "$RUNNER_TEMP/ext" && 7z a -tzip "$RUNNER_TEMP/claude-trader-chrome-extension.zip" claude-trader-chrome-extension > /dev/null)
           ls -l "$RUNNER_TEMP/claude-trader-chrome-extension.zip"
+      - name: Check the signature before the release is created
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', env.RELEASE_BRANCH) && steps.key.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.1.${{ github.run_number }}"
+          SETUP=$(ls ../target/release/bundle/nsis/*-setup.exe | head -n 1)
+          test -f "$SETUP.sig" || { echo "::error::missing $SETUP.sig (createUpdaterArtifacts did not run)"; exit 1; }
+          # the .sig must be made by the private half of the public key in tauri.conf.json, for exactly this file
+          node ../scripts/updater-verify.mjs local --file "$SETUP" --sig "$SETUP.sig" --version "$VERSION"
       - name: Create the GitHub release (signed update)
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', env.RELEASE_BRANCH) && steps.key.outputs.present == 'true'
+        id: release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,15 +117,31 @@ jobs:
           VERSION="0.1.${{ github.run_number }}"
           TAG="v$VERSION"
           SETUP=$(ls ../target/release/bundle/nsis/*-setup.exe | head -n 1)
-          test -f "$SETUP.sig" || { echo "::error::missing $SETUP.sig (createUpdaterArtifacts did not run)"; exit 1; }
           OUT="$RUNNER_TEMP/release" && rm -rf "$OUT" && mkdir -p "$OUT"
+          # a name without spaces, so the download address needs no encoding
           ASSET="Claude-Trader_${VERSION}_x64-setup.exe"
           cp "$SETUP" "$OUT/$ASSET"
           cp "$SETUP.sig" "$OUT/$ASSET.sig"
           cp "$RUNNER_TEMP/claude-trader-chrome-extension.zip" "$OUT/claude-trader-chrome-extension.zip"
           git log -1 --format=%B > "$OUT/notes.txt"
           node ../scripts/make-latest-json.mjs --version "$VERSION" --sig-file "$OUT/$ASSET.sig" --notes-file "$OUT/notes.txt" \
-            --url "https://github.com/${{ github.repository }}/releases/download/$TAG/$ASSET" > "$OUT/latest.json"
+            --repo "${{ github.repository }}" --tag "$TAG" --asset "$ASSET" > "$OUT/latest.json"
           cat "$OUT/latest.json"
           gh release create "$TAG" "$OUT/$ASSET" "$OUT/$ASSET.sig" "$OUT/latest.json" "$OUT/claude-trader-chrome-extension.zip" \
             --target "${{ github.sha }}" --title "Claude Trader $VERSION" --notes-file "$OUT/notes.txt" --latest
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+      - name: Check what the app will download (latest.json, signature, url)
+        if: steps.release.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          VERSION="0.1.${{ github.run_number }}"
+          if ! node ../scripts/updater-verify.mjs remote --repo "${{ github.repository }}" --tag "${{ steps.release.outputs.tag }}" --version "$VERSION" --asset "${{ steps.release.outputs.asset }}"; then
+            # a broken release must not stay "latest": the apps would offer an update that cannot install
+            gh release delete "${{ steps.release.outputs.tag }}" --cleanup-tag --yes || true
+            echo "::error title=Release removed::The release failed the updater check, so it was deleted. The previous release is the latest again."
+            exit 1
+          fi

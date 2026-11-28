@@ -33,12 +33,15 @@ pub struct Hub {
     hist: Mutex<History>,
     logger: Mutex<Option<Arc<dyn Fn(&str) + Send + Sync>>>,
     commands: Mutex<Option<Arc<dyn Fn(&str) -> String + Send + Sync>>>,
+    /// Commands that start with "ext-" (test the Chrome link, open the needed pages). Kept apart because one of them waits
+    /// for the extension, and the main command handler must never be held up (the kill switch goes through it).
+    ext_commands: Mutex<Option<Arc<dyn Fn(&str) -> String + Send + Sync>>>,
 }
 
 impl Hub {
     pub fn new() -> Arc<Hub> {
         let (tx, _) = broadcast::channel(4096);
-        Arc::new(Hub { tx, hist: Mutex::new(History::default()), logger: Mutex::new(None), commands: Mutex::new(None) })
+        Arc::new(Hub { tx, hist: Mutex::new(History::default()), logger: Mutex::new(None), commands: Mutex::new(None), ext_commands: Mutex::new(None) })
     }
 
     pub fn set_logger(&self, f: Arc<dyn Fn(&str) + Send + Sync>) {
@@ -50,7 +53,18 @@ impl Hub {
         *self.commands.lock().unwrap() = Some(f);
     }
 
+    pub fn set_ext_handler(&self, f: Arc<dyn Fn(&str) -> String + Send + Sync>) {
+        *self.ext_commands.lock().unwrap() = Some(f);
+    }
+
     pub fn command(&self, cmd: &str) -> String {
+        if cmd.starts_with("ext-") {
+            let h = self.ext_commands.lock().unwrap().clone(); // the lock is not held while the command runs
+            return match h {
+                Some(f) => f(cmd),
+                None => "The Chrome link is off in this run.".into(),
+            };
+        }
         match self.commands.lock().unwrap().as_ref() {
             Some(f) => f(cmd),
             None => "engine not ready".into(),

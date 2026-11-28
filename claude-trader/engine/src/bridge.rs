@@ -13,7 +13,8 @@
 //!    carry reading jobs and reading results; none of them can trade, and none of them can make the extension write to X.
 
 use crate::db::Db;
-use crate::events::EngineEvent;
+use crate::events::{EngineEvent, PageStatus};
+use crate::extinstall::{relation, InstallInfo, Relation};
 use crate::hub::Hub;
 use crate::rpc::now_ms;
 use crate::shield::{decide, Shield};
@@ -23,7 +24,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicI64, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::net::TcpListener;
@@ -39,6 +40,49 @@ const BOOK_MAX: usize = 8000;
 
 pub fn extension_origin() -> String {
     format!("chrome-extension://{EXTENSION_ID}")
+}
+
+/// How long the app waits for the extension to answer "Test connection".
+const TEST_TIMEOUT: Duration = Duration::from_secs(5);
+/// "Extension updated to vX" stays visible this long.
+const UPDATED_NOTICE_MS: i64 = 30 * 60 * 1000;
+
+/// What the app knows about the extension that is (or was) connected. Version and checklist are display data;
+/// the only thing the app ever sends back because of them is `reload` (and `openpages`), neither of which can trade.
+#[derive(Default)]
+struct ExtState {
+    version: String,
+    heartbeat_ms: i64,
+    /// We already asked this version to reload (version, when). One reload per version: if it comes back the same, the files it
+    /// loads from are not the stable folder, and the person has to load it from there once.
+    reload_sent: Option<(String, i64)>,
+    manual: bool,
+    updated_to: String,
+    updated_at: i64,
+    pages: Vec<PageStatus>,
+    pages_ts: i64,
+}
+
+/// What to do about a connected extension's version. Pure, so it is tested without a socket.
+#[derive(Debug, PartialEq, Eq)]
+pub enum VersionStep {
+    /// Nothing to do (same version).
+    Fine,
+    /// Send `reload` (only ever to an OLDER version, once per version).
+    Reload,
+    /// Do not send anything: it is loaded from another folder and has to be loaded from the stable one once.
+    Manual,
+}
+
+pub fn version_step(ext: &str, disk: &str, reload_sent_for: Option<&str>) -> VersionStep {
+    if disk.is_empty() {
+        return VersionStep::Fine; // the app has not put files on disk (a test run): never ask for a reload
+    }
+    match relation(ext, disk) {
+        Relation::Same => VersionStep::Fine,
+        Relation::Older if reload_sent_for != Some(ext) => VersionStep::Reload,
+        Relation::Older | Relation::OtherFolder => VersionStep::Manual,
+    }
 }
 
 /// The only control messages the extension may send on to the engine.
@@ -348,11 +392,16 @@ pub struct Bridge {
     last_seen: AtomicI64,
     last_check: Mutex<HashMap<String, i64>>,
     xmon: std::sync::OnceLock<Arc<crate::xmon::XMon>>,
+    ext: Mutex<ExtState>,
+    /// App to extension messages (reload, test ping, open pages): every connected extension gets a copy.
+    ctl: broadcast::Sender<String>,
+    tests: Mutex<HashMap<u64, std::sync::mpsc::Sender<String>>>,
+    test_seq: AtomicU64,
 }
 
 impl Bridge {
     pub fn new(hub: Arc<Hub>, db: Arc<Db>, checker: Arc<dyn Checker>) -> Arc<Bridge> {
-        Arc::new(Bridge { hub, db, book: Mutex::new(MintBook::default()), checker, origins: vec![extension_origin()], guard: Guard::default(), clients: AtomicU32::new(0), last_seen: AtomicI64::new(0), last_check: Mutex::new(HashMap::new()), xmon: std::sync::OnceLock::new() })
+        Arc::new(Bridge { hub, db, book: Mutex::new(MintBook::default()), checker, origins: vec![extension_origin()], guard: Guard::default(), clients: AtomicU32::new(0), last_seen: AtomicI64::new(0), last_check: Mutex::new(HashMap::new()), xmon: std::sync::OnceLock::new(), ext: Mutex::new(ExtState::default()), ctl: broadcast::channel(16).0, tests: Mutex::new(HashMap::new()), test_seq: AtomicU64::new(1) })
     }
 
     #[cfg(test)]
@@ -380,6 +429,112 @@ impl Bridge {
         v
     }
 
+    /// The link status the app shows (top bar chip, Settings): connection, versions, last heartbeat, checklist.
+    pub fn extension_event(&self) -> EngineEvent {
+        let now = now_ms();
+        let ii = InstallInfo::load(&self.db);
+        let st = self.ext.lock().unwrap();
+        let link = if st.manual {
+            "manual"
+        } else if st.reload_sent.as_ref().map(|(v, _)| *v == st.version).unwrap_or(false) {
+            "reloading"
+        } else {
+            "ok"
+        };
+        EngineEvent::Extension {
+            ts: now,
+            paired: is_paired(&self.db),
+            connected: self.connected(),
+            last_seen_ms: self.last_seen.load(Ordering::Relaxed),
+            version: st.version.clone(),
+            disk_version: ii.disk_version,
+            app_version: ii.app_version,
+            heartbeat_ms: st.heartbeat_ms,
+            link: link.into(),
+            updated_to: if now - st.updated_at < UPDATED_NOTICE_MS { st.updated_to.clone() } else { String::new() },
+            updated_at: st.updated_at,
+            pages: st.pages.clone(),
+            pages_ts: st.pages_ts,
+        }
+    }
+
+    /// The extension told us its version: decide whether it needs a reload. Returns true when `reload` should be sent now.
+    fn on_info(&self, version: &str) -> bool {
+        let now = now_ms();
+        let ii = InstallInfo::load(&self.db);
+        let version: String = version.chars().filter(|c| c.is_ascii_digit() || *c == '.').take(24).collect();
+        // remember versions across app restarts, so "updated to" is also shown when the app was restarted in between
+        let prev = self.db.kv_get("ext.lastver");
+        if let Some(p) = &prev {
+            if crate::extinstall::is_older(p, &version) {
+                let mut st = self.ext.lock().unwrap();
+                st.updated_to = version.clone();
+                st.updated_at = now;
+            }
+        }
+        self.db.kv_set("ext.lastver", &version);
+        let mut st = self.ext.lock().unwrap();
+        st.version = version.clone();
+        st.heartbeat_ms = now;
+        let sent_for = st.reload_sent.as_ref().map(|(v, _)| v.clone());
+        match version_step(&version, &ii.disk_version, sent_for.as_deref()) {
+            VersionStep::Fine => {
+                // it was asked to reload and came back with another version: the update worked
+                if st.reload_sent.as_ref().map(|(old, _)| *old != version).unwrap_or(false) {
+                    st.updated_to = version.clone();
+                    st.updated_at = now;
+                }
+                st.reload_sent = None;
+                st.manual = false;
+                false
+            }
+            VersionStep::Reload => {
+                st.reload_sent = Some((version, now));
+                st.manual = false;
+                true
+            }
+            VersionStep::Manual => {
+                st.manual = true;
+                false
+            }
+        }
+    }
+
+    /// "Test connection": a ping that goes to the extension and back. Blocks up to 5 seconds (call it from a blocking thread).
+    pub fn test_connection(&self) -> String {
+        if !self.connected() {
+            return json!({"ok": false, "error": "The extension is not connected."}).to_string();
+        }
+        let n = self.test_seq.fetch_add(1, Ordering::Relaxed);
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.tests.lock().unwrap().insert(n, tx);
+        let t0 = std::time::Instant::now();
+        let _ = self.ctl.send(json!({"t": "testping", "n": n}).to_string());
+        let r = rx.recv_timeout(TEST_TIMEOUT);
+        self.tests.lock().unwrap().remove(&n);
+        match r {
+            Ok(v) => json!({"ok": true, "latencyMs": t0.elapsed().as_millis() as u64, "extVersion": v}).to_string(),
+            Err(_) => json!({"ok": false, "error": "The extension did not answer in 5 seconds. Open Chrome, or reload the extension, and try again."}).to_string(),
+        }
+    }
+
+    /// Ask the extension to open the pages the bot needs and report back. Returns a short sentence.
+    pub fn open_missing_pages(&self) -> String {
+        if !self.connected() {
+            return "The extension is not connected, so it cannot open pages.".into();
+        }
+        let _ = self.ctl.send(json!({"t": "openpages"}).to_string());
+        "Asked the extension to open the missing pages.".into()
+    }
+
+    fn ext_command(&self, cmd: &str) -> String {
+        match cmd {
+            "ext-test" => self.test_connection(),
+            "ext-open-pages" => self.open_missing_pages(),
+            _ => format!("unknown command {cmd}"),
+        }
+    }
+
     /// Keep the coin book up to date from the hub and publish the link status once a second.
     fn spawn_background(self: &Arc<Self>) {
         let me = self.clone();
@@ -401,7 +556,7 @@ impl Bridge {
             let mut t = tokio::time::interval(Duration::from_secs(1));
             loop {
                 t.tick().await;
-                me.hub.emit(EngineEvent::Extension { ts: now_ms(), paired: is_paired(&me.db), connected: me.connected(), last_seen_ms: me.last_seen.load(Ordering::Relaxed) });
+                me.hub.emit(me.extension_event());
             }
         });
     }
@@ -427,6 +582,8 @@ impl Bridge {
         let l = TcpListener::bind(addr).await.map_err(|e| format!("bridge bind {addr}: {e}"))?;
         let local = l.local_addr().map_err(|e| e.to_string())?;
         self.spawn_background();
+        let me = self.clone();
+        self.hub.set_ext_handler(Arc::new(move |c| me.ext_command(c)));
         tokio::spawn(async move {
             loop {
                 let Ok((sock, _)) = l.accept().await else { continue };
@@ -501,6 +658,7 @@ impl Bridge {
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
         let mut rx = self.hub.subscribe();
+        let mut ctl_rx = self.ctl.subscribe();
         let settings_text = || {
             let mut v = json!({"t": "settings", "startup": crate::startup::StartupSettings::load(&self.db)});
             if let Some(x) = self.xmon.get() {
@@ -509,7 +667,8 @@ impl Bridge {
             v.to_string()
         };
         let mut last_settings = settings_text();
-        if ws.send(Message::Text(json!({"t": "hello", "v": 1}).to_string())).await.is_err() || ws.send(Message::Text(last_settings.clone())).await.is_err() {
+        let ii = InstallInfo::load(&self.db);
+        if ws.send(Message::Text(json!({"t": "hello", "v": 1, "app": ii.app_version, "disk": ii.disk_version}).to_string())).await.is_err() || ws.send(Message::Text(last_settings.clone())).await.is_err() {
             return;
         }
         for e in self.hub.snapshot() {
@@ -530,6 +689,11 @@ impl Bridge {
                     Err(_) => return,
                 },
                 Some(m) = orx.recv() => { if ws.send(Message::Text(m)).await.is_err() { return; } }
+                c = ctl_rx.recv() => match c {
+                    Ok(m) => if ws.send(Message::Text(m)).await.is_err() { return; },
+                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(_) => return,
+                },
                 _ = tick.tick() => {
                     self.last_seen.store(now_ms(), Ordering::Relaxed);
                     let s = settings_text();
@@ -546,6 +710,7 @@ impl Bridge {
                     None | Some(Err(_)) | Some(Ok(Message::Close(_))) => return,
                     Some(Ok(Message::Text(t))) => {
                         self.last_seen.store(now_ms(), Ordering::Relaxed);
+                        self.ext.lock().unwrap().heartbeat_ms = now_ms();
                         let v: Value = serde_json::from_str(&t).unwrap_or(Value::Null);
                         self.request(v, otx.clone());
                     }
@@ -565,6 +730,29 @@ impl Bridge {
         };
         match v["t"].as_str().unwrap_or("") {
             "pong" => {}
+            // the extension says which version it is; the answer carries what the app has on disk
+            "info" => {
+                let reload = self.on_info(v["version"].as_str().unwrap_or(""));
+                let ii = InstallInfo::load(&self.db);
+                if reload {
+                    self.hub.log("extension: older than the files on disk, asking it to reload".to_string());
+                    let _ = self.ctl.send(json!({"t": "reload"}).to_string());
+                }
+                reply(json!({"t": "info", "appVersion": ii.app_version, "diskVersion": ii.disk_version, "reload": reload}));
+            }
+            "testpong" => {
+                if let Some(tx) = v["n"].as_u64().and_then(|n| self.tests.lock().unwrap().get(&n).cloned()) {
+                    let _ = tx.send(v["version"].as_str().unwrap_or("").chars().take(24).collect());
+                }
+            }
+            // the checklist of pages the bot needs (display data only)
+            "pages" => {
+                let items: Vec<PageStatus> = v["items"].as_array().map(|a| a.iter().take(12).filter_map(|i| serde_json::from_value::<PageStatus>(i.clone()).ok()).filter_map(|p| p.clean()).collect()).unwrap_or_default();
+                let mut st = self.ext.lock().unwrap();
+                st.pages = items;
+                st.pages_ts = now_ms();
+                reply(json!({"t": "ok"}));
+            }
             "verdict" => {
                 let mint = v["mint"].as_str().unwrap_or("");
                 if !valid_mint(mint) {
@@ -983,5 +1171,151 @@ mod tests {
         assert!(db.latest_decision(MINT).map(|d| d.1 == "manual-check").unwrap_or(false));
         assert_eq!(db.position_count(), 0);
         assert!(!db.mint_has_position(MINT));
+    }
+
+    // ---------------------------------------------------------------- extension updates, test ping, page checklist
+
+    fn set_disk(db: &Db, disk: &str) {
+        InstallInfo { app_version: "0.1.50".into(), disk_version: disk.into(), folder: "C:\\x".into() }.save(db);
+    }
+
+    /// Everything the extension is sent in the next `ms` milliseconds.
+    async fn quiet(ws: &mut Ws, ms: u64) -> Vec<Value> {
+        let mut out = vec![];
+        while let Ok(Some(Ok(Message::Text(s)))) = tokio::time::timeout(Duration::from_millis(ms), ws.next()).await {
+            out.push(serde_json::from_str::<Value>(&s).unwrap());
+        }
+        out
+    }
+
+    #[test]
+    fn reload_is_only_for_older_versions_and_only_once_per_version() {
+        assert_eq!(version_step("0.1.4", "0.1.5", None), VersionStep::Reload);
+        assert_eq!(version_step("0.1.9", "0.1.10", None), VersionStep::Reload, "numbers, not text");
+        assert_eq!(version_step("0.1.5", "0.1.5", None), VersionStep::Fine);
+        assert_eq!(version_step("0.1.5", "0.1.5", Some("0.1.4")), VersionStep::Fine);
+        // asked once and it came back as the same old version: it loads from another folder
+        assert_eq!(version_step("0.1.4", "0.1.5", Some("0.1.4")), VersionStep::Manual);
+        // newer than the files, or not a version: never a reload, the person loads the stable folder once
+        assert_eq!(version_step("0.2.0", "0.1.5", None), VersionStep::Manual);
+        assert_eq!(version_step("", "0.1.5", None), VersionStep::Manual);
+        // the app has put nothing on disk (tests, engine-cli): never ask
+        assert_eq!(version_step("0.0.1", "", None), VersionStep::Fine);
+    }
+
+    #[tokio::test]
+    async fn an_older_extension_is_asked_to_reload_once_and_the_new_version_is_announced() {
+        let (b, _h, db, _f, addr, _) = start().await;
+        set_disk(&db, "0.1.50");
+        let (mut ws, _tok) = paired_client(addr, &db).await;
+        next_t(&mut ws, "hello").await;
+        say(&mut ws, json!({"t": "info", "version": "0.1.49", "id": 1})).await;
+        let r = next_t(&mut ws, "info").await;
+        assert_eq!(r["reload"], true);
+        assert_eq!(r["diskVersion"], "0.1.50");
+        assert_eq!(r["appVersion"], "0.1.50");
+        next_t(&mut ws, "reload").await;
+        let EngineEvent::Extension { link, version, disk_version, .. } = b.extension_event() else { panic!() };
+        assert_eq!((link.as_str(), version.as_str(), disk_version.as_str()), ("reloading", "0.1.49", "0.1.50"));
+        // the extension reloads and signs in again with the new version
+        drop(ws);
+        let (mut ws2, _) = {
+            let mut w = connect(addr, Some(&extension_origin())).await.unwrap();
+            let tok = db.kv_get("ext.token").is_some();
+            assert!(tok);
+            // pair again with a fresh code (the test has no stored token text)
+            let code = new_pair_code(&db).unwrap();
+            say(&mut w, json!({"t": "pair", "code": code})).await;
+            let p = next_t(&mut w, "paired").await;
+            (w, p)
+        };
+        say(&mut ws2, json!({"t": "info", "version": "0.1.50", "id": 2})).await;
+        assert_eq!(next_t(&mut ws2, "info").await["reload"], false);
+        assert!(!quiet(&mut ws2, 300).await.iter().any(|m| m["t"] == "reload"));
+        let EngineEvent::Extension { link, updated_to, .. } = b.extension_event() else { panic!() };
+        assert_eq!(link, "ok");
+        assert_eq!(updated_to, "0.1.50", "the app can show: Extension updated to v0.1.50");
+    }
+
+    #[tokio::test]
+    async fn newer_equal_and_unknown_versions_never_get_a_reload() {
+        let (b, _h, db, _f, addr, _) = start().await;
+        set_disk(&db, "0.1.50");
+        for (ver, link) in [("0.1.50", "ok"), ("0.2.0", "manual"), ("0.1.51", "manual")] {
+            let (mut ws, _t) = paired_client(addr, &db).await;
+            say(&mut ws, json!({"t": "info", "version": ver, "id": 1})).await;
+            assert_eq!(next_t(&mut ws, "info").await["reload"], false, "{ver}");
+            let all = quiet(&mut ws, 300).await;
+            assert!(!all.iter().any(|m| m["t"] == "reload"), "{ver}");
+            let EngineEvent::Extension { link: l, .. } = b.extension_event() else { panic!() };
+            assert_eq!(l, link, "{ver}");
+        }
+        // no files on disk (engine-cli, tests): nothing is ever asked
+        set_disk(&db, "");
+        let (mut ws, _t) = paired_client(addr, &db).await;
+        say(&mut ws, json!({"t": "info", "version": "0.0.1", "id": 1})).await;
+        assert_eq!(next_t(&mut ws, "info").await["reload"], false);
+    }
+
+    #[tokio::test]
+    async fn an_old_extension_that_reloads_into_the_same_old_files_is_marked_for_a_manual_reload() {
+        let (b, _h, db, _f, addr, _) = start().await;
+        set_disk(&db, "0.1.50");
+        let (mut ws, _t) = paired_client(addr, &db).await;
+        say(&mut ws, json!({"t": "info", "version": "0.1.49", "id": 1})).await;
+        next_t(&mut ws, "reload").await;
+        // it comes back (new connection) still 0.1.49
+        let (mut ws2, _t) = paired_client(addr, &db).await;
+        say(&mut ws2, json!({"t": "info", "version": "0.1.49", "id": 2})).await;
+        assert_eq!(next_t(&mut ws2, "info").await["reload"], false, "only one reload per version");
+        let EngineEvent::Extension { link, .. } = b.extension_event() else { panic!() };
+        assert_eq!(link, "manual");
+    }
+
+    #[tokio::test]
+    async fn the_test_ping_goes_through_the_extension_and_reports_a_latency() {
+        let (_b, h, db, _f, addr, _) = start().await;
+        // nobody connected
+        let h2 = h.clone();
+        let none = tokio::task::spawn_blocking(move || h2.command("ext-test")).await.unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&none).unwrap()["ok"], false);
+        let (mut ws, _t) = paired_client(addr, &db).await;
+        next_t(&mut ws, "hello").await;
+        let h2 = h.clone();
+        let job = tokio::task::spawn_blocking(move || h2.command("ext-test"));
+        let ping = next_t(&mut ws, "testping").await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        say(&mut ws, json!({"t": "testpong", "n": ping["n"], "version": "0.1.50"})).await;
+        let r: Value = serde_json::from_str(&job.await.unwrap()).unwrap();
+        assert_eq!(r["ok"], true);
+        assert_eq!(r["extVersion"], "0.1.50");
+        assert!(r["latencyMs"].as_u64().unwrap() >= 20);
+        // a silent extension times out with a plain sentence (checked on the pure path: no 5 s wait in the test)
+        assert!(TEST_TIMEOUT.as_secs() == 5);
+    }
+
+    #[tokio::test]
+    async fn the_page_checklist_is_kept_clean_and_open_pages_reaches_the_extension() {
+        let (b, h, db, _f, addr, _) = start().await;
+        let (mut ws, _t) = paired_client(addr, &db).await;
+        next_t(&mut ws, "hello").await;
+        say(&mut ws, json!({"t": "pages", "id": 7, "items": [
+            {"id": "pump-home", "label": "pump.fun home", "state": "open", "url": "https://pump.fun/"},
+            {"id": "x", "label": "x.com", "state": "loggedout", "url": "javascript:alert(1)"},
+            {"id": "bad id!", "label": "x", "state": "open", "url": ""},
+            {"id": "dex-1", "label": "chart", "state": "weird", "url": ""},
+        ]})).await;
+        assert_eq!(next_t(&mut ws, "ok").await["id"], 7);
+        let EngineEvent::Extension { pages, pages_ts, .. } = b.extension_event() else { panic!() };
+        assert_eq!(pages.len(), 2, "unknown ids and states are dropped");
+        assert_eq!(pages[0].url, "https://pump.fun/");
+        assert_eq!(pages[1].url, "", "only https links are kept");
+        assert!(pages_ts > 0);
+        let h2 = h.clone();
+        assert!(tokio::task::spawn_blocking(move || h2.command("ext-open-pages")).await.unwrap().contains("Asked"));
+        next_t(&mut ws, "openpages").await;
+        // an unknown ext- command does nothing
+        let h2 = h.clone();
+        assert!(tokio::task::spawn_blocking(move || h2.command("ext-buy")).await.unwrap().contains("unknown"));
     }
 }

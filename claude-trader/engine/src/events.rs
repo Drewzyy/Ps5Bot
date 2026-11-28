@@ -123,9 +123,64 @@ pub enum EngineEvent {
     Funnel(FunnelView),
     /// Chrome extension link: is one paired, is one connected right now. Never carries the pairing code or token.
     #[serde(rename_all = "camelCase")]
-    Extension { ts: i64, paired: bool, connected: bool, last_seen_ms: i64 },
+    Extension {
+        ts: i64,
+        paired: bool,
+        connected: bool,
+        last_seen_ms: i64,
+        /// Version the extension reported (last known, also while it is offline). Empty before the first report.
+        #[serde(default)]
+        version: String,
+        /// Version of the extension files in the stable folder (what a reload gives).
+        #[serde(default)]
+        disk_version: String,
+        /// This app's own version.
+        #[serde(default)]
+        app_version: String,
+        /// Last time the extension said anything (ms). 0 = never since the app started.
+        #[serde(default)]
+        heartbeat_ms: i64,
+        /// "ok", "reloading" (the app asked it to reload), or "manual" (it must be loaded from the stable folder once).
+        #[serde(default)]
+        link: String,
+        /// Set for a while after the extension came back with a newer version.
+        #[serde(default)]
+        updated_to: String,
+        #[serde(default)]
+        updated_at: i64,
+        /// The pages the bot needs, as the extension last saw them.
+        #[serde(default)]
+        pages: Vec<PageStatus>,
+        #[serde(default)]
+        pages_ts: i64,
+    },
     /// X Monitor and Thesis Finder: status, rising accounts, latest checks, stories and narratives. Sent about every 2 s.
     XMonitor(Box<crate::xmon::XMonitorView>),
+}
+
+/// One line of the "pages the bot needs" checklist, reported by the extension. Display data only.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PageStatus {
+    pub id: String,
+    pub label: String,
+    /// "open", "missing", "loggedout" or "off" (the person switched that page off).
+    pub state: String,
+    pub url: String,
+}
+
+impl PageStatus {
+    /// Keep only plain, short, known values (the extension is trusted to paint a list, not to inject anything).
+    pub fn clean(&self) -> Option<PageStatus> {
+        let ok_id = !self.id.is_empty() && self.id.len() <= 40 && self.id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+        let ok_state = matches!(self.state.as_str(), "open" | "missing" | "loggedout" | "off");
+        if !ok_id || !ok_state {
+            return None;
+        }
+        let cut = |s: &str, n: usize| s.chars().filter(|c| !c.is_control()).take(n).collect::<String>();
+        let url = if self.url.starts_with("https://") { cut(&self.url, 200) } else { String::new() };
+        Some(PageStatus { id: self.id.clone(), label: cut(&self.label, 60), state: self.state.clone(), url })
+    }
 }
 
 /// Health of the buy/sell data (the trade feed). Plain numbers for the Memecoin Monitor node and Settings > Connections.
