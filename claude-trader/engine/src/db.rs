@@ -207,14 +207,14 @@ impl Db {
     pub fn summary(&self, since_ms: i64) -> (u32, u32, u32, Vec<ReasonCount>) {
         let c = self.conn.lock().unwrap();
         let checked: u32 = c
-            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint')", params![since_ms], |r| r.get(0))
+            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint','funder')", params![since_ms], |r| r.get(0))
             .unwrap_or(0);
         let blocked: u32 = c
-            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint') AND outcome='block'", params![since_ms], |r| r.get(0))
+            .query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint','funder') AND outcome='block'", params![since_ms], |r| r.get(0))
             .unwrap_or(0);
         let mut by = vec![];
         if let Ok(mut st) = c.prepare(
-            "SELECT reason, COUNT(*) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint') AND outcome='block' GROUP BY reason ORDER BY COUNT(*) DESC",
+            "SELECT reason, COUNT(*) FROM decisions WHERE ts>=? AND stage NOT IN ('observation','x-monitor','sprint','funder') AND outcome='block' GROUP BY reason ORDER BY COUNT(*) DESC",
         ) {
             if let Ok(rows) = st.query_map(params![since_ms], |r| Ok(ReasonCount { reason: r.get(0)?, count: r.get(1)? })) {
                 by = rows.flatten().collect();
@@ -373,6 +373,12 @@ impl Db {
             n("SELECT COUNT(*) FROM scores WHERE ts>=? AND ts<? AND picked=1"),
             n("SELECT COUNT(*) FROM positions WHERE entry_ms>=? AND entry_ms<? AND kind='trade'"),
         )
+    }
+
+    /// Coins with a decision of this reason code between two times (the Days note counts MAYHEM_MODE and NON_SOL_QUOTE skips).
+    pub fn reason_count(&self, from_ms: i64, to_ms: i64, reason: &str) -> u32 {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND ts<? AND reason=?", params![from_ms, to_ms, reason], |r| r.get::<_, i64>(0)).unwrap_or(0).max(0) as u32
     }
 
     pub fn token_name(&self, mint: &str) -> Option<(String, String, String, i64)> {

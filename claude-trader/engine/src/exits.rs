@@ -3,7 +3,7 @@
 //!
 //! Percent moves are measured on the executable price: the average price the remaining tokens would fetch on the
 //! curve right now (price impact included, fees excluded) against our average buy price. P/L itself is always
-//! booked net of every fee. Ideas for the fade exits come from the DoradoDevs smart_exit.py named in the SPEC.
+//! booked net of every fee. The fade exits are an idea from a single-commit repo that is now on the SPEC's do-not-use list; nothing of its code is used.
 
 use crate::config::Config;
 use crate::curve::GRADUATION_REAL_SOL;

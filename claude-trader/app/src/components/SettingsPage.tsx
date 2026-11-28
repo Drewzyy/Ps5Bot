@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "../source";
+import type { RecorderStatus } from "../source";
 import { readThemePref, saveThemePref } from "../theme";
 import type { ThemePref } from "../theme";
 import type { BuildInfo, Config, ConnTest, KeyStatus, StartupView, UpdateCheck } from "../types";
@@ -249,6 +250,74 @@ function Connections({ engine }: { engine: EngineState }) {
         </div>
         <FeedHealthLine feed={engine.feed} />
       </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ Recording
+
+function mb(bytes: number): string {
+  return bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+function Recording() {
+  const [st, setSt] = useState<RecorderStatus | null>(null);
+  const [days, setDays] = useState("14");
+  const [size, setSize] = useState("2000");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const err = (e: unknown) => String(e instanceof Error ? e.message : e);
+  const load = () =>
+    api.recorderStatus().then((s) => {
+      setSt(s);
+      setDays(String(s.retentionDays ?? 14));
+      setSize(String(s.maxMegabytes ?? 2000));
+    }).catch((e) => setMsg({ ok: false, text: err(e) }));
+  useEffect(() => {
+    load();
+  }, []);
+  const save = async (patch: { enabled?: boolean; retentionDays?: number; maxMegabytes?: number }) => {
+    try {
+      const r = await api.setRecorder(patch);
+      if (r !== "saved" && r !== "sent") throw new Error(r);
+      setMsg({ ok: true, text: "Saved." });
+      await load();
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    }
+  };
+  if (!st) return <div className="acc-pad">{msg ? <div className="result bad">{msg.text}</div> : "Loading."}</div>;
+  return (
+    <div className="acc-pad">
+      <p className="hint">The app keeps every coin and trade it sees in small compressed files. Later, the backtest command replays a strategy on them, so a change can be judged on real data instead of waiting weeks.</p>
+      <Toggle id="rec-on" label="Record the live feed" checked={st.enabled} onChange={(v) => save({ enabled: v })}>
+        <p><b>What it does.</b> Writes one compressed file per day with every launch and every trade of the coins the app watches. Nothing leaves your PC.</p>
+        <p><b>A good value.</b> On. The files are small.</p>
+        <p><b>How to set it.</b> Tick or untick. It applies at once.</p>
+      </Toggle>
+      <div className="field">
+        <div className="lblrow">
+          <label htmlFor="rec-days">Keep files for (days)</label>
+          <Info label="Keep files for (days)">
+            <p><b>What it does.</b> Files older than this are deleted.</p>
+            <p><b>A good value.</b> 14. Two weeks is enough to judge a change.</p>
+            <p><b>How to set it.</b> Type a whole number from 1 to 365.</p>
+          </Info>
+        </div>
+        <input id="rec-days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} onBlur={() => save({ retentionDays: Number(days) })} />
+      </div>
+      <div className="field">
+        <div className="lblrow">
+          <label htmlFor="rec-mb">Size limit (MB)</label>
+          <Info label="Size limit (MB)">
+            <p><b>What it does.</b> If the folder grows past this, the oldest files are deleted first.</p>
+            <p><b>A good value.</b> 2000.</p>
+            <p><b>How to set it.</b> Type a whole number from 50 to 50,000.</p>
+          </Info>
+        </div>
+        <input id="rec-mb" inputMode="numeric" value={size} onChange={(e) => setSize(e.target.value)} onBlur={() => save({ maxMegabytes: Number(size) })} />
+      </div>
+      <p className="hint">{st.off ? "Recording is off in this run." : `${st.files} file(s), ${mb(st.bytes)}${st.newest ? `, newest ${st.newest}` : ""}.`}</p>
+      {msg && <div className={`result ${msg.ok ? "ok" : "bad"}`}>{msg.text}</div>}
     </div>
   );
 }
@@ -547,6 +616,9 @@ export default function SettingsPage({ config, engine, onConfig, replay }: { con
       <Section id="connectors" title="Connectors" summary="Obsidian, Discord, webhook" open={isOpen("connectors")} toggle={() => toggle("connectors")}>
         <p className="acc-blurb">Optional links to other apps. They only copy facts the app has really recorded. Nothing here can place a trade.</p>
         <Connectors />
+      </Section>
+      <Section id="recording" title="Recording" summary="Raw feed files for offline replay" open={isOpen("recording")} toggle={() => toggle("recording")}>
+        <Recording />
       </Section>
       <Section id="startup" title="Startup and browser" summary="Chrome, extension, Windows start" open={isOpen("startup")} toggle={() => toggle("startup")}>
         <p className="acc-blurb">How the app starts and how it works with Chrome. The Chrome extension adds a side panel and a coin check to the pages you browse. It is optional.</p>

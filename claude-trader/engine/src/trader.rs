@@ -445,6 +445,11 @@ impl Trader {
                 return Err("NON_SOL_QUOTE".into());
             }
         }
+        // a completed curve (the last buy, possibly a synthetic migration, filled it) fails every trade until it migrates
+        if self.migrated.lock().unwrap().contains(&p.mint) {
+            self.block(style, p, "CURVE_COMPLETE", "The bonding curve is complete or the coin migrated: trades on it fail until the pool exists.");
+            return Err("CURVE_COMPLETE".into());
+        }
         let Some(curve) = self.current_curve(&p.mint) else {
             self.block(style, p, "NO_CURVE_DATA", "No curve data for this coin yet.");
             return Err("no curve data".into());

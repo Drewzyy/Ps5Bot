@@ -418,6 +418,12 @@ pub fn cli(args: &[String], default_cfg: &std::path::Path) -> Result<String, Str
         }
         reports.push(run(&rec, &o));
     }
+    // with a database given, the results also go to the Obsidian vault as Lessons notes (no-op when it is not connected)
+    if let Some(dbp) = arg("--db") {
+        if let Ok(db) = crate::db::Db::open(&dbp) {
+            crate::vault::on_backtest(&db, crate::rpc::now_ms(), &reports);
+        }
+    }
     if args.iter().any(|a| a == "--json") {
         return serde_json::to_string_pretty(&reports).map_err(|e| e.to_string());
     }

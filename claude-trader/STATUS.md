@@ -1,5 +1,48 @@
 # Claude Trader — STATUS
 
+## M3g — Feed correctness, evidence, learning rule, new signals and a deep-curve paper lane (paper only, no keys, live stays locked)
+
+### Why
+A GitHub research pass (2026-11-28) found that several independent small studies measured NEGATIVE average returns for buying a fresh pump.fun coin about a minute after launch and scalping out, that our trade decoder lacked two protections others found necessary, and that pump.fun shipped protocol changes (block 0 tax Nov 27, a 206 byte curve, holder-reward coins, non-SOL quotes). This milestone fixes the feed, records it, adds a way to judge strategies offline, makes the learning loop stricter, and adds paper lanes and signals to measure the rest. SPEC 13c has the evidence with sourced and unverified marked.
+
+### Built
+- **Feed correctness (SPEC 5b), checked against pump-fun/pump-public-docs and `idl/pump.json` read on 2026-11-28.** Trade events count only while pump.fun is on top of the invoke stack (`pump::pump_data_lines`); curve accounts of 125 to 206 bytes or more decode (`rpc::decode_curve_account_full`, offsets from the IDL); mayhem and non-SOL quote coins are blocked with `MAYHEM_MODE` and `NON_SOL_QUOTE` at the cheap stage, the chain stage, the pre-buy rules and `Trader::try_enter`; the Global account fee fields (95 + 30 bps, buyback, `block0_tax_bps` at 1096..1104) are read at start and feed the paper fee model (`FeeModel::trade_fees_in_creation_slot`, higher value wins); a completed curve is never entered; holder-reward coins are read and NOT excluded (the docs say trading is unchanged); `slotSubscribe` watchdog (6 s stall or 15 s without a first update reconnects, a refused subscribe turns it off) and a capped backfill (12 transactions per coin, 60 per reconnect) with a gap record.
+- **Raw feed recorder (SPEC 4f)** `engine/src/recorder.rs`, Settings > Recording (on, 14 days, 2000 MB): compressed daily files of every trade, launch, creation slot, creation-slot trade and gap. New dependency: `flate2` (already in the lockfile through Tauri).
+- **Offline backtester** `engine-cli backtest --data DIR --lane ...` (`engine/src/backtest.rs`): the real picker, gates, graded launch check, sprint rules and exit engine over a recording, fills priced after a delay, gap coins skipped, last 30% of time as the holdout with the promotion rule. Prints its own limits.
+- **Learning promotion rule (SPEC 4c)**: a change is applied only if its shadow-lane trades (the holdout) are at least 20, have a mean return above 0, and the lower 95% bootstrap bound is above 0, and the mean is not below the main lane's. Bounds of 20% and every Scam Shield protection unchanged. Widget, Settings text and Tips updated.
+- **Graded launch-slot check (SPEC 7b)**: counts launch-slot wallets, what they hold and how much SOL they could pull; blocks only above 16 SOL total, 11 SOL for one wallet, or 40% of supply; logs the graded values for every coin (`launch-grade` decision rows).
+- **Creator funder-chain reputation (SPEC 7c)**: first funder via Helius RPC (2 calls, cached, 2 at a time, 30 s pause after a 429), judged from our own `funders` and `launch_outcomes` tables; `FUNDER_SERIAL_DEAD` block. Both tables start empty.
+- **Deep-curve sprint lane (SPEC 6c), paper only**, lane `deep-sprint`, own stats, SOL-reserve stops (`exits.reserveStops`), watched from the coin's first seconds.
+- **X Monitor**: `AboutAccountQuery` captured when the page fetches it (username changes, country, location flag, affiliate) and used in the rename block; operations matched by NAME including `CommunityQuery`, `CommunityTweetsTimeline`, `membersSliceTimeline_Query`, `moderatorsSliceTimeline_Query`; community `items_results` timelines read. Synthetic fixtures and 11 new tests.
+- **Obsidian vault** (no-op when not connected): trade notes carry the lane tag (deep-sprint adds a paper-only line); Coins and Trades notes get a "Launch group, funder and sprint checks" table (funder verdict, graded launch-slot numbers, sprint entry); a serial dead-launcher funder writes a Situation note; Days notes count MAYHEM_MODE and NON_SOL_QUOTE skips; backtest runs with `--db` write Lessons notes with the bootstrap range and holdout verdict; promotion decisions already appear in the change notes with the numbers. Tests: a closed trade in each lane (momentum, dip-40pct, deep-sprint, shadow) writes a note.
+- **Docs**: SPEC sections 4f, 5b, 6c, 7b, 7c and 13c (Evidence), DoradoDevs removed from the reference repos and a do-not-use list added (SPEC 3), Tips entry on expectancy, lane names in the UI.
+
+### Decisions Claude made (user can change)
+- Graded launch limits 16 SOL total, 11 SOL single wallet, 40% of supply; funder rule needs 2 other bad creators with at least 2 launches each at 80% dead; "dead" is judged from the 60 s watch (fewer than 5 buyers and no rise, or half the peak gone), not the research's 5 minutes.
+- Sprint lane max hold is 600 s (paper only), and an unmeasurable launch group is not entered.
+- The profile rename block fires on a username change in the last 90 days or 3 changes ever (starting guesses).
+- Promotion needs 20 holdout trades (`learning.promotionMinTrades`, floor 10) and also that the test lane is not worse than the main lane.
+- The mayhem and non-SOL exclusion happens at the cheap stage (no RPC spent on them).
+
+### Verification (commands actually run)
+- `cargo test --workspace`: 346 engine tests pass (was 264). New: invoke stack and fake router event 4, curve and Global decoding 3, recorder 6, watchdog and backfill 5, launch grade 8, funder 8 plus 4 through the Shield, graded and sprint end to end 8, promotion rule 3 plus statistics 3, exit reserve stops 2, sprint rules 5, backtest 11, About in the X score 3, config 3, fee model 1.
+- `node --test tests/core.test.js tests/xmon.test.js` in `extension/`: 59 pass (was 48): hook relays by name (the real `xhook.js` in a fake page), hook and parser lists agree, About, community slices, items_results timelines, collector, runner.
+- `node --test scripts/ci-scripts.test.mjs`: 3 pass. `npm run build` ok. `bash scripts/check-live-gate.sh` ok (script unchanged, no live code added).
+
+### Verified against the official docs vs NOT verified
+- Verified (official pump docs and IDL): BondingCurve and Global layouts and lengths, the TradeEvent tail fields (`mayhem_mode`, `quote_mint`, `holder_rewards_bps`, `block0_fee`), block 0 tax rules, holder-reward and synthetic-migration behaviour.
+- Not verified: the invoke-stack rule against any pump doc (it is the generic Solana log format, tested only with synthetic logs); the real 2026-11-26 captured event is shorter than the IDL's current tail, so the tail parser is tolerant; claims about mayhem curves moving without events, the 8% non-SOL share, every number in SPEC 13c, the sprint thresholds, the funder statistics, the 16 SOL and 11 SOL limits; `AboutAccountQuery`'s nesting and when x.com fetches it; the community slice nesting. Nothing here ran against the real RPC, Helius, x.com or pump.fun (sandbox network). The Tauri app was only compiled on Linux.
+- The block 0 tax and holder-reward changes cannot change paper results today (tax is 0, no lane trades in the creation slot).
+
+### Known limits
+- The backtester cannot replay RugCheck, authority, holder, funder, metadata or X checks, so it is an upper bound. It needs 1 to 2 weeks of recordings. Recordings before this version do not exist, and creation-slot trades are only recorded for coins that passed the chain stage.
+- The funder check cannot block anything until the app has recorded several launches per funder.
+- The launch-slot read costs up to 8 `getTransaction` calls per coin that has other creation-block transactions (about 2.5 coins a minute in the last live run), inside the 6 req/s limiter.
+- The "unknown discriminator" counter idea (SPEC 5b item 8) is not built.
+
+### The user's next steps
+1. Update the app and reload the Chrome extension (chrome://extensions, Reload) so the new hook list is used. 2. Leave the app running 1 to 2 weeks (Settings > Recording shows the files). 3. Then run `engine-cli backtest --db <path to claude-trader.db>` or give it `--data` the recordings folder and read each lane's holdout verdict. 4. Watch the lanes on the dashboard; the Deep sprint will mostly sit idle.
+
 ## M3f — X Monitor and Thesis Finder (paper only, no keys, live stays locked)
 
 ### Built

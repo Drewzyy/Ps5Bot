@@ -585,6 +585,15 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
         ctx.xmon.note_coin(&t.mint, &t.symbol, &t.name, &facts.links.twitter, now_ms());
     }
     record(&ctx, &t, "chain", &b);
+    // the funder-chain verdict of the creator, as its own row (it feeds the Obsidian coin and trade notes) and, when a serial
+    // dead-launcher funder is found, as a Situation note
+    if let Some(f) = b.results.iter().find(|r| r.name == "funder") {
+        let blocked = f.blocks();
+        ctx.db.insert_decision(&DecisionRow { ts: now_ms(), mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "funder".into(), outcome: if blocked { "block" } else { "pass" }.into(), reason: if blocked { f.code.clone() } else { String::new() }, detail: f.detail.clone(), verdict: String::new() });
+        if blocked {
+            crate::vault::situation(&ctx.db, now_ms(), "funder-serial-dead", &format!("Serial dead-launcher funder behind {}", t.symbol), &format!("{} {}", t.symbol, f.detail), &t.mint);
+        }
+    }
     if b.block.is_some() {
         ctx.trader.release_feed(&t.mint);
         return;
@@ -1307,6 +1316,17 @@ mod tests {
         assert_eq!(ctx.db.position_count(), 0);
         let blocked: i64 = ctx.db.with_conn(|c| c.query_row("SELECT COUNT(*) FROM decisions WHERE reason='MAYHEM_MODE' AND stage='risk-gate'", [], |r| r.get(0)).unwrap());
         assert_eq!(blocked, 2);
+    }
+
+    #[tokio::test]
+    async fn a_completed_or_migrated_curve_is_never_entered() {
+        let ctx = test_ctx(vec![], false);
+        let c = create();
+        seed_busy_coin(&ctx, &c);
+        let pick = Pick { mint: c.mint.clone(), symbol: c.symbol.clone(), creator: c.trader_public_key.clone(), curve_key: c.bonding_curve_key.clone(), score: 99.0, features: Default::default(), size_factor: 1.0 };
+        ctx.trader.on_migration(&c.mint);
+        assert_eq!(ctx.trader.try_enter("momentum", &pick).await.unwrap_err(), "CURVE_COMPLETE");
+        assert_eq!(ctx.db.position_count(), 0);
     }
 
     #[test]

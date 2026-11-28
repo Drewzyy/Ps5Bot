@@ -225,6 +225,18 @@ fn set_paper_fill(values: String, hub: tauri::State<Arc<Hub>>) -> String {
     hub.command(&format!("set-paper-fill:{values}"))
 }
 
+/// Raw feed recording: what is on disk and the settings (JSON text).
+#[tauri::command]
+fn recorder_status(hub: tauri::State<Arc<Hub>>) -> String {
+    hub.command("recorder-status")
+}
+
+/// `{"enabled":true,"retentionDays":14,"maxMegabytes":2000}`. Takes effect at once.
+#[tauri::command]
+fn set_recorder(values: String, hub: tauri::State<Arc<Hub>>) -> String {
+    hub.command(&format!("set-recorder:{values}"))
+}
+
 /// `undo-change:ID` or `approve-change:ID`.
 #[tauri::command]
 fn learning_command(cmd: String, hub: tauri::State<Arc<Hub>>) -> String {
@@ -356,6 +368,8 @@ pub fn run() {
             vault_backfill,
             open_link,
             set_paper_fill,
+            recorder_status,
+            set_recorder,
             learning_command,
             ext_pair_start,
             ext_unpair,

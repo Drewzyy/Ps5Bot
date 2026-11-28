@@ -166,6 +166,8 @@ export interface Api {
   vaultTest(): Promise<VaultTest>;
   vaultBackfill(): Promise<BackfillResult>;
   setPaperFill(values: Record<string, unknown>): Promise<string>;
+  recorderStatus(): Promise<RecorderStatus>;
+  setRecorder(values: { enabled?: boolean; retentionDays?: number; maxMegabytes?: number }): Promise<string>;
   learning(cmd: string): Promise<string>;
   extPairStart(): Promise<string>;
   extUnpair(): Promise<void>;
@@ -176,6 +178,18 @@ export interface Api {
   openExtensionFolder(): Promise<void>;
   getXmonSettings(): Promise<XSettings>;
   setXmonSettings(s: XSettings): Promise<void>;
+}
+
+/** Raw feed recording: settings and what is on disk. */
+export interface RecorderStatus {
+  enabled: boolean;
+  retentionDays: number;
+  maxMegabytes: number;
+  files: number;
+  bytes: number;
+  newest: string;
+  dir: string;
+  off?: boolean;
 }
 
 const EXT_ID = "jihnmdnpkeglfhoombfjhdfbmiopnljj";
@@ -255,6 +269,8 @@ function tauriApi(): Api {
     vaultTest: () => call("vault_test"),
     vaultBackfill: () => call("vault_backfill"),
     setPaperFill: (v) => call("set_paper_fill", { values: JSON.stringify(v) }),
+    recorderStatus: async () => JSON.parse(await call<string>("recorder_status")) as RecorderStatus,
+    setRecorder: (v) => call("set_recorder", { values: JSON.stringify(v) }),
     learning: (cmd) => call("learning_command", { cmd }),
     extPairStart: () => call("ext_pair_start"),
     extUnpair: () => call("ext_unpair"),
@@ -382,6 +398,14 @@ function localApi(demo: boolean): Api {
       if (!demo) throw new Error("Saving settings only works in the desktop app.");
       return "saved";
     },
+    recorderStatus: async () => {
+      needApp();
+      return { enabled: true, retentionDays: 14, maxMegabytes: 2000, files: 3, bytes: 41_000_000, newest: "2026-11-28", dir: "C:\\Users\\you\\AppData\\Roaming\\claude-trader\\recordings" };
+    },
+    setRecorder: async () => {
+      needApp();
+      return "saved";
+    },
     learning: async (cmd) => {
       if (!demo) throw new Error("This only works in the desktop app.");
       return `DEMO: ${cmd} (nothing changed)`;
@@ -420,6 +444,8 @@ function wsApi(): Api {
   return {
     ...base,
     setPaperFill: async (v) => (await source.command(`set-paper-fill:${JSON.stringify(v)}`)),
+    recorderStatus: async () => JSON.parse(await source.command("recorder-status")) as RecorderStatus,
+    setRecorder: async (v) => (await source.command(`set-recorder:${JSON.stringify(v)}`)),
     learning: async (cmd) => (await source.command(cmd)),
   };
 }

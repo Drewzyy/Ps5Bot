@@ -223,6 +223,24 @@ fn fee_rows(f: &FeeBreakdown) -> String {
 }
 
 /// One closed trade. `features` and `journal` are None when the app has no row for them (then the section says so).
+/// Funder-chain verdict, graded launch-slot values and sprint decisions of a coin, taken from its stored decision rows (nothing invented).
+pub fn launch_section(decisions: &[DecisionRow]) -> String {
+    let rows: Vec<&DecisionRow> = decisions.iter().filter(|d| matches!(d.stage.as_str(), "funder" | "launch-grade" | "sprint")).collect();
+    if rows.is_empty() {
+        return String::new();
+    }
+    let mut s = String::from("\n## Launch group, funder and sprint checks\n\n| Time | Check | Outcome | Reason | Numbers |\n|---|---|---|---|---|\n");
+    for d in rows {
+        let name = match d.stage.as_str() {
+            "funder" => "Creator funder chain",
+            "launch-grade" => "Graded launch-slot check",
+            _ => "Deep sprint lane",
+        };
+        s.push_str(&format!("| {} | {} | {} | {} | {} |\n", iso_local(d.ts), name, cell(&d.outcome), cell(&d.reason), cell(&d.detail)));
+    }
+    s
+}
+
 pub fn render_trade(p: &Position, features: Option<&EntryFeatures>, journal: Option<&JournalRow>, decisions: &[DecisionRow]) -> String {
     let exit_ms = p.exit_ms.unwrap_or(p.entry_ms);
     let day = day_of(exit_ms);
@@ -292,6 +310,10 @@ pub fn render_trade(p: &Position, features: Option<&EntryFeatures>, journal: Opt
             s.push_str(&format!("| {} | {} | {} | {} | {} | {} |\n", iso_local(d.ts), cell(&d.stage), cell(&d.outcome), cell(&d.reason), cell(&d.detail), cell(&d.verdict)));
         }
     }
+    s.push_str(&launch_section(&decisions.iter().filter(|d| d.ts <= exit_ms).cloned().collect::<Vec<_>>()));
+    if p.lane == "deep-sprint" {
+        s.push_str("\nThis trade came from the deep-curve sprint lane (paper only). Its entry rules and exit stops are unverified research numbers, so this lane exists to measure them.\n");
+    }
     s.push_str(&format!("\nEvidence: [Token on Solscan]({})\n\n", solscan(&p.mint)));
     s.push_str("## What the learning journal noted\n\n");
     match journal {
@@ -333,7 +355,8 @@ pub fn render_coin(mint: &str, symbol: &str, name: &str, creator: &str, seen_ms:
         }
         s.push('\n');
     }
-    s.push_str("## Trades\n\n");
+    s.push_str(&launch_section(decisions));
+    s.push_str("\n## Trades\n\n");
     if trades.is_empty() {
         s.push_str("The bot did not trade this coin.\n\n");
     }
@@ -358,6 +381,9 @@ pub struct DayData {
     pub scored: u32,
     pub picked: u32,
     pub bought: u32,
+    /// Coins skipped because they are mayhem-mode or paired with a token other than SOL (our curve math does not hold).
+    pub mayhem: u32,
+    pub non_sol: u32,
 }
 
 pub fn render_day(d: &DayData) -> String {
@@ -372,7 +398,7 @@ pub fn render_day(d: &DayData) -> String {
         s.push_str(&format!("| Profit factor | {pf:.2} |\n"));
     }
     s.push_str("\n## Funnel (counts from the database)\n\n| Step | Coins |\n|---|---|\n");
-    s.push_str(&format!("| Seen | {} |\n| Blocked by Scam Shield | {} |\n| Scored after the 60 s watch | {} |\n| Picked | {} |\n| Bought | {} |\n\n", d.seen, d.blocked, d.scored, d.picked, d.bought));
+    s.push_str(&format!("| Seen | {} |\n| Blocked by Scam Shield | {} |\n| Scored after the 60 s watch | {} |\n| Picked | {} |\n| Bought | {} |\n| Skipped: mayhem-mode coins (MAYHEM_MODE) | {} |\n| Skipped: paired with a token other than SOL (NON_SOL_QUOTE) | {} |\n\n", d.seen, d.blocked, d.scored, d.picked, d.bought, d.mayhem, d.non_sol));
     s.push_str("## Trades\n\n");
     if d.trades.is_empty() {
         s.push_str("No trades closed this day.\n");
@@ -433,6 +459,22 @@ pub fn render_change(c: &learning::ChangeRow) -> String {
         s.push_str(&format!("\nResult of the test: {}\n", c.result));
     }
     s.push_str("\n[[Index]]\n");
+    s
+}
+
+/// A backtest result as a Lessons note, with the numbers and the holdout verdict (bootstrap range).
+pub fn render_backtest(ts: i64, r: &crate::backtest::BtReport) -> String {
+    let mut s = format!("---\n{MARKER}\ntype: backtest\nlane: {}\ntrades: {}\nholdout_trades: {}\nholdout_pass: {}\ntags: [lesson, backtest, lane/{}]\n---\n\n# Backtest, lane {}\n\n#lesson #backtest\n\n", yq(&r.lane), r.all.trades, r.holdout.trades, r.holdout_ok, tag(&r.lane), r.lane);
+    s.push_str(&format!("Run {} on {} ({} launches, entry delay {} ms, size {} SOL). Skipped {} coins that overlap a feed gap and {} the lane cannot judge.\n\n", iso_local(ts), r.range, r.coins, r.delay_ms, sol(r.size_sol), r.skipped_gap, r.skipped_other));
+    s.push_str("| Part | Trades | Win rate | Mean per trade | 95% range | Total SOL |\n|---|---|---|---|---|---|\n");
+    for (n, x) in [("All", &r.all), ("Train", &r.train), ("Holdout", &r.holdout)] {
+        let ci = match (x.ci_low_pct, x.ci_high_pct) {
+            (Some(a), Some(b)) => format!("{a:+.2}% to {b:+.2}%"),
+            _ => "n/a".into(),
+        };
+        s.push_str(&format!("| {n} | {} | {:.1}% | {:+.2}% | {ci} | {} |\n", x.trades, x.win_rate_pct, x.mean_ret_pct, sol(x.total_pnl_sol)));
+    }
+    s.push_str(&format!("\nHoldout verdict: {} {}\n\nLimits: checks that need the network (RugCheck, holders, funder, metadata, X) are not replayed, so the live bot would take fewer of these trades.\n\n[[Index]]\n", if r.holdout_ok { "passes." } else { "does not pass." }, r.holdout_note));
     s
 }
 
@@ -548,7 +590,9 @@ fn write_day(db: &Db, root: &Path, date: &str) {
     let Some(first) = trades.first() else { return };
     let (from, to) = day_window(date, first.exit_ms.unwrap_or(first.entry_ms));
     let (seen, blocked, scored, picked, bought) = db.day_counts(from, to);
-    put(db, root, &format!("Days/{date}.md"), &render_day(&DayData { date: date.into(), trades, seen, blocked, scored, picked, bought }));
+    let mayhem = db.reason_count(from, to, "MAYHEM_MODE");
+    let non_sol = db.reason_count(from, to, "NON_SOL_QUOTE");
+    put(db, root, &format!("Days/{date}.md"), &render_day(&DayData { date: date.into(), trades, seen, blocked, scored, picked, bought, mayhem, non_sol }));
 }
 
 fn write_lessons(db: &Db, root: &Path) {
@@ -573,6 +617,18 @@ pub fn on_trade_closed(db: &Db, p: &Position) {
         write_lessons(db, &root);
     }
     write_index(db, &root, p.exit_ms.unwrap_or(p.entry_ms));
+}
+
+/// A backtest was run with a database given: write one Lessons note per lane (does nothing when the vault is not connected).
+pub fn on_backtest(db: &Db, now_ms: i64, reports: &[crate::backtest::BtReport]) {
+    let Some((root, st)) = root_if_on(db) else { return };
+    if !st.lessons {
+        return;
+    }
+    for r in reports {
+        put(db, &root, &format!("Lessons/{} backtest {}.md", day_of(now_ms), r.lane), &render_backtest(now_ms, r));
+    }
+    write_index(db, &root, now_ms);
 }
 
 /// After a learning change was approved or undone.
@@ -880,6 +936,91 @@ mod tests {
         assert!(day.contains("| Trades | 1 (1 wins, 0 losses") && day.contains("[[Trades/"), "{day}");
         let idx = std::fs::read_to_string(root.join("Index.md")).unwrap();
         assert!(idx.contains("[[Trades/") && idx.contains("[[Days/"), "{idx}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_closed_trade_in_every_lane_writes_a_trade_note_tagged_with_its_lane() {
+        let dir = tmp("lanes");
+        let db = Db::open(":memory:").unwrap();
+        learning::init(&db);
+        connect(&db, dir.to_str().unwrap()).unwrap();
+        for (i, lane) in ["momentum", "dip-40pct", "deep-sprint", "shadow"].iter().enumerate() {
+            let mut p = closed(0, "CAT", 0.01 + i as f64 * 0.001, "trailing-stop");
+            p.lane = lane.to_string();
+            p.mint = format!("Mint{lane}111");
+            p.id = db.insert_position(&p);
+            db.save_position(&p);
+            on_trade_closed(&db, &p);
+            let note = std::fs::read_to_string(dir.join(FOLDER).join("Trades").join(trade_note_name(&p))).unwrap_or_else(|e| panic!("{lane}: {e}"));
+            assert!(note.contains(&format!("lane: \"{lane}\"")) && note.contains(&format!("#lane/{lane}")), "{lane}\n{note}");
+            assert_eq!(note.contains("deep-curve sprint lane (paper only)"), *lane == "deep-sprint", "{lane}");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn funder_verdict_graded_values_sprint_rows_and_skip_counts_reach_the_coin_trade_and_day_notes() {
+        let dir = tmp("signals");
+        let db = Db::open(":memory:").unwrap();
+        learning::init(&db);
+        let mut p = closed(0, "CAT", 0.018, "reserve-stop-peak");
+        p.lane = "deep-sprint".into();
+        p.id = db.insert_position(&p);
+        db.save_position(&p);
+        let row = |stage: &str, outcome: &str, reason: &str, detail: &str| DecisionRow { ts: T0 - 30_000, mint: "MintAAA111".into(), symbol: "CAT".into(), stage: stage.into(), outcome: outcome.into(), reason: reason.into(), detail: detail.into(), verdict: String::new() };
+        db.insert_decision(&row("funder", "pass", "", "Funded by FundrAAA; 0 of 3 other creator(s) it funded are serial dead launchers."));
+        db.insert_decision(&row("launch-grade", "pass", "", "3 launch-slot wallet(s), 2 buy(s) in the creation slot, could pull 4.20 SOL (biggest 2.10 SOL), hold 5.3% of supply"));
+        db.insert_decision(&row("sprint", "pass", "", "Sprint entry: 45.0 SOL in the curve, 80 slots old, 34 buyer wallets."));
+        // two skipped coins on the same day
+        for (m, r) in [("MayhemCoin1", "MAYHEM_MODE"), ("MayhemCoin2", "MAYHEM_MODE"), ("UsdcCoin1", "NON_SOL_QUOTE")] {
+            db.insert_decision(&DecisionRow { ts: T0 - 20_000, mint: m.into(), symbol: "X".into(), stage: "cheap-prefilter".into(), outcome: "block".into(), reason: r.into(), detail: "skipped".into(), verdict: String::new() });
+        }
+        connect(&db, dir.to_str().unwrap()).unwrap();
+        on_trade_closed(&db, &p);
+        let root = dir.join(FOLDER);
+        let trade = std::fs::read_to_string(root.join("Trades").join(trade_note_name(&p))).unwrap();
+        let coin = std::fs::read_to_string(root.join("Coins").join("MintAAA111.md")).unwrap();
+        for note in [&trade, &coin] {
+            for must in ["Creator funder chain", "0 of 3 other creator(s)", "Graded launch-slot check", "could pull 4.20 SOL (biggest 2.10 SOL)", "hold 5.3% of supply", "Deep sprint lane", "45.0 SOL in the curve"] {
+                assert!(note.contains(must), "missing {must:?} in\n{note}");
+            }
+        }
+        let day = std::fs::read_to_string(root.join("Days").join(format!("{}.md", day_of(T0 + 95_000)))).unwrap();
+        assert!(day.contains("(MAYHEM_MODE) | 2 |") && day.contains("(NON_SOL_QUOTE) | 1 |"), "{day}");
+        // a serial dead-launcher funder becomes a Situation note and puts the coin note in the vault
+        situation(&db, T0, "funder-serial-dead", "Serial dead-launcher funder behind RUG", "RUG The creator wallet was funded by FundrAAA, which also funded 3 other creators whose coins mostly died.", "MintAAA111");
+        let sit: Vec<String> = std::fs::read_dir(root.join("Situations")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        assert!(sit.iter().any(|n| n.contains("funder-serial-dead")), "{sit:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn backtest_results_and_bootstrap_promotion_decisions_become_lessons_notes_with_the_numbers() {
+        let dir = tmp("lessons-bt");
+        let db = Db::open(":memory:").unwrap();
+        learning::init(&db);
+        connect(&db, dir.to_str().unwrap()).unwrap();
+        let cfg = crate::Config::from_json(include_str!("../../config.json")).unwrap();
+        let rec = crate::recorder::Recording::default();
+        let r = crate::backtest::run(&rec, &crate::backtest::BtOpts::new("deep-sprint", cfg));
+        on_backtest(&db, T0, &[r]);
+        let root = dir.join(FOLDER);
+        let n = std::fs::read_to_string(root.join("Lessons").join(format!("{} backtest deep-sprint.md", day_of(T0)))).unwrap();
+        for must in ["type: backtest", "lane/deep-sprint", "| Holdout |", "Holdout verdict: does not pass", "Not enough holdout trades"] {
+            assert!(n.contains(must), "missing {must:?} in\n{n}");
+        }
+        // lessons switched off: nothing is written
+        let mut s = VaultSettings::load(&db);
+        s.lessons = false;
+        s.save(&db);
+        std::fs::remove_dir_all(root.join("Lessons")).unwrap();
+        on_backtest(&db, T0, &[crate::backtest::run(&rec, &crate::backtest::BtOpts::new("momentum", crate::Config::from_json(include_str!("../../config.json")).unwrap()))]);
+        assert!(!root.join("Lessons").exists());
+        // a promotion decision (the learning change note) carries the bootstrap numbers
+        let ch = learning::ChangeRow { id: 3, ts: T0, key: "entry.curveSolMin".into(), label: "Smallest curve".into(), before: 4.0, after: 4.8, status: "applied".into(), why: "w".into(), evidence: vec![], result: crate::learning::promotion_verdict(&[-0.01; 25], &(0..30).map(|i| if i % 5 == 0 { -0.02 } else { 0.04 }).collect::<Vec<f64>>(), 20, 2000).1, start_ms: 0, main_start: 0, target: 30, done_ms: T0 };
+        let note = render_change(&ch);
+        assert!(note.contains("95% range") && note.contains("the lower end is above 0") && note.contains("30 trades"), "{note}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
