@@ -13,6 +13,10 @@ export function emptyState() {
     learning: null,
     xmon: null,
     settings: null,
+    app: null, // { appVersion, diskVersion } from the app
+    pages: [], // checklist of the pages the bot needs
+    updated: null, // { from, to, at } after the app had the extension reload
+
     primed: { positions: false, kill: false, halt: false },
   };
 }

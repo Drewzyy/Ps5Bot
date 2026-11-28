@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { source } from "./source";
-import type { XMonitorView, FeedHealth, Funnel, LearningSnapshot, SourceLinks, KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
+import type { ExtensionStatus, XMonitorView, FeedHealth, Funnel, LearningSnapshot, SourceLinks, KillState, ActivityItem, AgentId, AgentState, EngineEvent, LatestVerdict, PositionView, Pulse, ShieldSummary, StatsState, WatchRow } from "./types";
 
 export interface EngineState {
   agents: Record<string, AgentState>;
@@ -23,7 +23,7 @@ export interface EngineState {
   /** What the current executor cannot run ("skipped in paper"). */
   skipped: { executor: string; checks: { name: string; why: string }[] } | null;
   /** Chrome extension link status. */
-  extension: { paired: boolean; connected: boolean; lastSeenMs: number } | null;
+  extension: ExtensionStatus | null;
   /** Is buy/sell data arriving? */
   feed: FeedHealth | null;
   /** Where coins dropped off today. */
@@ -124,7 +124,8 @@ export function useEngine(): EngineState {
           } else if (e.type === "skipped") {
             next.skipped = { executor: e.executor, checks: e.checks };
           } else if (e.type === "extension") {
-            next.extension = { paired: e.paired, connected: e.connected, lastSeenMs: e.lastSeenMs };
+            const { type: _t, ts: _ts, ...x } = e;
+            next.extension = { ...x, pages: x.pages ?? [] };
           } else if (e.type === "feed-health") {
             const { type: _t, ...h } = e;
             next.feed = h as FeedHealth;

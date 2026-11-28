@@ -4,13 +4,16 @@ import { api } from "../source";
 import type { RecorderStatus } from "../source";
 import { readThemePref, saveThemePref } from "../theme";
 import type { ThemePref } from "../theme";
-import type { BuildInfo, Config, ConnTest, KeyStatus, StartupView, UpdateCheck } from "../types";
+import type { BuildInfo, Config, ConnTest, ExtTest, KeyStatus, StartupView, UpdateCheck } from "../types";
 import type { EngineState } from "../useEngine";
 import { SECTIONS, flatten } from "../settingsMeta";
 import type { Row } from "../settingsMeta";
 import { FeedHealthLine } from "./Health";
 import { TipsPage } from "../tips/Tips";
 import { useUpdater } from "../updater";
+import { NOT_SET_UP_STEPS } from "../updaterText";
+import { ago, pagesSummary, PAGE_STATE_TEXT, updatedNotice, versionLine } from "../extStatus";
+import { OPEN_KEY as NAV_OPEN_KEY, SECTION_EVENT } from "../nav";
 import { ProgressBar, stageText, ACTIVE, FALLBACK_URL } from "./UpdateUi";
 import Connectors from "./Connectors";
 import { XMonitorSettings } from "./XMonitor";
@@ -66,7 +69,8 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
 
 // ------------------------------------------------------------------ accordion
 
-const OPEN_KEY = "claudeTrader.settingsOpen.v1";
+const OPEN_KEY = NAV_OPEN_KEY;
+const SECRETS_URL = "https://github.com/Drewzyy/Ps5Bot/settings/secrets/actions";
 
 function readOpen(): string[] {
   try {
@@ -348,6 +352,31 @@ function StartupBrowser({ engine }: { engine: EngineState }) {
     api.getStartup().then(setSt).catch((e) => setMsg({ ok: false, text: err(e) }));
   }, []);
   const ext = engine.extension;
+  const [test, setTest] = useState<ExtTest | "running" | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const runTest = async () => {
+    setTest("running");
+    try {
+      setTest(await api.extTest());
+    } catch (e) {
+      setTest({ ok: false, error: err(e) });
+    }
+  };
+  const openPages = async () => {
+    setOpening(true);
+    try {
+      setMsg({ ok: true, text: await api.extOpenPages() });
+    } catch (e) {
+      setMsg({ ok: false, text: err(e) });
+    } finally {
+      setTimeout(() => setOpening(false), 1500);
+    }
+  };
 
   const change = async (patch: Partial<StartupView>) => {
     if (!st) return;
@@ -413,14 +442,58 @@ function StartupBrowser({ engine }: { engine: EngineState }) {
     <div className="acc-pad" data-testid="startup-browser">
       <div className="kvrows" data-testid="ext-status">
         <div><span className="k">Chrome extension</span><b className={ext?.connected ? "pos" : ""}>{link}</b></div>
+        {ext && ext.paired && (
+          <>
+            <div data-testid="ext-versions"><span className="k">Versions</span>{versionLine(ext)}</div>
+            <div data-testid="ext-heartbeat"><span className="k">Last heartbeat</span>{ago(ext.heartbeatMs, now)}</div>
+          </>
+        )}
         {st && !st.chromeFound && <div className="note">Chrome was not found on this computer. The app will open your default browser instead, but the extension needs Chrome.</div>}
       </div>
+      {ext && updatedNotice(ext) && <div className="result ok" role="status" data-testid="ext-updated">{updatedNotice(ext)}.</div>}
+      {ext?.paired && ext.link === "reloading" && <div className="result" role="status" data-testid="ext-reloading">The extension is older than the files on disk (v{ext.version} and v{ext.diskVersion}). The app asked it to reload.</div>}
+      {ext?.paired && ext.connected && ext.link === "manual" && st && (
+        <div className="result bad" role="alert" data-testid="ext-manual">
+          <b>Please reload the extension from the new folder once.</b> It runs files from another folder, so it cannot update itself.
+          <ol className="steps">
+            <li>In Chrome open <b>chrome://extensions</b>.</li>
+            <li>Remove the old Claude Trader extension (press Remove on its card).</li>
+            <li>Press <b>Load unpacked</b> and pick this folder: <code>{st.extensionFolder}</code></li>
+            <li>Open the side panel and pair again (press Get pairing code here). After this, it updates by itself.</li>
+          </ol>
+          <div className="btns" style={{ marginTop: 8 }}><button className="btn" onClick={folder}>Show the extension folder</button></div>
+        </div>
+      )}
       <div className="btns">
         {!ext?.paired && <button className="btn" onClick={pair}>Get pairing code</button>}
         {ext?.paired && <button className="btn ghost" onClick={pair}>Pair again</button>}
         {ext?.paired && <button className="btn danger" onClick={unpair}>Unpair</button>}
         <button className="btn ghost" onClick={openNow}>Open Chrome now</button>
+        <button className="btn ghost" onClick={runTest} disabled={!ext?.connected || test === "running"} data-testid="ext-test-btn">{test === "running" ? "Testing..." : "Test connection"}</button>
       </div>
+      {test && test !== "running" && (
+        <div className={`result ${test.ok ? "ok" : "bad"}`} role="status" data-testid="ext-test-result">
+          {test.ok ? `Connected. The ping went to the extension and back in ${test.latencyMs} ms (extension v${test.extVersion}).` : test.error}
+        </div>
+      )}
+      {ext?.paired && (
+        <div className="field" data-testid="pages-check">
+          <div className="lblrow"><label>Pages the bot needs</label></div>
+          {ext.pages.length === 0 ? (
+            <p className="note">{ext.connected ? "Waiting for the extension to look at your tabs." : "The extension is not connected, so the pages cannot be checked."}</p>
+          ) : (
+            <>
+              <ul className="checks">
+                {ext.pages.map((p) => (
+                  <li key={p.id}><span className={`ed ${p.state}`} /><span className="lbl">{p.label}</span><span className={`st ${p.state}`}>{PAGE_STATE_TEXT[p.state]}</span></li>
+                ))}
+              </ul>
+              <p className="note">{(() => { const c = pagesSummary(ext.pages); return `${c.ok} of ${c.need} open. Checked ${ago(ext.pagesTs, now)}.`; })()} {ext.pages.some((p) => p.state === "loggedout") && "x.com shows a login page: log in with your spare X account in that tab. "}Pages you switched off above are not opened.</p>
+            </>
+          )}
+          <div className="btns"><button className="btn ghost" onClick={openPages} disabled={!ext.connected || opening} data-testid="open-pages-btn">{opening ? "Opening..." : "Open missing pages"}</button></div>
+        </div>
+      )}
       {code && (
         <div className="paircode" data-testid="pair-code">
           <div className="note">Paste this code into the Claude Trader side panel in Chrome. It works once and ends in 10 minutes.</div>
@@ -470,7 +543,7 @@ function StartupBrowser({ engine }: { engine: EngineState }) {
         </button>
         {showGuide && (
           <div className="guide" data-testid="ext-guide">
-            <p className="note">Do this once. Chrome does not let apps install extensions for you, so these steps are by hand.</p>
+            <p className="note">Do this once. Chrome does not let apps install extensions for you, so these steps are by hand. The app keeps a copy of the extension in a folder that never moves, and updates the files in it. Load the extension from THAT folder, not from the install folder. Then the extension updates by itself with the app.</p>
             <ol>
               <li>Press <b>Show the extension folder</b> below. A window opens with the extension files.</li>
               <li>In Chrome, type <b>chrome://extensions</b> in the address bar and press Enter.</li>
@@ -483,7 +556,7 @@ function StartupBrowser({ engine }: { engine: EngineState }) {
             <div className="btns">
               <button className="btn" onClick={folder}>Show the extension folder</button>
             </div>
-            {st && <div className="note" data-testid="ext-folder">Folder: {st.extensionFolder}</div>}
+            {st && <div className="note" data-testid="ext-folder">Folder to load: <code>{st.extensionFolder}</code> (extension v{st.extensionVersion || "?"}). Do not load the copy inside the install folder.</div>}
           </div>
         )}
       </div>
@@ -497,7 +570,7 @@ function About() {
   const [info, setInfo] = useState<BuildInfo | null>(null);
   const [fb, setFb] = useState<UpdateCheck | null>(null);
   const u = useUpdater();
-  const { phase, version, progress, message, current, fallback } = u.state;
+  const { phase, version, progress, message, current, fallback, kind } = u.state;
   useEffect(() => {
     api.buildInfo().then(setInfo).catch(() => {});
   }, []);
@@ -530,7 +603,18 @@ function About() {
       {phase === "error" && (
         <div className="result bad" role="alert">
           {message}
-          {fallback && (
+          {kind === "not-set-up" && (
+            <>
+              <p style={{ margin: "8px 0 4px" }}><b>To switch it on (once):</b></p>
+              <ol className="steps">
+                {NOT_SET_UP_STEPS.map((x) => <li key={x}>{x}</li>)}
+              </ol>
+              <div className="btns" style={{ marginTop: 8 }}>
+                <button className="btn" onClick={() => api.openLink(SECRETS_URL)}>Open GitHub secrets page</button>
+              </div>
+            </>
+          )}
+          {fallback && kind !== "not-set-up" && (
             <>
               <div className="btns" style={{ marginTop: 8 }}>
                 <button className="btn" onClick={() => api.openLink(fb?.latest?.url ?? FALLBACK_URL)}>Open download page</button>
@@ -577,6 +661,15 @@ export default function SettingsPage({ config, engine, onConfig, replay }: { con
     }
   };
   const isOpen = (id: string) => open.includes(id);
+  // "open this section" from the top bar or an update message
+  useEffect(() => {
+    const on = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      setOpen((o) => (o.includes(id) ? o : [...o, id]));
+    };
+    window.addEventListener(SECTION_EVENT, on);
+    return () => window.removeEventListener(SECTION_EVENT, on);
+  }, []);
   const showTips = () => {
     if (!open.includes("tips")) toggle("tips");
     setTimeout(() => document.querySelector('[data-section="tips"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);

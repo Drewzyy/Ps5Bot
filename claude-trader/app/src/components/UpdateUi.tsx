@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { api } from "../source";
 import { useUpdater } from "../updater";
 import type { UpdPhase } from "../updater";
+import { openSection } from "../nav";
 
 export const ACTIVE: UpdPhase[] = ["closing", "downloading", "installing"];
 export const FALLBACK_URL = "https://github.com/Drewzyy/Ps5Bot/actions";
@@ -43,7 +44,7 @@ export function stageText(phase: UpdPhase, version: string, open: number, progre
 /** Toasts and the open-position confirmation, shown over every page. */
 export default function UpdateOverlay() {
   const u = useUpdater();
-  const { phase, version, progress, message, current, fallback } = u.state;
+  const { phase, version, progress, message, current, fallback, kind } = u.state;
   useEffect(() => {
     if (phase !== "confirm") return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && u.cancel();
@@ -82,7 +83,8 @@ export default function UpdateOverlay() {
       <div className="toast bad" role="alert">
         <span>{message || `Could not update from v${current}.`}</span>
         <span className="toast-actions">
-          {fallback && <button className="btn ghost" onClick={() => api.openLink(FALLBACK_URL)}>Open download page</button>}
+          {kind === "not-set-up" && <button className="btn ghost" onClick={() => { u.dismiss(); openSection("about"); }}>Show steps</button>}
+          {fallback && kind !== "not-set-up" && <button className="btn ghost" onClick={() => api.openLink(FALLBACK_URL)}>Open download page</button>}
           <button className="kill-cancel" onClick={u.dismiss}>Close</button>
         </span>
       </div>

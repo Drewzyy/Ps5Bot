@@ -561,3 +561,25 @@ label.chk input { width: 16px; height: 16px; accent-color: var(--green); }
 .xnum small { color: var(--muted); }
 @media (max-width: 800px) { .xrow { grid-template-columns: 1fr 1fr; } .xrow .xn { white-space: normal; grid-column: 1 / -1; } }
 .xrow.rise { grid-template-columns: 150px 130px 1fr auto; }
+
+/* Chrome extension chip in the top bar and the pages checklist */
+.ext-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.ext-chip:hover { background: var(--surface); }
+.ext-chip .ed { width: 9px; height: 9px; border-radius: 50%; background: var(--line-idle); flex: none; }
+.ext-chip.on { color: var(--green-dark); border-color: var(--green); }
+.ext-chip.on .ed { background: var(--green); }
+.ext-chip.off { color: var(--red); border-color: var(--red-line); background: var(--red-bg); }
+.ext-chip.off .ed { background: var(--red); }
+.ext-chip.gray { color: var(--muted); }
+.ext-chip .bang { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #f59e0b; color: #1f1300; font-size: 11px; line-height: 1; }
+.checks { display: grid; gap: 5px; margin: 6px 0; padding: 0; list-style: none; max-width: 520px; }
+.checks li { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px; font-size: 13.5px; }
+.checks .ed { width: 9px; height: 9px; border-radius: 50%; background: var(--line-idle); }
+.checks .ed.open { background: var(--green); }
+.checks .ed.missing, .checks .ed.loggedout { background: var(--red); }
+.checks .st { font-weight: 700; color: var(--muted); }
+.checks .st.open { color: var(--green-dark); }
+.checks .st.missing, .checks .st.loggedout { color: var(--red); }
+@media (max-width: 1500px) { .ext-chip { padding: 5px 9px; font-size: 12px; gap: 5px; } }
+/* narrow windows: the clock goes first, so the bar still fits on one line */
+@media (max-width: 1400px) { .topbar .stat.clock { display: none; } }

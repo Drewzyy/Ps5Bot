@@ -15,6 +15,8 @@ const DEFAULT_CONFIG: &str = include_str!("../../../config.json");
 struct AppPaths {
     db: String,
     dir: std::path::PathBuf,
+    /// The stable Chrome extension folder (`%LOCALAPPDATA%\Claude Trader\chrome-extension`): the one the person loads in Chrome.
+    ext_dir: std::path::PathBuf,
 }
 
 fn store(p: &AppPaths) -> KeyStore {
@@ -274,7 +276,12 @@ struct StartupView {
     autostart: bool,
     chrome_found: bool,
     extension_id: &'static str,
+    /// The stable folder to load in Chrome (falls back to the bundled one if it could not be written).
     extension_folder: String,
+    /// Version of the files in that folder.
+    extension_version: String,
+    /// The folder inside the install directory (do NOT load this one: it changes with every update).
+    extension_bundled_folder: String,
 }
 
 fn extension_folder(app: &tauri::AppHandle) -> std::path::PathBuf {
@@ -296,8 +303,19 @@ fn get_startup(app: tauri::AppHandle, paths: tauri::State<AppPaths>) -> Result<S
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
         chrome_found: engine::startup::find_chrome().is_some(),
         extension_id: engine::bridge::EXTENSION_ID,
-        extension_folder: extension_folder(&app).to_string_lossy().to_string(),
+        extension_folder: shown_extension_folder(&app, &paths).to_string_lossy().to_string(),
+        extension_version: engine::extinstall::manifest_version(&shown_extension_folder(&app, &paths)).unwrap_or_default(),
+        extension_bundled_folder: extension_folder(&app).to_string_lossy().to_string(),
     })
+}
+
+/// The stable folder when it holds the extension, else the bundled one (so the button always opens something real).
+fn shown_extension_folder(app: &tauri::AppHandle, paths: &AppPaths) -> std::path::PathBuf {
+    if paths.ext_dir.join("manifest.json").is_file() {
+        paths.ext_dir.clone()
+    } else {
+        extension_folder(app)
+    }
 }
 
 #[tauri::command]
@@ -320,8 +338,26 @@ fn open_chrome_now(paths: tauri::State<AppPaths>) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn open_extension_folder(app: tauri::AppHandle) -> Result<(), String> {
-    startup::show_folder(&extension_folder(&app))
+fn open_extension_folder(app: tauri::AppHandle, paths: tauri::State<AppPaths>) -> Result<(), String> {
+    startup::show_folder(&shown_extension_folder(&app, &paths))
+}
+
+/// "Test connection": a ping that goes to the extension and back (JSON text: ok, latencyMs, extVersion or error).
+#[tauri::command]
+async fn ext_test(hub: tauri::State<'_, Arc<Hub>>) -> Result<String, String> {
+    let hub = hub.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || hub.command("ext-test")).await.map_err(|e| e.to_string())
+}
+
+/// "Open missing pages": the extension opens what the bot needs (reusing tabs) and reports the checklist back.
+#[tauri::command]
+fn ext_open_pages(hub: tauri::State<Arc<Hub>>) -> String {
+    hub.command("ext-open-pages")
+}
+
+/// Where the stable extension folder lives: next to the app's other local data, not in the install folder.
+fn stable_extension_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
+    app.path().local_data_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")).join("Claude Trader").join("chrome-extension")
 }
 
 // ---------------------------------------------------------------- X Monitor settings (on/off, pause, pacing)
@@ -379,6 +415,8 @@ pub fn run() {
             set_autostart,
             open_chrome_now,
             open_extension_folder,
+            ext_test,
+            ext_open_pages,
             get_xmon_settings,
             set_xmon_settings
         ])
@@ -387,7 +425,19 @@ pub fn run() {
             // Live engine: Memecoin Monitor -> Scam Shield -> Token Picker -> paper trader. Paper only.
             let dir = app.path().app_data_dir().ok().filter(|d| std::fs::create_dir_all(d).is_ok()).unwrap_or_else(|| std::path::PathBuf::from("."));
             let db_path = dir.join("claude-trader.db").to_string_lossy().to_string();
-            app.manage(AppPaths { db: db_path.clone(), dir: dir.clone() });
+            let ext_dir = stable_extension_dir(&handle);
+            app.manage(AppPaths { db: db_path.clone(), dir: dir.clone(), ext_dir: ext_dir.clone() });
+            // Put the bundled extension files in the stable folder (only when the version differs), and tell the bridge what is on disk.
+            // Chrome loads the extension from there, so a reload picks up the new files without any manual copying.
+            let ext_note = match engine::extinstall::sync(&extension_folder(&handle), &ext_dir) {
+                Ok(r) => {
+                    if let Ok(db) = engine::db::Db::open(&db_path) {
+                        engine::extinstall::InstallInfo { app_version: handle.package_info().version.to_string(), disk_version: r.to.clone(), folder: ext_dir.to_string_lossy().to_string() }.save(&db);
+                    }
+                    if r.skipped { format!("extension files are current (v{})", r.to) } else { format!("extension files updated to v{} in {} ({} file(s))", r.to, ext_dir.display(), r.copied.len()) }
+                }
+                Err(e) => format!("could not write the extension folder: {e}"),
+            };
             app.manage(Arc::new(engine::notify::ConnSecrets::system(dir.clone())));
             {
                 // "update installed": the version differs from the one at the last start (sent once the engine is up)
@@ -400,6 +450,7 @@ pub fn run() {
                 });
             }
             let hub = Hub::new();
+            hub.log(format!("startup: {ext_note}"));
             app.manage(hub.clone());
             let mut rx = hub.subscribe();
             let h2 = handle.clone();

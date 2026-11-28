@@ -1,4 +1,4 @@
-import type { ConnName, ConnStatus, NotifyEvents, BackfillResult, BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, XSettings, UpdateCheck, UpdaterInfo, VaultSettings, VaultStatus, VaultTest } from "./types";
+import type { ConnName, ConnStatus, NotifyEvents, BackfillResult, BuildInfo, Config, ConnTest, EngineEvent, KeyStatus, StartupView, ExtTest, XSettings, UpdateCheck, UpdaterInfo, VaultSettings, VaultStatus, VaultTest } from "./types";
 import { demoEvents, demoUpdate } from "./demo";
 import defaultConfig from "../../config.json";
 
@@ -172,10 +172,14 @@ export interface Api {
   extPairStart(): Promise<string>;
   extUnpair(): Promise<void>;
   getStartup(): Promise<StartupView>;
-  setStartup(s: Omit<StartupView, "autostart" | "chromeFound" | "extensionId" | "extensionFolder">): Promise<void>;
+  setStartup(s: Omit<StartupView, "autostart" | "chromeFound" | "extensionId" | "extensionFolder" | "extensionVersion" | "extensionBundledFolder">): Promise<void>;
   setAutostart(on: boolean): Promise<boolean>;
   openChromeNow(): Promise<string>;
   openExtensionFolder(): Promise<void>;
+  /** "Test connection": a ping that goes to the extension and back. */
+  extTest(): Promise<ExtTest>;
+  /** Ask the extension to open the pages the bot needs. */
+  extOpenPages(): Promise<string>;
   getXmonSettings(): Promise<XSettings>;
   setXmonSettings(s: XSettings): Promise<void>;
 }
@@ -193,7 +197,7 @@ export interface RecorderStatus {
 }
 
 const EXT_ID = "jihnmdnpkeglfhoombfjhdfbmiopnljj";
-const DEFAULT_STARTUP: StartupView = { openChrome: true, pages: { pumpFunHome: true, dexscreenerHeld: true }, closeTabOnClose: false, keepAwake: true, autostart: false, chromeFound: true, extensionId: EXT_ID, extensionFolder: "C:\\Program Files\\Claude Trader\\extension" };
+const DEFAULT_STARTUP: StartupView = { openChrome: true, pages: { pumpFunHome: true, dexscreenerHeld: true }, closeTabOnClose: false, keepAwake: true, autostart: false, chromeFound: true, extensionId: EXT_ID, extensionFolder: "C:\\Users\\You\\AppData\\Local\\Claude Trader\\chrome-extension", extensionVersion: "0.1.42", extensionBundledFolder: "C:\\Program Files\\Claude Trader\\extension" };
 
 const BROWSER_MSG = "Saving a key only works in the desktop app. This page is the browser preview.";
 
@@ -279,6 +283,8 @@ function tauriApi(): Api {
     setAutostart: (on) => call("set_autostart", { on }),
     openChromeNow: () => call("open_chrome_now"),
     openExtensionFolder: () => call("open_extension_folder"),
+    extTest: async () => JSON.parse(await call<string>("ext_test")) as ExtTest,
+    extOpenPages: () => call("ext_open_pages"),
     getXmonSettings: () => call("get_xmon_settings"),
     setXmonSettings: (settings) => call("set_xmon_settings", { settings }),
   };
@@ -430,6 +436,16 @@ function localApi(demo: boolean): Api {
       return "DEMO: Chrome is starting.";
     },
     openExtensionFolder: async () => needApp(),
+    // DEMO: ?ext=offline answers with the error, anything else with a made-up latency
+    extTest: async () => {
+      needApp();
+      await new Promise((r) => setTimeout(r, 450));
+      return new URLSearchParams(window.location.search).get("ext") === "offline" ? { ok: false, error: "The extension is not connected." } : { ok: true, latencyMs: 14, extVersion: "0.1.42" };
+    },
+    extOpenPages: async () => {
+      needApp();
+      return "DEMO: asked the extension to open the missing pages.";
+    },
     getXmonSettings: async () => xset,
     setXmonSettings: async (s) => {
       needApp();
@@ -444,6 +460,8 @@ function wsApi(): Api {
   return {
     ...base,
     setPaperFill: async (v) => (await source.command(`set-paper-fill:${JSON.stringify(v)}`)),
+    extTest: async () => JSON.parse(await source.command("ext-test")) as ExtTest,
+    extOpenPages: async () => await source.command("ext-open-pages"),
     recorderStatus: async () => JSON.parse(await source.command("recorder-status")) as RecorderStatus,
     setRecorder: async (v) => (await source.command(`set-recorder:${JSON.stringify(v)}`)),
     learning: async (cmd) => (await source.command(cmd)),

@@ -1,4 +1,4 @@
-import type { ChangeRow, EngineEvent, JournalRow, LearningSnapshot, UpdateCheck, XMonitorView } from "./types";
+import type { ChangeRow, EngineEvent, JournalRow, LearningSnapshot, PageStatus, UpdateCheck, XMonitorView } from "./types";
 
 /**
  * Seeded DEMO data for screenshots (open the page with ?demo=1). None of it is real. Every screen that shows it
@@ -137,8 +137,35 @@ export function demoXmon(): XMonitorView {
   };
 }
 
+/** DEMO extension link. ?ext= connected | ok | offline | unpaired (default) | updated | reload | reloading. */
+export function demoExtension(mode: string | null): EngineEvent {
+  const base = { type: "extension" as const, ts: NOW, paired: true, connected: true, lastSeenMs: Date.now(), version: "0.1.42", diskVersion: "0.1.42", appVersion: "0.1.42", heartbeatMs: Date.now() - 3000, link: "ok" as const, updatedTo: "", updatedAt: 0, pagesTs: Date.now() - 5000, pages: [] as PageStatus[] };
+  const mixed: PageStatus[] = [
+    { id: "pump-home", label: "pump.fun home", state: "open", url: "https://pump.fun/" },
+    { id: "x", label: "x.com (logged in, for the X Monitor)", state: "loggedout", url: "https://x.com/home" },
+    { id: "dex-MOONCAT", label: "Dexscreener chart: MOONCAT", state: "missing", url: "https://dexscreener.com/solana/DEMO" },
+  ];
+  const allOpen = mixed.map((p) => ({ ...p, state: "open" as const }));
+  switch (mode) {
+    case "connected":
+      return { ...base, pages: mixed };
+    case "ok":
+      return { ...base, pages: allOpen };
+    case "offline":
+      return { ...base, connected: false, heartbeatMs: Date.now() - 95_000, pages: allOpen };
+    case "updated":
+      return { ...base, pages: allOpen, updatedTo: "0.1.42", updatedAt: Date.now() - 20_000 };
+    case "reloading":
+      return { ...base, version: "0.1.41", link: "reloading", pages: allOpen };
+    case "reload":
+      return { ...base, version: "0.1.41", link: "manual", pages: allOpen };
+    default:
+      return { type: "extension", ts: NOW, paired: false, connected: false, lastSeenMs: 0, version: "", diskVersion: "0.1.42", appVersion: "0.1.42", heartbeatMs: 0, link: "ok", updatedTo: "", updatedAt: 0, pages: [], pagesTs: 0 };
+  }
+}
+
 export function demoEvents(): EngineEvent[] {
-  const ev: EngineEvent[] = [{ type: "extension", ts: NOW, paired: false, connected: false, lastSeenMs: 0 }];
+  const ev: EngineEvent[] = [demoExtension(typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ext") : null)];
   const coins: [string, string, string, string, string][] = [
     ["MOONCAT", "Moon Cat", "https://example.org/mooncat", "https://x.com/mooncat", "https://t.me/mooncat"],
     ["PEPEX", "Pepe X", "", "https://x.com/pepex", ""],

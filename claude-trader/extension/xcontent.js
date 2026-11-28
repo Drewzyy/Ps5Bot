@@ -115,6 +115,9 @@
     if (!msg || sender.id !== chrome.runtime.id) return;
     if (msg.t === "xdom" && active && job) {
       reply(domFallback(msg.kind));
+    } else if (msg.t === "xlogin") {
+      // is this x.com tab showing a login page? (read only, used for the "x.com logged in" line of the checklist)
+      reply({ state: P.detectPage({ url: location.href, text: pageText() }) });
     } else if (msg.t === "xstart") {
       start(msg.job);
       reply({ ok: true });

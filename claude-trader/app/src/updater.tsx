@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "./source";
+import { updateErrorMessage } from "./updaterText";
+import type { UpdateErrorKind } from "./updaterText";
 
 export type UpdPhase = "idle" | "checking" | "uptodate" | "ready" | "confirm" | "closing" | "downloading" | "installing" | "error";
 
@@ -15,6 +17,8 @@ export interface UpdState {
   message: string;
   /** The updater could not work: show the old GitHub download page as a fallback. */
   fallback: boolean;
+  /** What kind of problem (only while phase is "error"). "not-set-up" means no signed release exists yet. */
+  kind: UpdateErrorKind | "";
 }
 
 export interface Updater {
@@ -39,7 +43,7 @@ const Ctx = createContext<Updater | null>(null);
 export const useUpdater = () => useContext(Ctx)!;
 
 export function UpdaterProvider({ openPositions, children }: { openPositions: number; children: ReactNode }) {
-  const [state, setState] = useState<UpdState>({ phase: "idle", current: "", version: "", progress: null, message: "", fallback: false });
+  const [state, setState] = useState<UpdState>({ phase: "idle", current: "", version: "", progress: null, message: "", fallback: false, kind: "" });
   const busy = useRef(false);
   const posRef = useRef(openPositions);
   posRef.current = openPositions;
@@ -58,12 +62,12 @@ export function UpdaterProvider({ openPositions, children }: { openPositions: nu
     async (quiet: boolean): Promise<boolean> => {
       if (busy.current) return false;
       busy.current = true;
-      if (!quiet) set({ phase: "checking", message: "", fallback: false });
+      if (!quiet) set({ phase: "checking", message: "", fallback: false, kind: "" });
       try {
         const cur = await currentVersion();
         const r = await api.updaterCheck();
         if (r.available) {
-          setState((s) => (["downloading", "installing", "closing", "confirm"].includes(s.phase) ? s : { ...s, phase: "ready", current: cur, version: r.version, message: "", fallback: false }));
+          setState((s) => (["downloading", "installing", "closing", "confirm"].includes(s.phase) ? s : { ...s, phase: "ready", current: cur, version: r.version, message: "", fallback: false, kind: "" }));
           return true;
         }
         if (!quiet) set({ phase: "uptodate", current: cur, version: "", message: `Up to date (v${cur})` });
@@ -71,14 +75,8 @@ export function UpdaterProvider({ openPositions, children }: { openPositions: nu
         return false;
       } catch (e) {
         if (!quiet) {
-          const raw = clean(e);
-          const notSet = /404|valid release|not found|signature|pubkey|endpoint/i.test(raw);
-          set({
-            phase: "error",
-            current: await currentVersion(),
-            message: notSet ? "Automatic updates are not switched on yet (no signed release is published). Use the download page instead." : `Could not check for updates: ${raw}`,
-            fallback: true,
-          });
+          const m = updateErrorMessage(clean(e));
+          set({ phase: "error", current: await currentVersion(), message: m.message, kind: m.kind, fallback: true });
         }
         return false;
       } finally {
@@ -94,7 +92,7 @@ export function UpdaterProvider({ openPositions, children }: { openPositions: nu
     try {
       await api.updaterInstall((stage, progress) => set({ phase: stage, progress }));
     } catch (e) {
-      set({ phase: "error", message: `The update did not install: ${clean(e)}. Trading carries on. You can use the download page instead.`, fallback: true, progress: null });
+      set({ phase: "error", message: `The update did not install: ${clean(e)}. Trading carries on. You can use the download page instead.`, fallback: true, kind: "other", progress: null });
     }
   }, [set]);
 
@@ -146,7 +144,7 @@ export function UpdaterProvider({ openPositions, children }: { openPositions: nu
     start,
     confirm: () => void run(),
     cancel,
-    dismiss: () => set({ phase: "idle", message: "" }),
+    dismiss: () => set({ phase: "idle", message: "", kind: "" }),
     openPositions,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

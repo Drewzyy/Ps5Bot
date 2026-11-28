@@ -58,7 +58,7 @@ export default function App() {
 
   return (
     <UpdaterProvider openPositions={openPositions}>
-      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
+      <TopBar page={page} go={go} mode={config.mode} bankroll={config.paper.bankrollSol} stats={engine.stats} kill={engine.kill} extension={engine.extension} askKill={() => setAsk("kill")} askResume={() => setAsk("resume")} />
       <KillBanner kill={engine.kill} />
       <FeedWarningBar feed={engine.feed} />
       <KillUi ask={ask} close={() => setAsk(null)} killed={!!engine.kill?.killed} />

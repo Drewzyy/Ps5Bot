@@ -9,6 +9,7 @@ let busy = false;
 let pairError = "";
 let pairing = false;
 let shownKey = "";
+let pagesBusy = false;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const cls = (n) => (n < 0 ? "neg" : n > 0 ? "pos" : "");
@@ -56,6 +57,34 @@ function offlineView() {
   </section>${settingsView()}`;
 }
 
+const OWN_VERSION = chrome.runtime.getManifest().version;
+const STATE_TEXT = { open: "Open", missing: "Missing", loggedout: "Logged out", off: "Off" };
+
+/** "Connected to Claude Trader v0.1.51", this extension's version, and the update note. */
+function linkView() {
+  const app = state?.app;
+  const disk = app?.diskVersion || "";
+  const hello = app?.appVersion ? `Connected to Claude Trader v${esc(app.appVersion)}` : "Connected to Claude Trader";
+  const mismatch = disk && disk !== OWN_VERSION;
+  return `<section class="card link" data-testid="link">
+    <div class="linkline"><b class="pos">${hello}</b></div>
+    <div class="note">Extension v${esc(OWN_VERSION)}${mismatch ? `. The app has v${esc(disk)} ready. The extension reloads itself to pick it up. If this stays, open the app: Settings, Startup and browser.` : ""}</div>
+    ${state?.updated ? `<div class="note ok" data-testid="updated">Extension updated to v${esc(state.updated.to)}.</div>` : ""}
+  </section>`;
+}
+
+/** Pages the bot needs: Open, Missing, Logged out. */
+function pagesView() {
+  const items = state?.pages || [];
+  if (!items.length) return "";
+  const missing = items.some((i) => i.state === "missing" || i.state === "loggedout");
+  return `<section class="card" data-testid="pages"><h2>Pages the bot needs</h2>
+    <ul class="checks">${items.map((i) => `<li><span class="dot ${esc(i.state)}"></span><span class="lbl">${esc(i.label)}</span><span class="st ${esc(i.state)}">${esc(STATE_TEXT[i.state] || i.state)}</span></li>`).join("")}</ul>
+    ${items.some((i) => i.state === "loggedout") ? `<div class="note">x.com shows a login page. Log in with your spare X account in that tab.</div>` : ""}
+    <div style="margin-top:8px"><button class="btn ${missing ? "" : "ghost"} small" id="open-pages" ${pagesBusy ? "disabled" : ""}>${pagesBusy ? "Opening..." : "Open missing pages"}</button></div>
+  </section>`;
+}
+
 function mainView() {
   const s = summarize(state);
   const killed = !!state.kill?.killed;
@@ -63,6 +92,7 @@ function mainView() {
   const feed = (state.activity || []).slice(0, 14);
   const learn = state.learning?.journal || [];
   return `
+  ${linkView()}
   ${killed ? `<div class="banner" role="alert">Kill switch is on. No new buys. ${esc(state.kill?.text || "")}</div>` : ""}
   ${s.halted ? `<div class="banner">Daily loss limit reached: ${esc(s.halted)}</div>` : ""}
   <section class="stats" aria-label="Account">
@@ -83,6 +113,7 @@ function mainView() {
     ${learn.length ? `<div class="learn">${learn.map((r) => `<div class="e"><b>${esc(r.symbol)}</b> <span class="${cls(r.pnlSol)}">${fmtSol(r.pnlSol, true)}</span><br>${esc(r.headline)}</div>`).join("")}</div>` : `<div class="empty">Nothing yet. It writes a note after each trade.</div>`}
     ${state.learning ? `<div class="note" style="margin-top:6px">Next review in ${esc(state.learning.nextReviewIn)} trades.${state.learning.demo ? " (demo data)" : ""}</div>` : ""}
   </section>
+  ${pagesView()}
   ${xView()}
   ${settingsView()}`;
 }
@@ -149,6 +180,13 @@ function wire() {
   });
   $("code")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") $("pair").click();
+  });
+  $("open-pages")?.addEventListener("click", async () => {
+    pagesBusy = true;
+    render();
+    await send({ t: "openPages" });
+    pagesBusy = false;
+    render();
   });
   $("retry")?.addEventListener("click", () => send({ t: "reconnect" }));
   $("ask-kill")?.addEventListener("click", () => ((ask = "kill"), render()));

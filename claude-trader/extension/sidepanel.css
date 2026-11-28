@@ -66,3 +66,15 @@ input[type="text"] { border: 1px solid var(--line-idle); border-radius: 8px; pad
 .seg button { background: transparent; border: 0; padding: 4px 10px; }
 .seg button[aria-checked="true"] { background: var(--green); color: var(--on-green); font-weight: 700; }
 a { color: var(--green-dark); }
+
+.link .linkline { font-size: 13.5px; }
+.link .note.ok { color: var(--green); font-weight: 700; }
+.checks { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.checks li { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 8px; font-size: 12.5px; }
+.checks .lbl { min-width: 0; overflow-wrap: anywhere; }
+.checks .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-idle); }
+.checks .dot.open { background: var(--green); }
+.checks .dot.missing, .checks .dot.loggedout { background: var(--red); }
+.checks .st { font-weight: 700; color: var(--muted); }
+.checks .st.open { color: var(--green); }
+.checks .st.missing, .checks .st.loggedout { color: var(--red); }

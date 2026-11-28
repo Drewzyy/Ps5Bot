@@ -55,7 +55,7 @@ export type EngineEvent =
   | ({ type: "learning" } & LearningSnapshot)
   | { type: "links"; mint: string; website: string; twitter: string; telegram: string }
   | { type: "skipped"; executor: string; checks: { name: string; why: string }[] }
-  | { type: "extension"; ts: number; paired: boolean; connected: boolean; lastSeenMs: number }
+  | ({ type: "extension"; ts: number } & ExtensionStatus)
   | ({ type: "feed-health" } & FeedHealth)
   | ({ type: "funnel" } & Funnel)
   | ({ type: "x-monitor" } & XMonitorView);
@@ -195,6 +195,44 @@ export interface Funnel {
   demo?: boolean;
 }
 
+/** One line of the "pages the bot needs" checklist (engine/src/events.rs PageStatus). */
+export interface PageStatus {
+  id: string;
+  label: string;
+  state: "open" | "missing" | "loggedout" | "off";
+  url: string;
+}
+
+/** Chrome extension link (EngineEvent::Extension without the type and time). */
+export interface ExtensionStatus {
+  paired: boolean;
+  connected: boolean;
+  lastSeenMs: number;
+  /** Version the extension reported. */
+  version: string;
+  /** Version of the extension files in the stable folder. */
+  diskVersion: string;
+  /** This app's version. */
+  appVersion: string;
+  /** Last time the extension said anything (ms). 0 = not since the app started. */
+  heartbeatMs: number;
+  /** "ok", "reloading" (the app asked it to reload) or "manual" (load it from the stable folder once). */
+  link: "ok" | "reloading" | "manual";
+  /** Set for 30 minutes after the extension came back with a newer version. */
+  updatedTo: string;
+  updatedAt: number;
+  pages: PageStatus[];
+  pagesTs: number;
+}
+
+/** Answer of "Test connection". */
+export interface ExtTest {
+  ok: boolean;
+  latencyMs?: number;
+  extVersion?: string;
+  error?: string;
+}
+
 /** Mirrors engine/src/startup.rs plus what the app adds. */
 export interface StartupView {
   openChrome: boolean;
@@ -204,7 +242,12 @@ export interface StartupView {
   autostart: boolean;
   chromeFound: boolean;
   extensionId: string;
+  /** The stable folder to load in Chrome (in the app data, it never moves). */
   extensionFolder: string;
+  /** Version of the files in that folder. */
+  extensionVersion: string;
+  /** The copy inside the install folder. Do not load this one. */
+  extensionBundledFolder: string;
 }
 
 /** Mirrors engine/src/learning.rs */

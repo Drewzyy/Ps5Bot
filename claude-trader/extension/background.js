@@ -3,6 +3,7 @@
 // It never holds a key or secret: just a pairing token. It cannot buy or sell. It can run a scam check and press the kill switch.
 import { DEFAULT_PREFS, emptyState, applyEvent, resetPrimed, badgeFor, diffNotifications, closedMints, heldMints, dexUrl } from "./lib/core.js";
 import { createXRunner } from "./xrunner.js";
+import { requiredPages, findTab, planOpen, checklist, reloadAllowed } from "./lib/pages.js";
 import { DEFAULT_PACE } from "./lib/xpace.js";
 
 const URL_WS = "ws://127.0.0.1:8766";
@@ -27,6 +28,8 @@ const store = chrome.storage;
 async function boot() {
   const { prefs: p } = await store.local.get("prefs");
   prefs = { ...DEFAULT_PREFS, ...(p || {}) };
+  const { updatedNote } = await store.local.get("updatedNote");
+  if (updatedNote && Date.now() - updatedNote.at < 60 * 60 * 1000) state = { ...state, updated: updatedNote };
   const { cache } = await store.session.get("cache");
   if (cache && state.conn === "connecting") state = { ...state, ...cache, conn: "connecting", primed: state.primed };
 }
@@ -128,6 +131,16 @@ function openSocket(first) {
       return;
     } else if (v.t === "ping") {
       sock.send(JSON.stringify({ t: "pong" }));
+    } else if (v.t === "hello") {
+      state = { ...state, app: { appVersion: v.app || "", diskVersion: v.disk || "" } };
+      changed();
+    } else if (v.t === "testping") {
+      // "Test connection" in the app: answer at once with our version
+      sock.send(JSON.stringify({ t: "testpong", n: v.n, version: chrome.runtime.getManifest().version }));
+    } else if (v.t === "reload") {
+      doReload();
+    } else if (v.t === "openpages") {
+      ensurePages({ force: true });
     } else if (v.t === "event") {
       onEvent(v.e);
     } else if (v.t === "settings") {
@@ -168,6 +181,21 @@ function onSignedIn() {
   clearTimeout(offlineTimer);
   offlineTimer = null;
   setConn("connected");
+  // tell the app which version this is: if it is older than the files on disk, the app answers with a reload
+  request({ t: "info", version: chrome.runtime.getManifest().version }, 8000).then((r) => {
+    if (r && r.t === "info") {
+      state = { ...state, app: { appVersion: r.appVersion || "", diskVersion: r.diskVersion || "" } };
+      changed();
+    }
+  });
+}
+
+/** The app found this extension older than the files in the stable folder. Reload, at most once per 2 minutes. */
+async function doReload() {
+  const { lastReload } = await store.local.get("lastReload");
+  if (!reloadAllowed(Date.now(), lastReload)) return;
+  await store.local.set({ lastReload: Date.now() });
+  setTimeout(() => chrome.runtime.reload(), 300); // Chrome starts the new files (the same folder) and the worker reconnects by itself
 }
 
 function onEvent(e) {
@@ -276,57 +304,97 @@ const serial = (fn) => (tabQueue = tabQueue.then(fn).catch(() => {}));
 
 async function tabsGet() {
   const { tabs } = await store.session.get("tabs");
-  return tabs || { opened: {}, done: [], home: false };
+  return { opened: {}, gates: {}, ...(tabs || {}) };
 }
 async function tabsSet(t) {
   await store.session.set({ tabs: t });
 }
 
-async function findTab(patterns) {
+async function allTabs() {
   try {
-    const found = await chrome.tabs.query({ url: patterns });
-    return found[0] || null;
+    return (await chrome.tabs.query({})).map((t) => ({ id: t.id, url: t.url || t.pendingUrl || "" }));
   } catch {
-    return null;
+    return [];
   }
 }
 
-async function ensureHome() {
-  const t = await tabsGet();
-  if (t.home || !state.settings?.pages?.pumpFunHome) return;
-  t.home = true; // once per browser session: if you close it, it stays closed
-  await tabsSet(t);
-  if (await findTab(["https://pump.fun/*", "https://www.pump.fun/*"])) return;
-  await chrome.tabs.create({ url: "https://pump.fun/", active: false });
+function neededPages() {
+  const held = state.positions.filter((p) => p.state !== "CLOSED").map((p) => ({ mint: p.mint, symbol: p.symbol }));
+  return requiredPages({ settings: state.settings, xmon: { enabled: xSettings.enabled }, held });
 }
 
-async function ensureCoinTab(mint) {
-  if (!state.settings?.pages?.dexscreenerHeld) return;
-  const t = await tabsGet();
-  if (t.done.includes(mint)) return;
-  t.done = [...t.done, mint].slice(-200);
-  const existing = await findTab([`https://dexscreener.com/solana/${mint}*`, `https://www.dexscreener.com/solana/${mint}*`]);
-  if (!existing) {
-    const tab = await chrome.tabs.create({ url: dexUrl(mint), active: false });
-    t.opened[mint] = tab.id; // ours: allowed to close later
+// is x.com logged in? The X runner knows after its first page; before that the open x.com tab is asked (read only: URL and page text)
+let xLogin = null;
+async function probeXLogin(tabs) {
+  const known = xRunner.status().loggedIn;
+  if (known !== null && known !== undefined) return (xLogin = known);
+  const tab = findTab({ patterns: ["https://x.com/*"] }, tabs);
+  if (!tab) return (xLogin = null);
+  if (/\/i\/flow\/login|\/login(\?|$)/.test(tab.url)) return (xLogin = false);
+  try {
+    const r = await chrome.tabs.sendMessage(tab.id, { t: "xlogin" });
+    if (r && r.state === "login") return (xLogin = false);
+    if (r && r.state === "ok") return (xLogin = true);
+  } catch {
+    /* page still loading or no content script yet */
   }
-  await tabsSet(t);
+  return xLogin;
 }
+
+/**
+ * Check the open tabs against the pages the bot needs, open what is missing (reusing tabs), and report the checklist to the
+ * app and the panel. Without `force` a page is tried once per browser session, so a tab you closed stays closed.
+ * With `force` ("Open missing pages") every missing page is opened. x.com opens pinned and in the background.
+ */
+function ensurePages({ force = false, openMissing = true } = {}) {
+  return serial(async () => {
+    if (state.conn !== "connected" || !state.settings) return;
+    const required = neededPages();
+    let tabs = await allTabs();
+    if (openMissing) {
+      const t = await tabsGet();
+      const plan = planOpen(required, tabs, t.gates, force);
+      t.gates = plan.gates;
+      for (const p of plan.open) {
+        try {
+          const tab = await chrome.tabs.create({ url: p.url, active: false, ...(p.pinned ? { pinned: true } : {}) });
+          if (p.mint) t.opened[p.mint] = tab.id; // ours: allowed to close later
+          if (p.id === "x") await store.session.set({ xTab: tab.id }); // the X runner reuses it instead of opening a second tab
+        } catch {
+          /* Chrome refused (no window yet): the next check tries again if forced */
+        }
+      }
+      await tabsSet(t);
+      if (plan.open.length) tabs = await allTabs();
+    }
+    await probeXLogin(tabs);
+    const items = checklist(required, tabs, { xLoggedIn: xLogin });
+    state = { ...state, pages: items };
+    changed();
+    request({ t: "pages", items }, 5000);
+  });
+}
+
+let pagesTimer = null;
+/** Tabs opened or closed: refresh the checklist shortly after (no opening). */
+function pagesSoon() {
+  clearTimeout(pagesTimer);
+  pagesTimer = setTimeout(() => ensurePages({ openMissing: false }), 1500);
+}
+chrome.tabs.onRemoved.addListener(pagesSoon);
+chrome.tabs.onUpdated.addListener((id, info) => {
+  if (info.url || info.status === "complete") pagesSoon();
+});
 
 function tabsOnSettings() {
-  return serial(async () => {
-    await ensureHome();
-    for (const m of heldMints(state)) await ensureCoinTab(m);
-  });
+  return ensurePages({ force: false });
 }
 
 function tabsOnPositions(prev) {
   const before = new Set(heldMints(prev));
   const fresh = heldMints(state).filter((m) => !prev.primed.positions || !before.has(m));
   if (!fresh.length) return;
-  return serial(async () => {
-    for (const m of fresh) await ensureCoinTab(m);
-  });
+  return ensurePages({ force: false });
 }
 
 function tabsOnClosed(mint) {
@@ -335,7 +403,7 @@ function tabsOnClosed(mint) {
 
 async function closeCoinTab(mint) {
   const t = await tabsGet();
-  t.done = t.done.filter((x) => x !== mint); // a later buy of the same coin may open its chart again
+  delete t.gates[`dex-${mint}`]; // a later buy of the same coin may open its chart again
   const id = state.settings?.closeTabOnClose ? t.opened[mint] : null;
   if (id != null) delete t.opened[mint];
   await tabsSet(t);
@@ -348,7 +416,8 @@ async function closeCoinTab(mint) {
 }
 
 async function openCoin(mint) {
-  const existing = await findTab([`https://dexscreener.com/solana/${mint}*`, `https://www.dexscreener.com/solana/${mint}*`]);
+  const hit = findTab({ patterns: [`https://dexscreener.com/solana/${mint}*`, `https://www.dexscreener.com/solana/${mint}*`] }, await allTabs());
+  const existing = hit ? await chrome.tabs.get(hit.id).catch(() => null) : null;
   if (existing) {
     await chrome.tabs.update(existing.id, { active: true });
     await chrome.windows.update(existing.windowId, { focused: true });
@@ -406,6 +475,9 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
         await store.local.set({ prefs });
         changed();
         return send({ ok: true });
+      case "openPages":
+        await ensurePages({ force: true });
+        return send({ ok: true });
       case "openCoin":
         await openCoin(String(msg.mint));
         return send({ ok: true });
@@ -435,14 +507,27 @@ chrome.runtime.onConnect.addListener((port) => {
 // ------------------------------------------------------------------ start up and stay up
 
 chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
+  if (details && details.reason === "update") {
+    // the app asked for a reload and Chrome started the new files: remember it so the panel can say so
+    const to = chrome.runtime.getManifest().version;
+    if (details.previousVersion && details.previousVersion !== to) {
+      const note = { from: details.previousVersion, to, at: Date.now() };
+      store.local.set({ updatedNote: note });
+      state = { ...state, updated: note };
+      changed();
+    }
+  }
   connect();
 });
 chrome.runtime.onStartup.addListener(connect);
 chrome.alarms.create("keepalive", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((a) => {
-  if (a.name === "keepalive") connect();
+  if (a.name === "keepalive") {
+    connect();
+    if (state.conn === "connected") ensurePages({ openMissing: false });
+  }
 });
 connect();
 paintBadge();
