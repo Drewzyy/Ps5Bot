@@ -56,6 +56,7 @@ impl Sim {
                 v_sol: self.c.v_sol,
                 v_tokens: self.c.v_tokens,
                 real_sol: self.c.real_sol,
+                ..Default::default()
             },
         ));
     }

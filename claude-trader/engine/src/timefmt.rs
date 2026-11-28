@@ -40,6 +40,12 @@ pub fn date_local(ms: i64) -> String {
     format!("{y:04}-{m:02}-{d:02}")
 }
 
+/// `2026-11-25` for the UTC day of `ms` (recording files use UTC so a replay never depends on the PC's time zone).
+pub fn date_utc(ms: i64) -> String {
+    let (y, m, d) = civil(ms.div_euclid(86_400_000));
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,6 +1,7 @@
 //! Scam Shield pipeline: cheap checks first, then chain checks, then pre-buy checks (SPEC 7, 11b).
 //! Every check returns a `CheckResult`; a required check that is undecided blocks the token.
 
+pub mod launch;
 pub mod net;
 pub mod rules;
 
@@ -14,6 +15,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::timeout;
+
+/// Most creation-slot transactions read per coin to learn what the launch group bought (each is one RPC call).
+pub const LAUNCH_READ_CAP: usize = 8;
 
 /// Check budget (SPEC 7: each check has a 2 s budget).
 pub const BUDGET: Duration = Duration::from_secs(2);
@@ -58,6 +62,9 @@ pub struct Shield {
     pub opts: ShieldOpts,
     /// Tests only: answer for the on-chain holder list instead of asking the RPC.
     pub holders_stub: std::sync::Mutex<Option<Result<Vec<Holder>, String>>>,
+    /// At most 2 funder lookups at a time, and none while the RPC is rate limiting us.
+    funder_sem: tokio::sync::Semaphore,
+    funder_backoff_until_ms: std::sync::atomic::AtomicI64,
 }
 
 /// What the RugCheck step decides for a coin that would otherwise be picked.
@@ -109,6 +116,13 @@ pub struct ChainFacts {
     pub rug_done: Option<Decision>,
     /// Website, X and Telegram from the coin's metadata (for the "source" links in the UI).
     pub links: rules::SocialLinks,
+    /// The bonding-curve account as read at the chain stage (mayhem flag, quote mint, holder rewards, creation slot).
+    pub curve_account: Option<crate::rpc::CurveAccount>,
+    /// Slot the coin was created in (from the signature list).
+    pub create_slot: Option<u64>,
+    /// Trades of the creation slot and the next one, read from the chain with `getTransaction` (the live feed starts too late
+    /// to see them). Kept apart from the live store so they never change the observation counts.
+    pub launch_trades: Vec<Trade>,
 }
 
 #[derive(Debug, Clone)]
@@ -132,7 +146,7 @@ impl Shield {
 
     /// A Shield that shares an existing RugCheck client (the app makes one and hands it to every Shield).
     pub fn with_rugcheck(cfg: Config, db: Arc<Db>, rpc: Arc<Rpc>, opts: ShieldOpts, rugcheck: Arc<net::RugCheck>) -> Self {
-        Shield { cfg, db, rpc, rugcheck, http: crate::net::http_client(), opts, holders_stub: std::sync::Mutex::new(None) }
+        Shield { cfg, db, rpc, rugcheck, http: crate::net::http_client(), opts, holders_stub: std::sync::Mutex::new(None), funder_sem: tokio::sync::Semaphore::new(2), funder_backoff_until_ms: Default::default() }
     }
 
     /// Start the RugCheck request for a coin in the background and return a handle to watch. It retries after 3, 8 and 15 s
@@ -171,12 +185,53 @@ impl Shield {
     pub fn stage_a(&self, t: &FeedMsg) -> Vec<CheckResult> {
         let f = &self.cfg.filters;
         let since = now_ms() - 24 * 3600 * 1000;
-        vec![
+        let mut v = vec![
             metadata_present_rule(&t.name, &t.symbol, &t.uri),
             creator_holding_rule(creator_initial_pct(t.initial_buy), f.max_creator_holding_pct, &t.trader_public_key),
             blacklist_rule(self.db.blacklist_reason(&t.trader_public_key), &t.trader_public_key),
             copycat_rule(&t.name, &t.symbol, &self.db.trending_names(since)),
-        ]
+        ];
+        // the feed already says whether the coin is a mayhem coin (and sometimes the quote asset): no RPC needed
+        v.extend(curve_type_rules(t.is_mayhem_mode, crate::pump::quote_is_non_sol(&t.quote_mint)));
+        v
+    }
+
+    /// Creator funder-chain check (SPEC 7c). Cached in SQLite, at most 2 lookups at once, skipped for 30 s after the RPC says 429,
+    /// and never blocks on anything but a known serial-dead-launcher funder.
+    pub async fn funder_check(&self, creator: &str) -> CheckResult {
+        let cfg = &self.cfg.filters.funder;
+        if !cfg.enabled || creator.is_empty() {
+            return CheckResult::pass("funder", "Funder check is off.");
+        }
+        let now = now_ms();
+        if let Some((funder, _, checked, status)) = self.db.funder_get(creator) {
+            let age = now - checked;
+            let fresh = if status == "error" { age < crate::funder::CACHE_ERR_MS } else { age < crate::funder::CACHE_OK_MS };
+            if fresh {
+                return crate::funder::funder_result(&self.db, cfg, creator, &status, &funder);
+            }
+        }
+        if now < self.funder_backoff_until_ms.load(std::sync::atomic::Ordering::Relaxed) {
+            return crate::funder::funder_result(&self.db, cfg, creator, "skipped", "");
+        }
+        let Ok(_permit) = tokio::time::timeout(Duration::from_millis(cfg.budget_ms), self.funder_sem.acquire()).await else {
+            return crate::funder::funder_result(&self.db, cfg, creator, "skipped", "");
+        };
+        let res = tokio::time::timeout(Duration::from_millis(cfg.budget_ms), self.rpc.first_funding(creator, cfg.fresh_hours)).await;
+        match res {
+            Ok(Ok((status, funder, ms, lamports))) => {
+                self.db.funder_put(creator, &funder, ms, lamports, now_ms(), &status);
+                crate::funder::funder_result(&self.db, cfg, creator, &status, &funder)
+            }
+            Ok(Err(e)) => {
+                if e.contains("429") {
+                    self.funder_backoff_until_ms.store(now_ms() + 30_000, std::sync::atomic::Ordering::Relaxed);
+                }
+                self.db.funder_put(creator, "", 0, 0, now_ms(), "error");
+                crate::funder::funder_result(&self.db, cfg, creator, "error", "")
+            }
+            Err(_) => crate::funder::funder_result(&self.db, cfg, creator, "skipped", ""),
+        }
     }
 
     /// Stage B: chain checks. Each runs with a 2 s budget (the mint poll loop is allowed its 8 polls).
@@ -212,18 +267,54 @@ impl Shield {
         let meta_fut = async { timeout(BUDGET + Duration::from_millis(300), net::fetch_metadata_links(&self.http, &t.uri)).await.unwrap_or((MetaFetch::Failed("timeout".into()), rules::SocialLinks::default())) };
 
         // RugCheck is NOT waited for here: it runs in the background and is judged during the watch (SPEC 11b #29).
-        let ((mint_res, mint_info), sigs, (meta, links)) = tokio::join!(mint_fut, sig_fut, meta_fut);
+        let curve_fut = async { timeout(BUDGET, self.rpc.curve_account(&t.bonding_curve_key)).await };
+        let funder_fut = self.funder_check(&t.trader_public_key);
+        let ((mint_res, mint_info), sigs, (meta, links), curve_acc, funder_res) = tokio::join!(mint_fut, sig_fut, meta_fut, curve_fut, funder_fut);
         let mut out = vec![mint_res, honeypot_stub()];
+        if let Ok(Ok(acc)) = &curve_acc {
+            out.extend(curve_type_rules(acc.is_mayhem, acc.non_sol_quote));
+        }
+        out.push(funder_res);
         let mut facts = ChainFacts::default();
         facts.excluded.insert(t.bonding_curve_key.clone());
         facts.links = links;
         facts.mint_info = mint_info;
+        if let Ok(Ok(acc)) = curve_acc {
+            facts.create_slot = Some(acc.created_at_slot).filter(|s| *s > 0);
+            facts.curve_account = Some(acc);
+        }
 
         // The image can also be vouched for by RugCheck, but only if its report is already here; otherwise the metadata file decides.
         out.push(community_rule(&meta, &RugImage::Unknown, f.require_community_checks.min_social_links, f.require_community_checks.require_image, relax));
         out.push(metadata_uri_rule(&meta, relax));
 
         match &sigs {
+            Ok(list) if f.graded.enabled => {
+                // Graded (SPEC 7b): count the launch-slot transactions now, read what those wallets bought, and judge at the end of
+                // the watch (`launch_grade`). Only the extreme burst and supply tests below still block here.
+                let (res, slot0, others) = dev_snipe_graded(list, &t.signature);
+                out.push(res);
+                if let Some(s) = slot0 {
+                    facts.create_slot = Some(s);
+                }
+                if !others.is_empty() {
+                    let read = async {
+                        let mut v = vec![];
+                        for sig in others.iter().take(LAUNCH_READ_CAP) {
+                            if let Ok(ts) = self.rpc.transaction_trades(sig).await {
+                                v.extend(ts.into_iter().filter(|x| x.mint == t.mint));
+                            }
+                        }
+                        v
+                    };
+                    facts.launch_trades = timeout(Duration::from_secs(4), read).await.unwrap_or_default();
+                }
+                let burst_only: Vec<SlotTx> = list.iter().filter(|s| !s.2).map(|s| SlotTx { slot: s.1, payer: s.0.clone(), recv_ms: now_ms() }).collect();
+                let hit = bundle_rules(&burst_only, &facts.holders, &facts.excluded, now_ms()).filter(|h| h.code == "BUNDLE_BURST" || h.code == "BUNDLE_SUPPLY");
+                facts.burst = burst_only;
+                let sig_list: Vec<String> = list.iter().map(|s| s.0.clone()).collect();
+                out.push(bundle_check(hit, f.reject_bundle, &sig_list));
+            }
             Ok(list) => {
                 out.push(dev_snipe_rule(list, &t.signature, f.reject_dev_snipe_first_block));
                 // Burst test over every successful tx on the curve (one entry per signature; old txs have no known payer,
@@ -398,6 +489,20 @@ impl Shield {
         out
     }
 
+    /// Graded launch-slot check (SPEC 7b) on everything we know: the live trades plus the creation-slot trades read from the chain.
+    /// Returns the measured group (logged for every coin) and the check result (a block only above the limits).
+    pub fn launch_grade(&self, creator: &str, trades: &[Trade], facts: &ChainFacts, curve: Option<crate::curve::Curve>) -> (launch::LaunchExposure, CheckResult) {
+        let g = &self.cfg.filters.graded;
+        let mut all: Vec<Trade> = facts.launch_trades.clone();
+        all.extend(trades.iter().cloned());
+        // the creation slot also falls out of the earliest trade slot when the chain read gave nothing
+        let slot0 = facts.create_slot.or_else(|| trades.iter().map(|t| t.slot).filter(|s| *s > 0).min());
+        let curve = curve.or_else(|| trades.iter().max_by_key(|t| (t.slot, t.recv_ms)).map(|t| crate::curve::Curve { v_sol: t.v_sol, v_tokens: t.v_tokens, real_sol: t.real_sol }));
+        let e = launch::launch_exposure(&all, creator, slot0, curve);
+        let r = if g.enabled { launch::grade(&e, g) } else { CheckResult::pass("launch_grade", "Graded launch check is off (the hard first-block rule applies).") };
+        (e, r)
+    }
+
     /// Pre-buy checks on the full observation data: wash volume, chase risk, bundle patterns on real payers.
     pub fn pre_buy(&self, trades: &[Trade], facts: &ChainFacts) -> Vec<CheckResult> {
         let now = now_ms();
@@ -405,10 +510,10 @@ impl Shield {
         let ex = if self.cfg.filters.exclude_curve_and_pool_accounts { facts.excluded.clone() } else { HashSet::new() };
         let sigs: Vec<String> = trades.iter().map(|x| x.signature.clone()).collect();
         let hit = bundle_rules(&slot_txs, &[], &ex, now).filter(|h| h.code != "BUNDLE_SUPPLY");
-        vec![
-            bundle_check(hit, self.cfg.filters.reject_bundle, &sigs),
-            wash_volume_rule(trades, now),
-        ]
+        let mut v = vec![bundle_check(hit, self.cfg.filters.reject_bundle, &sigs), wash_volume_rule(trades, now)];
+        // a coin that turns out to be mayhem or non-SOL quote in its own trade events is excluded too
+        v.extend(curve_type_rules(trades.iter().any(|t| t.mayhem), trades.iter().any(|t| t.non_sol_quote)));
+        v
     }
 
     /// Momentum-lane only pre-buy checks (the dip-40pct variant waits for a dip and has its own logic):

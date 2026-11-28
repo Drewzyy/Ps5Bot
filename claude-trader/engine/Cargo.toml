@@ -30,6 +30,7 @@ async-trait = "0.1"
 chacha20poly1305 = "0.10"
 sha2 = "0.10"
 getrandom = "0.2"
+flate2 = "1"
 
 # OS secure storage: Windows Credential Manager, macOS Keychain, Linux kernel keyring. Anything else uses the encrypted file.
 [target.'cfg(windows)'.dependencies]

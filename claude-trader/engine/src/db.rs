@@ -68,7 +68,15 @@ impl Db {
              CREATE TABLE IF NOT EXISTS scores(
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, mint TEXT NOT NULL, symbol TEXT, score REAL NOT NULL,
                 picked INTEGER NOT NULL, gates TEXT, trades INTEGER NOT NULL DEFAULT 0, buyers INTEGER NOT NULL DEFAULT 0);
-             CREATE INDEX IF NOT EXISTS scores_ts ON scores(ts);",
+             CREATE INDEX IF NOT EXISTS scores_ts ON scores(ts);
+             CREATE TABLE IF NOT EXISTS funders(
+                wallet TEXT PRIMARY KEY, funder TEXT NOT NULL DEFAULT '', funded_ms INTEGER NOT NULL DEFAULT 0,
+                lamports INTEGER NOT NULL DEFAULT 0, checked_ms INTEGER NOT NULL, status TEXT NOT NULL);
+             CREATE INDEX IF NOT EXISTS funders_funder ON funders(funder);
+             CREATE TABLE IF NOT EXISTS launch_outcomes(
+                mint TEXT PRIMARY KEY, creator TEXT NOT NULL, ts INTEGER NOT NULL, dead INTEGER NOT NULL,
+                peak_mcap REAL, end_mcap REAL, buyers INTEGER);
+             CREATE INDEX IF NOT EXISTS launch_outcomes_creator ON launch_outcomes(creator);",
         )
         .map_err(|e| format!("db schema: {e}"))?;
         // older databases were created before the creator fee column existed
@@ -103,7 +111,7 @@ impl Db {
     pub fn funnel(&self, since_ms: i64, top_n: u32) -> FunnelCounts {
         let c = self.conn.lock().unwrap();
         let n = |sql: &str| -> u32 { c.query_row(sql, params![since_ms], |r| r.get::<_, i64>(0)).unwrap_or(0).max(0) as u32 };
-        let shield = "stage IN ('cheap-prefilter','chain','rugcheck','rugcheck-fallback') AND outcome='block'";
+        let shield = "stage IN ('cheap-prefilter','chain','rugcheck','rugcheck-fallback','launch-grade') AND outcome='block'";
         let seen = n("SELECT COUNT(*) FROM tokens_seen WHERE ts>=?");
         let blocked = n(&format!("SELECT COUNT(DISTINCT mint) FROM decisions WHERE ts>=? AND {shield}"));
         let scored = n("SELECT COUNT(*) FROM scores WHERE ts>=?");
@@ -402,6 +410,46 @@ impl Db {
     pub fn position_count(&self) -> i64 {
         let c = self.conn.lock().unwrap();
         c.query_row("SELECT COUNT(*) FROM positions", [], |r| r.get(0)).unwrap_or(0)
+    }
+
+    // ------------------------------------------------------------ creator funder chain (SPEC 7c)
+
+    /// A cached funder lookup: (funder wallet, when it was funded, when we looked, status). Status: `ok` (funder known),
+    /// `none` (no incoming transfer found), `old` (the creator wallet is not new, not judged), `error` (lookup failed).
+    pub fn funder_get(&self, wallet: &str) -> Option<(String, i64, i64, String)> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT funder, funded_ms, checked_ms, status FROM funders WHERE wallet=?", params![wallet], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))).ok()
+    }
+
+    pub fn funder_put(&self, wallet: &str, funder: &str, funded_ms: i64, lamports: u64, checked_ms: i64, status: &str) {
+        let c = self.conn.lock().unwrap();
+        let _ = c.execute(
+            "INSERT INTO funders(wallet,funder,funded_ms,lamports,checked_ms,status) VALUES(?,?,?,?,?,?)
+             ON CONFLICT(wallet) DO UPDATE SET funder=excluded.funder, funded_ms=excluded.funded_ms, lamports=excluded.lamports, checked_ms=excluded.checked_ms, status=excluded.status",
+            params![wallet, funder, funded_ms, lamports as i64, checked_ms, status],
+        );
+    }
+
+    /// Wallets (creators we looked up) that this funder funded.
+    pub fn wallets_funded_by(&self, funder: &str) -> Vec<String> {
+        let c = self.conn.lock().unwrap();
+        let Ok(mut st) = c.prepare("SELECT wallet FROM funders WHERE funder=? AND status='ok'") else { return vec![] };
+        st.query_map(params![funder], |r| r.get::<_, String>(0)).map(|it| it.flatten().collect()).unwrap_or_default()
+    }
+
+    /// One observed launch and whether it died (see `funder::launch_died`). Coins that were blocked before the watch have no outcome.
+    pub fn outcome_put(&self, mint: &str, creator: &str, ts: i64, dead: bool, peak_mcap: f64, end_mcap: f64, buyers: u32) {
+        let c = self.conn.lock().unwrap();
+        let _ = c.execute(
+            "INSERT OR REPLACE INTO launch_outcomes(mint,creator,ts,dead,peak_mcap,end_mcap,buyers) VALUES(?,?,?,?,?,?,?)",
+            params![mint, creator, ts, dead as i64, peak_mcap, end_mcap, buyers],
+        );
+    }
+
+    /// (launches with a recorded outcome, how many died) for a creator wallet.
+    pub fn creator_outcomes(&self, creator: &str) -> (u32, u32) {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT COUNT(*), COALESCE(SUM(dead),0) FROM launch_outcomes WHERE creator=?", params![creator], |r| Ok((r.get::<_, i64>(0)? as u32, r.get::<_, i64>(1)? as u32))).unwrap_or((0, 0))
     }
 
     pub fn decision_count(&self) -> u32 {

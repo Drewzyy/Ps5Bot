@@ -83,6 +83,9 @@ pub struct FeeModel {
     pub priority_sol: f64,
     pub priority_cap_sol: f64,
     pub base_tx_sol: f64,
+    /// Block 0 tax in percent (Global::block0_tax_bps / 100). Added to the PROTOCOL fee of a trade made by a non-creator in the
+    /// coin's creation slot. 0 today ("stays 0 until further notice", pump-public-docs BLOCK0_TAX.md).
+    pub block0_tax_pct: f64,
 }
 
 impl FeeModel {
@@ -95,7 +98,18 @@ impl FeeModel {
             priority_sol: c.fees.pump_portal_priority_fee_sol,
             priority_cap_sol: c.fees.pump_portal_priority_fee_cap_sol,
             base_tx_sol: BASE_TX_FEE_SOL,
+            block0_tax_pct: c.fees.block0_tax_bps as f64 / 100.0,
         }
+    }
+    /// Per-side percent fees for a trade made in the coin's creation slot by a wallet that owes the block 0 tax.
+    pub fn pct_per_side_in_creation_slot(&self) -> f64 {
+        self.pct_per_side() + self.block0_tax_pct
+    }
+    /// Same as `trade_fees`, for a trade in the creation slot by a non-creator: the tax goes into the pump.fun protocol line.
+    pub fn trade_fees_in_creation_slot(&self, gross_sol: f64, priority: f64) -> FeeBreakdown {
+        let mut f = self.trade_fees(gross_sol, priority);
+        f.pump_fun += gross_sol * self.block0_tax_pct / 100.0;
+        f
     }
     pub fn pct_per_side(&self) -> f64 {
         self.pump_pct + self.portal_pct
@@ -204,6 +218,23 @@ mod tests {
         assert!((f.priority_for_attempt(1) - 0.001).abs() < 1e-12);
         assert!((f.priority_for_attempt(2) - 0.002).abs() < 1e-12);
         assert!((f.priority_for_attempt(9) - 0.002).abs() < 1e-12);
+    }
+
+    #[test]
+    fn block_0_tax_is_zero_by_default_and_added_to_the_protocol_fee_only_in_the_creation_slot() {
+        let mut cfg = crate::Config::from_json(include_str!("../../config.json")).unwrap();
+        let f0 = FeeModel::from_config(&cfg);
+        assert_eq!(f0.block0_tax_pct, 0.0);
+        assert_eq!(f0.trade_fees_in_creation_slot(0.2, 0.0005), f0.trade_fees(0.2, 0.0005), "a 0 tax changes nothing");
+        cfg.fees.block0_tax_bps = 500; // 5%
+        let f = FeeModel::from_config(&cfg);
+        assert!((f.block0_tax_pct - 5.0).abs() < 1e-12);
+        // normal slot: unchanged
+        assert_eq!(f.trade_fees(0.2, 0.0005), f0.trade_fees(0.2, 0.0005));
+        let t = f.trade_fees_in_creation_slot(0.2, 0.0005);
+        assert!((t.pump_fun - (0.0019 + 0.01)).abs() < 1e-12, "5% of 0.2 SOL is added to the protocol line");
+        assert!((t.creator - 0.0006).abs() < 1e-12, "the creator fee is unchanged");
+        assert!((f.pct_per_side_in_creation_slot() - 7.25).abs() < 1e-12);
     }
 
     #[test]

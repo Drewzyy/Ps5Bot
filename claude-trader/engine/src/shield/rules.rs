@@ -580,6 +580,40 @@ pub fn dev_snipe_rule(sigs: &[(String, u64, bool)], create_sig: &str, reject: bo
     c
 }
 
+// ---------------------------------------------------------------- curve type (SPEC 7d): mayhem and non-SOL quote
+
+/// Coins whose curve math our paper fills cannot reproduce are excluded, with a plain reason:
+/// - mayhem mode: reserves move without trade events (a measured median 77% error on the constant-product invariant in one
+///   research run, UNVERIFIED) and sells can exceed the real reserves;
+/// - a quote asset other than SOL: prices and amounts are in another token, our SOL math does not apply.
+pub fn curve_type_rules(is_mayhem: bool, non_sol_quote: bool) -> Vec<CheckResult> {
+    let mut out = vec![];
+    out.push(if is_mayhem {
+        CheckResult::block("mayhem_mode", "MAYHEM_MODE", "Mayhem-mode coin. Its curve moves without trade events, so our bonding-curve math (and every paper fill) would be wrong. Never traded.")
+    } else {
+        CheckResult::pass("mayhem_mode", "Not a mayhem-mode coin.")
+    });
+    out.push(if non_sol_quote {
+        CheckResult::block("quote_mint", "NON_SOL_QUOTE", "The coin is paired with a token other than SOL. Our SOL curve math does not apply. Never traded.")
+    } else {
+        CheckResult::pass("quote_mint", "Paired with SOL.")
+    });
+    out
+}
+
+/// Graded replacement for `dev_snipe_rule` (SPEC 7b): other transactions in the creation slot are COUNTED here and judged later
+/// by `launch::grade` once the wallets and what they hold are known. Returns (result, creation slot, signatures of the other
+/// successful transactions in the creation slot or the next one).
+pub fn dev_snipe_graded(sigs: &[(String, u64, bool)], create_sig: &str) -> (CheckResult, Option<u64>, Vec<String>) {
+    let name = "dev_snipe";
+    let Some(slot0) = sigs.iter().find(|s| s.0 == create_sig).map(|s| s.1) else {
+        return (CheckResult::undecided(name, "Create transaction not found in the curve's signature list."), None, vec![]);
+    };
+    let others: Vec<String> = sigs.iter().filter(|s| s.0 != create_sig && !s.2 && s.1 >= slot0 && s.1 <= slot0 + 1).map(|s| s.0.clone()).collect();
+    let in_slot = sigs.iter().filter(|s| s.1 == slot0 && s.0 != create_sig && !s.2).count();
+    (CheckResult::pass(name, format!("{in_slot} other transaction(s) in the creation block (slot {slot0}); judged by the launch grade, not blocked on count.")), Some(slot0), others)
+}
+
 // ---------------------------------------------------------------- 5. wash volume (SPEC 11b #5)
 
 /// At least 15 distinct buyer wallets in the last 60 s, and the top 3 wallets under 40% of trades [est].
@@ -636,10 +670,11 @@ pub fn dumped_from_peak_rule(peak_mcap: f64, now_mcap: f64) -> CheckResult {
 
 /// Exit-liquidity risk verdict.
 pub fn verdict_for(results: &[CheckResult]) -> &'static str {
-    const HARD: [&str; 17] = [
+    const HARD: [&str; 21] = [
         "MINT_AUTHORITY", "FREEZE_AUTHORITY", "TRANSFER_HOOK", "PERMANENT_DELEGATE", "TRANSFER_FEE", "CLOSE_AUTHORITY",
         "CREATOR_HOLDING", "SINGLE_HOLDER", "TOP_HOLDERS", "INSIDERS", "BUNDLE_BURST", "BUNDLE_PAYERS", "BUNDLE_SUPPLY",
         "DEV_SNIPE", "CREATOR_BLACKLISTED", "RUGCHECK_RUGGED", "RUGCHECK_DANGER",
+        "LAUNCH_SLOT_PULL", "LAUNCH_SLOT_SINGLE", "LAUNCH_GROUP_SUPPLY", "FUNDER_SERIAL_DEAD",
     ];
     if results.iter().any(|r| r.outcome == Outcome::Block && HARD.contains(&r.code.as_str())) {
         return "HIGH";
@@ -934,7 +969,7 @@ mod tests {
     }
 
     fn trade(user: &str, buy: bool, ms: i64) -> Trade {
-        Trade { mint: "m".into(), user: user.into(), is_buy: buy, sol: 0.1, tokens: 1.0, slot: 1, signature: "s".into(), recv_ms: ms, v_sol: 30.0, v_tokens: 1e9, real_sol: 0.0 }
+        Trade { mint: "m".into(), user: user.into(), is_buy: buy, sol: 0.1, tokens: 1.0, slot: 1, signature: "s".into(), recv_ms: ms, v_sol: 30.0, v_tokens: 1e9, real_sol: 0.0, ..Default::default() }
     }
 
     #[test]
@@ -992,6 +1027,32 @@ mod tests {
         assert!(u.blocks());
         assert_eq!(u.code, "UNDECIDED_MINT_ACCOUNT");
         assert!(!u.clone().with_required(false).blocks());
+    }
+
+    #[test]
+    fn the_graded_dev_snipe_counts_other_creation_block_transactions_but_never_blocks_on_them() {
+        let sigs: Vec<(String, u64, bool)> = vec![("c".into(), 100, false), ("a".into(), 100, false), ("b".into(), 101, false), ("f".into(), 100, true), ("late".into(), 140, false)];
+        let (r, slot, others) = dev_snipe_graded(&sigs, "c");
+        assert!(!r.blocks() && r.outcome == Outcome::Pass, "{r:?}");
+        assert_eq!(slot, Some(100));
+        assert_eq!(others, vec!["a".to_string(), "b".to_string()], "failed transactions and later ones are not launch-slot trades");
+        assert!(r.detail.contains("1 other transaction"));
+        // the old rule would have blocked this coin
+        assert!(dev_snipe_rule(&sigs, "c", true).blocks());
+        // create transaction missing: still undecided, as before
+        let (u, none, _) = dev_snipe_graded(&sigs, "zzz");
+        assert_eq!(u.outcome, Outcome::Undecided);
+        assert_eq!(none, None);
+    }
+
+    #[test]
+    fn mayhem_and_non_sol_quote_coins_are_blocked_with_their_own_codes() {
+        let r = curve_type_rules(true, false);
+        assert_eq!(r.iter().find(|x| x.blocks()).unwrap().code, "MAYHEM_MODE");
+        let q = curve_type_rules(false, true);
+        assert_eq!(q.iter().find(|x| x.blocks()).unwrap().code, "NON_SOL_QUOTE");
+        assert!(curve_type_rules(false, false).iter().all(|x| !x.blocks()));
+        assert!(r[0].detail.contains("curve") && q[1].detail.contains("SOL"), "plain reasons");
     }
 
     #[test]

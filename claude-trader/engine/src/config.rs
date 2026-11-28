@@ -17,6 +17,74 @@ pub struct Config {
     /// X Monitor and Thesis Finder (SPEC 4e). The weights are starting guesses, not measured values.
     #[serde(default)]
     pub x_monitor: XMonitor,
+    /// Raw feed recorder (SPEC 4f): every decoded trade and launch, kept as compressed daily files for offline replay.
+    #[serde(default)]
+    pub recorder: RecorderCfg,
+    /// Paper-only deep-curve sprint lane (SPEC 6c). The numbers come from one tiny unreplicated backtest: unverified.
+    #[serde(default)]
+    pub sprint: Sprint,
+}
+
+/// The raw feed recorder. Files live in the app data folder under `recordings/`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct RecorderCfg {
+    pub enabled: bool,
+    /// Daily files older than this many days are deleted.
+    pub retention_days: u32,
+    /// Oldest files are deleted first when the folder grows past this many megabytes.
+    pub max_megabytes: u32,
+}
+
+impl Default for RecorderCfg {
+    fn default() -> Self {
+        RecorderCfg { enabled: true, retention_days: 14, max_megabytes: 2000 }
+    }
+}
+
+/// Deep-curve sprint lane (paper only). Entry: real reserves 39 to 60 SOL, coin 40 to 120 slots old, at least 30 distinct
+/// buyers, launch-slot wallets able to pull at most 16 SOL, no single wallet over 11 SOL. Exit: sell at 90% of graduation or
+/// when the real reserve falls 20 SOL below entry or 40 SOL below its peak. Source: one 48 hour replay with 7 sprint trades
+/// (WhoIsTyfur/makefun-memecoin-backtest-48h): UNVERIFIED, the lane exists to measure it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct Sprint {
+    pub enabled: bool,
+    pub style: String,
+    pub real_sol_min: f64,
+    pub real_sol_max: f64,
+    pub min_age_slots: u64,
+    pub max_age_slots: u64,
+    pub min_buyers: u32,
+    pub max_launch_slot_pull_sol: f64,
+    pub max_single_wallet_pull_sol: f64,
+    /// Exit when real reserves fall this many SOL below the entry reserve.
+    pub stop_below_entry_sol: f64,
+    /// Exit when real reserves fall this many SOL below the peak reserve seen since entry.
+    pub stop_below_peak_sol: f64,
+    /// Longest hold for this lane (the main lane's 300 s is far too short for a coin to climb 39 to 76 SOL).
+    pub max_hold_seconds: u32,
+    pub max_open: u32,
+}
+
+impl Default for Sprint {
+    fn default() -> Self {
+        Sprint {
+            enabled: true,
+            style: "deep-sprint".into(),
+            real_sol_min: 39.0,
+            real_sol_max: 60.0,
+            min_age_slots: 40,
+            max_age_slots: 120,
+            min_buyers: 30,
+            max_launch_slot_pull_sol: 16.0,
+            max_single_wallet_pull_sol: 11.0,
+            stop_below_entry_sol: 20.0,
+            stop_below_peak_sol: 40.0,
+            max_hold_seconds: 600,
+            max_open: 3,
+        }
+    }
 }
 
 /// X Monitor settings. Every number is a starting guess from research (SPEC 4e) with no tested backing; the journal logs
@@ -121,6 +189,19 @@ pub struct Learning {
     pub shadow_trades: u32,
     pub min_sample: u32,
     pub min_win_rate_gap_pts: f64,
+    /// A change is only applied if its test lane made at least this many trades (the holdout) AND their mean return is above 0
+    /// AND the lower end of the 95% bootstrap range of that mean is above 0.
+    #[serde(default = "default_promotion_min_trades")]
+    pub promotion_min_trades: u32,
+    #[serde(default = "default_bootstrap_resamples")]
+    pub bootstrap_resamples: u32,
+}
+
+fn default_promotion_min_trades() -> u32 {
+    20
+}
+fn default_bootstrap_resamples() -> u32 {
+    4000
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -160,6 +241,56 @@ pub struct Filters {
     #[serde(default)]
     pub require_rugcheck: bool,
     pub require_community_checks: CommunityChecks,
+    /// Graded launch-slot checks (SPEC 7b): count the wallets that bought in the first two slots and how much SOL they could
+    /// pull out, and block only above these limits instead of on any first-block buyer.
+    #[serde(default)]
+    pub graded: GradedShield,
+    /// Creator funder-chain reputation (SPEC 7c).
+    #[serde(default)]
+    pub funder: FunderCfg,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct GradedShield {
+    /// Off = the old hard block on any first-block buyer.
+    pub enabled: bool,
+    /// Block when the wallets that bought in the creation slot or the next one could sell everything for more than this many SOL.
+    pub max_launch_slot_pull_sol: f64,
+    /// Block when one such wallet alone could pull more than this many SOL.
+    pub max_single_wallet_pull_sol: f64,
+    /// Block when the launch-slot wallets hold at least this share of the supply.
+    pub max_launch_group_supply_pct: f64,
+}
+
+impl Default for GradedShield {
+    fn default() -> Self {
+        GradedShield { enabled: true, max_launch_slot_pull_sol: 16.0, max_single_wallet_pull_sol: 11.0, max_launch_group_supply_pct: 40.0 }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct FunderCfg {
+    pub enabled: bool,
+    /// A creator "launched coins that died" when it has at least this many launches in our records...
+    pub min_launches: u32,
+    /// ...and at least this share of them died.
+    pub dead_share: f64,
+    /// A funder is a serial dead-launcher funder when at least this many OTHER creators it funded are such creators.
+    pub min_bad_creators: u32,
+    /// A funder that funded more than this many creators is a hub (exchange, faucet): never judged.
+    pub hub_creators: u32,
+    /// A wallet counts as fresh when its first transaction is less than this many hours old.
+    pub fresh_hours: u32,
+    /// Time allowed for the lookup. If it runs out the coin is not blocked (the signal is "unknown").
+    pub budget_ms: u64,
+}
+
+impl Default for FunderCfg {
+    fn default() -> Self {
+        FunderCfg { enabled: true, min_launches: 2, dead_share: 0.8, min_bad_creators: 2, hub_creators: 25, fresh_hours: 48, budget_ms: 4000 }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -278,6 +409,10 @@ pub struct Fees {
     pub pump_portal_priority_fee_cap_sol: f64,
     /// Jito bundle tip per transaction. 0 = not used (PumpPortal local trades land with the priority fee only).
     pub jito_tip_sol: f64,
+    /// Block 0 tax read from the pump Global account (basis points, 0 today). Extra protocol fee for non-creators who trade in
+    /// the coin's creation slot. Set by the engine at start, not by hand. No lane trades in the creation slot today.
+    #[serde(default)]
+    pub block0_tax_bps: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

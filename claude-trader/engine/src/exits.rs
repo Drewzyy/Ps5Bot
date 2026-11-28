@@ -214,7 +214,7 @@ mod tests {
     }
 
     fn tr(user: &str, buy: bool, ms: i64, sol: f64, real: f64) -> Trade {
-        Trade { mint: "MINT".into(), user: user.into(), is_buy: buy, sol, tokens: sol * 1.0e7, slot: (ms / 400) as u64, signature: format!("{ms}{user}{buy}"), recv_ms: ms, v_sol: 40.0, v_tokens: 7.0e8, real_sol: real }
+        Trade { mint: "MINT".into(), user: user.into(), is_buy: buy, sol, tokens: sol * 1.0e7, slot: (ms / 400) as u64, signature: format!("{ms}{user}{buy}"), recv_ms: ms, v_sol: 40.0, v_tokens: 7.0e8, real_sol: real, ..Default::default() }
     }
 
     fn run(p: &mut Position, secs: f64, pct: f64, trades: &[Trade]) -> Option<ExitAction> {

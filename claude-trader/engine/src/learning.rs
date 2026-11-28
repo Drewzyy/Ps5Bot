@@ -1418,7 +1418,7 @@ mod tests {
     #[test]
     fn missed_coin_text_uses_the_price_data_or_says_there_is_none() {
         use crate::pump::Trade;
-        let t = |ms: i64, v_sol: f64| Trade { mint: "m".into(), user: "u".into(), is_buy: true, sol: 1.0, tokens: 1.0, slot: ms as u64, signature: format!("s{ms}"), recv_ms: ms, v_sol, v_tokens: 1_000_000_000.0, real_sol: 10.0 };
+        let t = |ms: i64, v_sol: f64| Trade { mint: "m".into(), user: "u".into(), is_buy: true, sol: 1.0, tokens: 1.0, slot: ms as u64, signature: format!("s{ms}"), recv_ms: ms, v_sol, v_tokens: 1_000_000_000.0, real_sol: 10.0, ..Default::default() };
         let base_price = t(0, 40.0).price();
         let trades = vec![t(10_000, 44.0), t(200_000, 50.0), t(250_000, 46.0), t(400_000, 90.0)];
         let (end, peak, n) = missed_outcome(&trades, base_price, 0).unwrap();

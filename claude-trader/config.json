@@ -13,7 +13,9 @@
     "rejectDevSnipeFirstBlock": true,
     "rejectBundle": true,
     "requireRugcheck": false,
-    "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true }
+    "requireCommunityChecks": { "minSocialLinks": 1, "requireImage": true },
+    "graded": { "enabled": true, "maxLaunchSlotPullSol": 16, "maxSingleWalletPullSol": 11, "maxLaunchGroupSupplyPct": 40 },
+    "funder": { "enabled": true, "minLaunches": 2, "deadShare": 0.8, "minBadCreators": 2, "hubCreators": 25, "freshHours": 48, "budgetMs": 4000 }
   },
   "observation": {
     "minScore": 80, "minUniqueBuyers": 5, "minBuySellRatio": 2.0, "minPriceChangePct": 5
@@ -59,7 +61,8 @@
     "computeUnits": 150000,
     "pumpPortalPriorityFeeSol": 0.0005,
     "pumpPortalPriorityFeeCapSol": 0.005,
-    "jitoTipSol": 0
+    "jitoTipSol": 0,
+    "block0TaxBps": 0
   },
   "paperFill": {
     "buyFailPct": 10, "sellFailPct": 15,
@@ -81,7 +84,16 @@
     "reviewEveryTrades": 30,
     "shadowTrades": 30,
     "minSample": 10,
-    "minWinRateGapPts": 25
+    "minWinRateGapPts": 25,
+    "promotionMinTrades": 20,
+    "bootstrapResamples": 4000
+  },
+  "recorder": { "enabled": true, "retentionDays": 14, "maxMegabytes": 2000 },
+  "sprint": {
+    "enabled": true, "style": "deep-sprint",
+    "realSolMin": 39, "realSolMax": 60, "minAgeSlots": 40, "maxAgeSlots": 120, "minBuyers": 30,
+    "maxLaunchSlotPullSol": 16, "maxSingleWalletPullSol": 11,
+    "stopBelowEntrySol": 20, "stopBelowPeakSol": 40, "maxHoldSeconds": 600, "maxOpen": 3
   },
   "xMonitor": {
     "weights": { "kol": 30, "engagement": 20, "replies": 10, "growth": 10, "integrity": 10, "community": 10, "narrative": 10 },

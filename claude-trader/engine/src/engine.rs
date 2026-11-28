@@ -191,7 +191,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     };
     hub.log(format!("engine: SOL price used for USD conversion: ${sol_usd:.2}"));
     let hub_log = hub.clone();
-    let feed = if opts.replay.is_some() { TradeFeed::offline() } else { TradeFeed::spawn(rpc.ws_url(), Arc::new(move |s| hub_log.log(s))) };
+    let feed = if opts.replay.is_some() { TradeFeed::offline() } else { TradeFeed::spawn(rpc.ws_url(), Some(rpc.clone()), Arc::new(move |s| hub_log.log(s))) };
     let trader = Trader::new(opts.config.clone(), db.clone(), hub.clone(), feed, if opts.replay.is_some() { None } else { Some(rpc.clone()) }, sol_usd, std::path::PathBuf::from(&opts.logs_dir), opts.replay.is_some());
     if opts.clear_halt {
         trader.clear_halts();
@@ -837,6 +837,7 @@ mod tests {
                 v_sol: 30.0 + (i as f64 + 1.0) * 1.0,
                 v_tokens: 7.0e8,
                 real_sol: (i as f64 + 1.0) * 1.0,
+                ..Default::default()
             });
         }
     }

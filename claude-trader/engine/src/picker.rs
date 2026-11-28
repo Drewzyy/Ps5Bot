@@ -317,7 +317,7 @@ mod tests {
     }
 
     fn tr(user: &str, buy: bool, ms: i64, v_sol: f64, real: f64) -> Trade {
-        Trade { mint: "m".into(), user: user.into(), is_buy: buy, sol: 0.5, tokens: 1_000_000.0, slot: (ms / 400) as u64, signature: format!("s{ms}{user}"), recv_ms: ms, v_sol, v_tokens: 1.073e9 * 30.0 / v_sol, real_sol: real }
+        Trade { mint: "m".into(), user: user.into(), is_buy: buy, sol: 0.5, tokens: 1_000_000.0, slot: (ms / 400) as u64, signature: format!("s{ms}{user}"), recv_ms: ms, v_sol, v_tokens: 1.073e9 * 30.0 / v_sol, real_sol: real, ..Default::default() }
     }
 
     /// 12 distinct buyers, 2 sells, price up 40%, second half busier, 20 SOL in curve.
