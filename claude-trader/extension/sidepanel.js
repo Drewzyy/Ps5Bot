@@ -83,7 +83,18 @@ function mainView() {
     ${learn.length ? `<div class="learn">${learn.map((r) => `<div class="e"><b>${esc(r.symbol)}</b> <span class="${cls(r.pnlSol)}">${fmtSol(r.pnlSol, true)}</span><br>${esc(r.headline)}</div>`).join("")}</div>` : `<div class="empty">Nothing yet. It writes a note after each trade.</div>`}
     ${state.learning ? `<div class="note" style="margin-top:6px">Next review in ${esc(state.learning.nextReviewIn)} trades.${state.learning.demo ? " (demo data)" : ""}</div>` : ""}
   </section>
+  ${xView()}
   ${settingsView()}`;
+}
+
+function xView() {
+  const x = state.xmon;
+  if (!x) return "";
+  const dot = x.state === "working" ? "pos" : x.state === "paused" || x.state === "not-logged-in" ? "neg" : "";
+  return `<section class="card" data-testid="xmon"><h2>X Monitor</h2>
+    <div class="note"><span class="${dot}"><b>${esc(x.line || "Off")}</b></span></div>
+    <div class="note" style="margin-top:4px">${x.state === "off" ? "Turn it on in the app: Settings, X Monitor." : `Pages opened this hour: ${esc(x.loadsLastHour)} of ${esc(x.maxPerHour)}. It only reads x.com in one background tab.`}</div>
+  </section>`;
 }
 
 function posRow(p) {

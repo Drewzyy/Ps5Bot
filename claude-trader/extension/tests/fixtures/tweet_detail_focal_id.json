@@ -1,0 +1,5 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "focalId": "1861500000000000001",
+ "note": "the id to pass as focalId when parsing tweet_detail.json"
+}

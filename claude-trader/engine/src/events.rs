@@ -124,6 +124,8 @@ pub enum EngineEvent {
     /// Chrome extension link: is one paired, is one connected right now. Never carries the pairing code or token.
     #[serde(rename_all = "camelCase")]
     Extension { ts: i64, paired: bool, connected: bool, last_seen_ms: i64 },
+    /// X Monitor and Thesis Finder: status, rising accounts, latest checks, stories and narratives. Sent about every 2 s.
+    XMonitor(Box<crate::xmon::XMonitorView>),
 }
 
 /// Health of the buy/sell data (the trade feed). Plain numbers for the Memecoin Monitor node and Settings > Connections.

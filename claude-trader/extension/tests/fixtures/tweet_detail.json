@@ -1,0 +1,755 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "threaded_conversation_with_injections_v2": {
+   "instructions": [
+    {
+     "type": "TimelineAddEntries",
+     "entries": [
+      {
+       "entryId": "tweet-1861500000000000001",
+       "sortIndex": "1",
+       "content": {
+        "entryType": "TimelineTimelineItem",
+        "__typename": "TimelineTimelineItem",
+        "itemContent": {
+         "itemType": "TimelineTweet",
+         "__typename": "TimelineTweet",
+         "tweet_results": {
+          "result": {
+           "__typename": "Tweet",
+           "rest_id": "1861500000000000001",
+           "core": {
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5OTg4Nzc2Ng==",
+              "rest_id": "99887766",
+              "is_blue_verified": true,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Sat Mar 01 10:00:00 +0000 2020",
+               "name": "Alpha Calls",
+               "screen_name": "alphacalls"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": "Daily alpha. Not financial advice."
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "Daily alpha. Not financial advice.",
+               "followers_count": 182000,
+               "friends_count": 900,
+               "listed_count": 3,
+               "statuses_count": 12000
+              }
+             }
+            }
+           },
+           "views": {
+            "count": "215000",
+            "state": "EnabledWithCount"
+           },
+           "legacy": {
+            "created_at": "Fri Nov 27 08:05:00 +0000 2026",
+            "full_text": "New one to watch: $MOONB, the bear that went to the moon. CA below.",
+            "favorite_count": 3100,
+            "reply_count": 410,
+            "retweet_count": 640,
+            "quote_count": 55,
+            "bookmark_count": 120,
+            "conversation_id_str": "1861500000000000001",
+            "lang": "en"
+           }
+          }
+         },
+         "tweetDisplayType": "Tweet"
+        }
+       }
+      },
+      {
+       "entryId": "conversationthread-1861500000000000001-1",
+       "sortIndex": "2",
+       "content": {
+        "entryType": "TimelineTimelineModule",
+        "__typename": "TimelineTimelineModule",
+        "displayType": "VerticalConversation",
+        "items": [
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-0",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000101",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTAx",
+                 "rest_id": "7019101",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jun 12 08:00:00 +0000 2025",
+                  "name": "real_trader_ana",
+                  "screen_name": "real_trader_ana"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 1900,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "The chart plus the Moon Bear thread is why I looked. Holder spread is better than the last three launches.",
+               "favorite_count": 5,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-1",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000102",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTAy",
+                 "rest_id": "7019102",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Tue Feb 04 08:00:00 +0000 2025",
+                  "name": "cryptokev_77",
+                  "screen_name": "cryptokev_77"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 640,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "Curve is at 11 SOL and the dev wallet has not sold. Watching the next 5 minutes.",
+               "favorite_count": 3,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-2",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000103",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTAz",
+                 "rest_id": "7019103",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png"
+                 },
+                 "core": {
+                  "created_at": "Sun Nov 22 12:00:00 +0000 2026",
+                  "name": "bot_user48271905",
+                  "screen_name": "bot_user48271905"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": true,
+                  "description": "",
+                  "followers_count": 12,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "LFG 🚀🚀🚀",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-3",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000104",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA0",
+                 "rest_id": "7019104",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png"
+                 },
+                 "core": {
+                  "created_at": "Sun Nov 22 12:00:00 +0000 2026",
+                  "name": "bot_user48271906",
+                  "screen_name": "bot_user48271906"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": true,
+                  "description": "",
+                  "followers_count": 12,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "LFG 🚀🚀🚀",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-4",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000105",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA1",
+                 "rest_id": "7019105",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Sun Nov 22 12:00:00 +0000 2026",
+                  "name": "gm_fren_33",
+                  "screen_name": "gm_fren_33"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 3,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "gm",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-5",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000106",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA2",
+                 "rest_id": "7019106",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Sun Nov 22 12:00:00 +0000 2026",
+                  "name": "gm_fren_34",
+                  "screen_name": "gm_fren_34"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 2,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "gm",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-6",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000107",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA3",
+                 "rest_id": "7019107",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Fri Nov 20 12:00:00 +0000 2026",
+                  "name": "moonboi20260101",
+                  "screen_name": "moonboi20260101"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 12,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "to the moon",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-7",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000108",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA4",
+                 "rest_id": "7019108",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Mon Aug 11 08:00:00 +0000 2025",
+                  "name": "sol_sage",
+                  "screen_name": "sol_sage"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 5100,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "Not touching it. The tweet never mentions the contract and I cannot find the team.",
+               "favorite_count": 9,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-8",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000109",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTA5",
+                 "rest_id": "7019109",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Sat Sep 20 08:00:00 +0000 2025",
+                  "name": "dex_dan",
+                  "screen_name": "dex_dan"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 430,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "Bought a small bag at 9 SOL on the curve, will sell into the first push.",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "conversationthread-1861500000000000001-tweet-9",
+          "item": {
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861500000000000110",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo3MDE5MTEw",
+                 "rest_id": "7019110",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Sat Nov 21 12:00:00 +0000 2026",
+                  "name": "bullish_bro",
+                  "screen_name": "bullish_bro"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 8,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:10:00 +0000 2026",
+               "full_text": "🔥🔥🔥",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861500000000000001",
+               "lang": "en",
+               "in_reply_to_status_id_str": "1861500000000000001"
+              }
+             }
+            }
+           }
+          }
+         }
+        ]
+       }
+      },
+      {
+       "entryId": "cursor-bottom-1",
+       "sortIndex": "0",
+       "content": {
+        "entryType": "TimelineTimelineCursor",
+        "__typename": "TimelineTimelineCursor",
+        "value": "DAABCgABG",
+        "cursorType": "Bottom"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

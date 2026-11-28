@@ -632,7 +632,8 @@ impl Trader {
 
     fn finalize_close(&self, lane: &Arc<Lane>, pos: Position) {
         let exit_ms = pos.exit_ms.unwrap_or_else(now_ms);
-        let line = TradeLine::from_position(&pos);
+        let mut line = TradeLine::from_position(&pos);
+        line.x_community = self.learner.features_of(pos.id).and_then(|f| f.x_community);
         let path = report::append_line(&self.logs_dir, &lane.style, exit_ms, &line);
         {
             let mut r = lane.risk.lock().unwrap();

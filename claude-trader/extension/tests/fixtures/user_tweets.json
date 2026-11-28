@@ -1,0 +1,545 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "user": {
+   "result": {
+    "__typename": "User",
+    "timeline": {
+     "timeline": {
+      "instructions": [
+       {
+        "type": "TimelineClearCache"
+       },
+       {
+        "type": "TimelinePinEntry",
+        "entry": {
+         "entryId": "tweet-1861000000000000001",
+         "sortIndex": "1",
+         "content": {
+          "entryType": "TimelineTimelineItem",
+          "__typename": "TimelineTimelineItem",
+          "itemContent": {
+           "itemType": "TimelineTweet",
+           "__typename": "TimelineTweet",
+           "tweet_results": {
+            "result": {
+             "__typename": "Tweet",
+             "rest_id": "1861000000000000001",
+             "core": {
+              "user_results": {
+               "result": {
+                "__typename": "User",
+                "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                "rest_id": "1845500112233445566",
+                "is_blue_verified": true,
+                "profile_image_shape": "Circle",
+                "avatar": {
+                 "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                },
+                "core": {
+                 "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                 "name": "Moon Bear",
+                 "screen_name": "moonbearsol"
+                },
+                "privacy": {
+                 "protected": false
+                },
+                "verification": {
+                 "verified": false
+                },
+                "profile_bio": {
+                 "description": "The bear that went to the moon. $MOONB"
+                },
+                "legacy": {
+                 "default_profile_image": false,
+                 "description": "The bear that went to the moon. $MOONB",
+                 "followers_count": 8431,
+                 "friends_count": 212,
+                 "listed_count": 31,
+                 "statuses_count": 346
+                }
+               }
+              }
+             },
+             "views": {
+              "count": "41000",
+              "state": "EnabledWithCount"
+             },
+             "legacy": {
+              "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+              "full_text": "Pinned: Moon Bear is live on pump.fun. $MOONB",
+              "favorite_count": 640,
+              "reply_count": 88,
+              "retweet_count": 120,
+              "quote_count": 0,
+              "bookmark_count": 0,
+              "conversation_id_str": "1861000000000000001",
+              "lang": "en"
+             }
+            }
+           },
+           "tweetDisplayType": "Tweet"
+          }
+         }
+        }
+       },
+       {
+        "type": "TimelineAddEntries",
+        "entries": [
+         {
+          "entryId": "tweet-1861000000000000010",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861000000000000010",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                 "rest_id": "1845500112233445566",
+                 "is_blue_verified": true,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                  "name": "Moon Bear",
+                  "screen_name": "moonbearsol"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": "The bear that went to the moon. $MOONB"
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "The bear that went to the moon. $MOONB",
+                  "followers_count": 8431,
+                  "friends_count": 212,
+                  "listed_count": 31,
+                  "statuses_count": 346
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "9800",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+               "full_text": "gm bears. building in public, no promises. $MOONB",
+               "favorite_count": 190,
+               "reply_count": 22,
+               "retweet_count": 31,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861000000000000010",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861000000000000011",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861000000000000011",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                 "rest_id": "1845500112233445566",
+                 "is_blue_verified": true,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                  "name": "Moon Bear",
+                  "screen_name": "moonbearsol"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": "The bear that went to the moon. $MOONB"
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "The bear that went to the moon. $MOONB",
+                  "followers_count": 8431,
+                  "friends_count": 212,
+                  "listed_count": 31,
+                  "statuses_count": 346
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "7400",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+               "full_text": "Community call at 18:00 UTC. Come ask anything.",
+               "favorite_count": 150,
+               "reply_count": 41,
+               "retweet_count": 12,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861000000000000011",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861000000000000012",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "TweetWithVisibilityResults",
+              "tweet": {
+               "__typename": "Tweet",
+               "rest_id": "1861000000000000012",
+               "core": {
+                "user_results": {
+                 "result": {
+                  "__typename": "User",
+                  "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                  "rest_id": "1845500112233445566",
+                  "is_blue_verified": true,
+                  "profile_image_shape": "Circle",
+                  "avatar": {
+                   "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                  },
+                  "core": {
+                   "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                   "name": "Moon Bear",
+                   "screen_name": "moonbearsol"
+                  },
+                  "privacy": {
+                   "protected": false
+                  },
+                  "verification": {
+                   "verified": false
+                  },
+                  "profile_bio": {
+                   "description": "The bear that went to the moon. $MOONB"
+                  },
+                  "legacy": {
+                   "default_profile_image": false,
+                   "description": "The bear that went to the moon. $MOONB",
+                   "followers_count": 8431,
+                   "friends_count": 212,
+                   "listed_count": 31,
+                   "statuses_count": 346
+                  }
+                 }
+                }
+               },
+               "views": {
+                "count": "5200",
+                "state": "EnabledWithCount"
+               },
+               "legacy": {
+                "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+                "full_text": "New art drop for the den.",
+                "favorite_count": 98,
+                "reply_count": 9,
+                "retweet_count": 14,
+                "quote_count": 0,
+                "bookmark_count": 0,
+                "conversation_id_str": "1861000000000000012",
+                "lang": "en"
+               }
+              },
+              "tweetInterstitial": null
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861000000000000013",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861000000000000013",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                 "rest_id": "1845500112233445566",
+                 "is_blue_verified": true,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                  "name": "Moon Bear",
+                  "screen_name": "moonbearsol"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": "The bear that went to the moon. $MOONB"
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "The bear that went to the moon. $MOONB",
+                  "followers_count": 8431,
+                  "friends_count": 212,
+                  "listed_count": 31,
+                  "statuses_count": 346
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "0",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+               "full_text": "short",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861000000000000013",
+               "lang": "en"
+              },
+              "note_tweet": {
+               "is_expandable": true,
+               "note_tweet_results": {
+                "result": {
+                 "id": "Tm90ZVR3ZWV0OjE4NjEwMDAwMDAwMDAwMDAwMTM=",
+                 "text": "A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. A longer note about the roadmap. "
+                }
+               }
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861000000000000014",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861000000000000014",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+                 "rest_id": "1845500112233445566",
+                 "is_blue_verified": true,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+                  "name": "Moon Bear",
+                  "screen_name": "moonbearsol"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": "The bear that went to the moon. $MOONB"
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "The bear that went to the moon. $MOONB",
+                  "followers_count": 8431,
+                  "friends_count": 212,
+                  "listed_count": 31,
+                  "statuses_count": 346
+                 }
+                }
+               }
+              },
+              "views": {
+               "state": "Enabled"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+               "full_text": "RT @alphacalls: look at this",
+               "favorite_count": 0,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861000000000000014",
+               "lang": "en",
+               "retweeted_status_result": {
+                "result": {
+                 "__typename": "Tweet",
+                 "rest_id": "1860999999999999999",
+                 "core": {
+                  "user_results": {
+                   "result": {
+                    "__typename": "User",
+                    "id": "VXNlcjo5OTg4Nzc2Ng==",
+                    "rest_id": "99887766",
+                    "is_blue_verified": false,
+                    "profile_image_shape": "Circle",
+                    "avatar": {
+                     "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                    },
+                    "core": {
+                     "created_at": "Sat Mar 01 10:00:00 +0000 2020",
+                     "name": "Alpha Calls",
+                     "screen_name": "alphacalls"
+                    },
+                    "privacy": {
+                     "protected": false
+                    },
+                    "verification": {
+                     "verified": false
+                    },
+                    "profile_bio": {
+                     "description": ""
+                    },
+                    "legacy": {
+                     "default_profile_image": false,
+                     "description": "",
+                     "followers_count": 182000,
+                     "friends_count": 100,
+                     "listed_count": 3,
+                     "statuses_count": 50
+                    }
+                   }
+                  }
+                 },
+                 "views": {
+                  "state": "Enabled"
+                 },
+                 "legacy": {
+                  "created_at": "Fri Nov 27 08:00:00 +0000 2026",
+                  "full_text": "look at this",
+                  "favorite_count": 0,
+                  "reply_count": 0,
+                  "retweet_count": 0,
+                  "quote_count": 0,
+                  "bookmark_count": 0,
+                  "conversation_id_str": "1860999999999999999",
+                  "lang": "en"
+                 }
+                }
+               }
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861000000000000015",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "TweetTombstone",
+              "tombstone": {
+               "text": {
+                "text": "This post was deleted by the post author."
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "cursor-bottom-1",
+          "sortIndex": "0",
+          "content": {
+           "entryType": "TimelineTimelineCursor",
+           "__typename": "TimelineTimelineCursor",
+           "value": "DAABCgABG",
+           "cursorType": "Bottom"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

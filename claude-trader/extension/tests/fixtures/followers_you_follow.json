@@ -1,0 +1,339 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "user": {
+   "result": {
+    "__typename": "User",
+    "timeline": {
+     "timeline": {
+      "instructions": [
+       {
+        "type": "TimelineAddEntries",
+        "entries": [
+         {
+          "entryId": "user-9000",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDAw",
+              "rest_id": "9000",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "cobie fan acc",
+               "screen_name": "cobie_fan_acc"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 410000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9001",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDAx",
+              "rest_id": "9001",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "solana whale x",
+               "screen_name": "solana_whale_x"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 220000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9002",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDAy",
+              "rest_id": "9002",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "degen daily",
+               "screen_name": "degen_daily"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 85000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9003",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDAz",
+              "rest_id": "9003",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "mevtrader eth",
+               "screen_name": "mevtrader_eth"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 64000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9004",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDA0",
+              "rest_id": "9004",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "alpha hunter",
+               "screen_name": "alpha_hunter"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 33000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9005",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDA1",
+              "rest_id": "9005",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "onchain ana",
+               "screen_name": "onchain_ana"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 21000,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "user-9006",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineUser",
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "id": "VXNlcjo5MDA2",
+              "rest_id": "9006",
+              "is_blue_verified": false,
+              "profile_image_shape": "Circle",
+              "avatar": {
+               "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+              },
+              "core": {
+               "created_at": "Wed Jan 15 08:00:00 +0000 2020",
+               "name": "tinykol",
+               "screen_name": "tinykol"
+              },
+              "privacy": {
+               "protected": false
+              },
+              "verification": {
+               "verified": false
+              },
+              "profile_bio": {
+               "description": ""
+              },
+              "legacy": {
+               "default_profile_image": false,
+               "description": "",
+               "followers_count": 6200,
+               "friends_count": 100,
+               "listed_count": 3,
+               "statuses_count": 50
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "entryId": "cursor-bottom-1",
+          "sortIndex": "0",
+          "content": {
+           "entryType": "TimelineTimelineCursor",
+           "__typename": "TimelineTimelineCursor",
+           "value": "DAABCgABG",
+           "cursorType": "Bottom"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

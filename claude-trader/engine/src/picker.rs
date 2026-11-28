@@ -93,6 +93,7 @@ pub fn gate_label(g: &str) -> &'static str {
     } else if g.starts_with("feed down") { "Feed was down"
     } else if g.contains("rugcheck") || g.contains("on-chain") { "RugCheck or on-chain check failed"
     } else if g.starts_with("scam shield pre-buy") { "Scam Shield pre-buy check"
+    } else if g.starts_with("x monitor block") { "Blocked by X Monitor"
     } else if g.starts_with("score below") { "Score too low"
     } else { "Other entry rule" }
 }
@@ -150,6 +151,39 @@ pub fn score_with(o: &Observation, cfg: &Config, w: &[f64; 5]) -> Scored {
     Scored { score: (total * 10.0).round() / 10.0, parts, gates, picked }
 }
 
+/// Add the X community points to a base score (SPEC 4e). The rules, all tested:
+/// - at most 15 points (`xmon::score::X_MAX_POINTS`), whatever the config says;
+/// - X never changes an entry gate: every gate that failed still fails;
+/// - X alone can never buy: the base score must already be within 15 points of `observation.minScore` (and at least half of it);
+/// - a hard block from X (`blocked`) stops the buy with a gate, whatever the score;
+/// - unknown, off or no link adds nothing and blocks nothing.
+pub fn with_x(base: Scored, x: &crate::xmon::score::XEval, min_score: f64) -> Scored {
+    use crate::xmon::score::{XStatus, X_MAX_POINTS};
+    let mut s = base;
+    if x.status == XStatus::Blocked {
+        s.gates.push(format!("X Monitor block: {}", x.blocks.first().cloned().unwrap_or_else(|| x.reason.clone())));
+        s.picked = false;
+        s.parts.push(("X community", 0.0));
+        return s;
+    }
+    let pts = if x.status == XStatus::Ready { (x.points as f64).min(X_MAX_POINTS) } else { 0.0 };
+    let base_score = s.score;
+    s.parts.push(("X community", pts));
+    s.score = ((base_score + pts).min(100.0) * 10.0).round() / 10.0;
+    let floor = (min_score - X_MAX_POINTS).max(min_score * 0.5);
+    let needs_x_alone = s.score >= min_score && base_score < floor;
+    s.picked = s.score >= min_score && s.gates.is_empty() && !needs_x_alone;
+    s
+}
+
+/// For the paper-only dip lane, which does not use the momentum entry gates: does the coin clear the bar with the same X rules
+/// (not X-blocked, and X alone is not what carries it over)?
+pub fn dip_ok(s: &Scored, min_score: f64) -> bool {
+    let pts = s.parts.iter().find(|p| p.0 == "X community").map(|p| p.1).unwrap_or(0.0);
+    let blocked = s.gates.iter().any(|g| g.starts_with("X Monitor block"));
+    s.score >= min_score && !blocked && s.score - pts >= (min_score - crate::xmon::score::X_MAX_POINTS).max(min_score * 0.5)
+}
+
 /// Paper-only variant `dip-40pct` (SPEC 6): buy a coin that already passed the observation gate after it fell
 /// 40-50% from its peak while buy volume is expanding again (last 15 s of buying above the 15 s before, with at
 /// least 2 buys in the last 15 s). Returns the dip in percent when the signal fires.
@@ -193,6 +227,90 @@ mod tests {
     }
 
     use super::*;
+
+    fn xe(status: crate::xmon::score::XStatus, points: u32) -> crate::xmon::score::XEval {
+        let mut e = crate::xmon::score::XEval::empty(status, "test");
+        e.points = points;
+        e.score = points as f64 / 0.15;
+        if status == crate::xmon::score::XStatus::Blocked {
+            e.blocks = vec!["Reused account.".into()];
+        }
+        e
+    }
+
+    fn base(score: f64, gates: &[&str]) -> Scored {
+        Scored { score, parts: vec![], gates: gates.iter().map(|g| g.to_string()).collect(), picked: score >= 80.0 && gates.is_empty() }
+    }
+
+    #[test]
+    fn x_adds_its_points_to_the_score_and_lists_the_part() {
+        use crate::xmon::score::XStatus::*;
+        let s = with_x(base(70.0, &[]), &xe(Ready, 11), 80.0);
+        assert_eq!(s.score, 81.0);
+        assert!(s.picked, "70 + 11 reaches 80");
+        assert_eq!(s.parts.last().unwrap(), &("X community", 11.0));
+        let low = with_x(base(70.0, &[]), &xe(Ready, 5), 80.0);
+        assert_eq!(low.score, 75.0);
+        assert!(!low.picked);
+    }
+
+    #[test]
+    fn x_can_never_add_more_than_15_points_even_if_the_eval_says_so() {
+        use crate::xmon::score::XStatus::*;
+        let s = with_x(base(66.0, &[]), &xe(Ready, 40), 80.0);
+        assert_eq!(s.score, 81.0, "capped at +15");
+        let s = with_x(base(64.0, &[]), &xe(Ready, 40), 80.0);
+        assert!(!s.picked, "64 + 15 = 79");
+    }
+
+    #[test]
+    fn x_alone_can_never_trigger_a_buy() {
+        use crate::xmon::score::XStatus::*;
+        // a coin with no activity at all and a perfect community
+        let s = with_x(base(0.0, &["younger than 60 s"]), &xe(Ready, 15), 80.0);
+        assert!(!s.picked);
+        assert_eq!(s.score, 15.0);
+        // even with every gate holding, a base far below the bar is not rescued
+        let s = with_x(base(40.0, &[]), &xe(Ready, 15), 80.0);
+        assert!(!s.picked);
+        // and with a tiny minScore the base still has to be at least half of it
+        let s = with_x(base(0.0, &[]), &xe(Ready, 15), 10.0);
+        assert!(!s.picked, "base 0 never buys, even when 15 points beat the bar");
+        let s = with_x(base(5.0, &[]), &xe(Ready, 15), 10.0);
+        assert!(s.picked, "base 5 is half of the bar");
+        // base just inside the allowed band (65 of 80) with a perfect X is the only way to rely on X
+        assert!(with_x(base(65.0, &[]), &xe(Ready, 15), 80.0).picked);
+        assert!(!with_x(base(64.9, &[]), &xe(Ready, 15), 80.0).picked);
+    }
+
+    #[test]
+    fn x_never_loosens_an_entry_gate() {
+        use crate::xmon::score::XStatus::*;
+        let s = with_x(base(79.0, &["curve holds 1.0 SOL (needs 4-40)"]), &xe(Ready, 15), 80.0);
+        assert!(!s.picked);
+        assert_eq!(s.gates.len(), 1);
+    }
+
+    #[test]
+    fn a_hard_block_from_x_stops_a_coin_that_would_otherwise_be_picked() {
+        use crate::xmon::score::XStatus::*;
+        let s = with_x(base(95.0, &[]), &xe(Blocked, 0), 80.0);
+        assert!(!s.picked);
+        assert!(s.gates[0].starts_with("X Monitor block:"));
+        assert_eq!(s.score, 95.0, "the score is unchanged, the gate does the blocking");
+    }
+
+    #[test]
+    fn unknown_off_and_no_link_add_nothing_and_block_nothing() {
+        use crate::xmon::score::XStatus::*;
+        for st in [Unknown, Off, NoLink] {
+            let a = with_x(base(88.0, &[]), &xe(st, 12), 80.0);
+            assert_eq!(a.score, 88.0, "{st:?}: points are ignored unless ready");
+            assert!(a.picked, "{st:?}: an unknown X never turns a pick into a no-pick");
+            let b = with_x(base(70.0, &[]), &xe(st, 12), 80.0);
+            assert!(!b.picked, "{st:?}: and never turns a no-pick into a pick");
+        }
+    }
 
     fn cfg() -> Config {
         Config::from_json(include_str!("../../config.json")).unwrap()

@@ -11,6 +11,7 @@ export function emptyState() {
     activity: [],
     kill: null,
     learning: null,
+    xmon: null,
     settings: null,
     primed: { positions: false, kill: false, halt: false },
   };
@@ -41,6 +42,10 @@ export function applyEvent(state, e) {
       break;
     case "learning":
       s.learning = { journal: (e.journal || []).slice(0, 5), closedTrades: e.closedTrades, nextReviewIn: e.nextReviewIn, reviewEvery: e.reviewEvery, demo: !!e.demo };
+      break;
+    case "x-monitor":
+      // only the short summary is kept: the side panel shows one line and a few counts
+      s.xmon = { state: e.state || "off", line: e.statusLine || "", checkedHour: e.checkedHour || 0, rising: e.risingCount ?? (e.rising || []).length, loadsLastHour: e.loadsLastHour || 0, maxPerHour: e.maxPerHour || 0, loggedIn: e.loggedIn ?? null, pausedReason: e.pausedReason || "" };
       break;
     default:
   }

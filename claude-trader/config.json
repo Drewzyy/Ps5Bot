@@ -82,5 +82,23 @@
     "shadowTrades": 30,
     "minSample": 10,
     "minWinRateGapPts": 25
+  },
+  "xMonitor": {
+    "weights": { "kol": 30, "engagement": 20, "replies": 10, "growth": 10, "integrity": 10, "community": 10, "narrative": 10 },
+    "pointsFactor": 0.15,
+    "maxPoints": 15,
+    "blockBotReplyPct": 30,
+    "minReplySample": 8,
+    "maxCloneRank": 5,
+    "maxClones": 10,
+    "cloneWindowHours": 24,
+    "bigAccountFollowers": 50000,
+    "topTierFollowers": 200000,
+    "trendMinCoins": 3,
+    "trendWindowMinutes": 60,
+    "maxAgeMinutes": 30,
+    "jobWaitSecs": 120,
+    "blockWhenNoXLink": false,
+    "pacing": { "minGapSecs": 8, "maxGapSecs": 15, "maxLoadsPerHour": 120, "cacheMinutes": 30 }
   }
 }

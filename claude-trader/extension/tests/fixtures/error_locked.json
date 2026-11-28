@@ -1,0 +1,10 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "errors": [
+  {
+   "message": "Authorization: Denied by access control: Your account is temporarily locked.",
+   "code": 326,
+   "kind": "Permissions"
+  }
+ ]
+}

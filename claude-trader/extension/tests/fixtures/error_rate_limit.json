@@ -1,0 +1,11 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "errors": [
+  {
+   "message": "Rate limit exceeded",
+   "code": 88,
+   "kind": "Operational",
+   "name": "RateLimitExceededError"
+  }
+ ]
+}

@@ -153,6 +153,9 @@ pub struct EntryFeatures {
     pub picked_ms: i64,
     /// Where to read about the coin (its website, X or Telegram from the metadata). Empty if unknown.
     pub source_url: String,
+    /// Every part of the X Monitor score for this coin (None before X Monitor existed).
+    #[serde(default)]
+    pub x_community: Option<crate::xmon::XLog>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -270,6 +273,10 @@ pub fn observations(pos: &Position, f: &EntryFeatures, history: &[JournalRow]) -
     out.push(format!("Held for {hold:.0} s."));
     if pos.failed_sol > 0.0 {
         out.push(format!("Failed transactions cost {:.5} SOL on this trade.", pos.failed_sol));
+    }
+    // 6. what the X Monitor saw, every part, so the weights can be tuned once there are enough trades
+    if let Some(x) = &f.x_community {
+        out.push(x.summary());
     }
     out
 }
@@ -1070,7 +1077,7 @@ mod tests {
     }
 
     fn feats(curve: f64, ratio: f64, buyers: u32, score: f64) -> EntryFeatures {
-        EntryFeatures { score, buyers, buys: 20, sells: 4, ratio, curve_sol: curve, age_seconds: 60.0, mcap_sol: 40.0, picked_ms: 999_000, source_url: "https://example.org/coin".into() }
+        EntryFeatures { score, buyers, buys: 20, sells: 4, ratio, curve_sol: curve, age_seconds: 60.0, mcap_sol: 40.0, picked_ms: 999_000, source_url: "https://example.org/coin".into(), ..Default::default() }
     }
 
     fn row(i: u32, pnl: f64, curve: f64, ratio: f64, buyers: u32, score: f64, reason: &str) -> JournalRow {

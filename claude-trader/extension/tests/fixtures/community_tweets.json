@@ -1,0 +1,372 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "communityResults": {
+   "result": {
+    "__typename": "Community",
+    "rest_id": "1861700000000000007",
+    "ranked_community_timeline": {
+     "timeline": {
+      "instructions": [
+       {
+        "type": "TimelineAddEntries",
+        "entries": [
+         {
+          "entryId": "tweet-1861700000000000101",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861700000000000101",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo1NTUwMQ==",
+                 "rest_id": "55501",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+                  "name": "Den Member 1",
+                  "screen_name": "den_member_1"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 100,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "300",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 07:51:00 +0000 2026",
+               "full_text": "Den post 1",
+               "favorite_count": 10,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861700000000000101",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861700000000000102",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861700000000000102",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo1NTUwMg==",
+                 "rest_id": "55502",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+                  "name": "Den Member 2",
+                  "screen_name": "den_member_2"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 200,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "600",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 07:52:00 +0000 2026",
+               "full_text": "Den post 2",
+               "favorite_count": 20,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861700000000000102",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861700000000000103",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861700000000000103",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo1NTUwMw==",
+                 "rest_id": "55503",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+                  "name": "Den Member 3",
+                  "screen_name": "den_member_3"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 300,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "900",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 07:53:00 +0000 2026",
+               "full_text": "Den post 3",
+               "favorite_count": 30,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861700000000000103",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861700000000000104",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861700000000000104",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo1NTUwNA==",
+                 "rest_id": "55504",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+                  "name": "Den Member 4",
+                  "screen_name": "den_member_4"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 400,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "1200",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 07:54:00 +0000 2026",
+               "full_text": "Den post 4",
+               "favorite_count": 40,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861700000000000104",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         },
+         {
+          "entryId": "tweet-1861700000000000105",
+          "sortIndex": "1",
+          "content": {
+           "entryType": "TimelineTimelineItem",
+           "__typename": "TimelineTimelineItem",
+           "itemContent": {
+            "itemType": "TimelineTweet",
+            "__typename": "TimelineTweet",
+            "tweet_results": {
+             "result": {
+              "__typename": "Tweet",
+              "rest_id": "1861700000000000105",
+              "core": {
+               "user_results": {
+                "result": {
+                 "__typename": "User",
+                 "id": "VXNlcjo1NTUwNQ==",
+                 "rest_id": "55505",
+                 "is_blue_verified": false,
+                 "profile_image_shape": "Circle",
+                 "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+                 },
+                 "core": {
+                  "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+                  "name": "Den Member 5",
+                  "screen_name": "den_member_5"
+                 },
+                 "privacy": {
+                  "protected": false
+                 },
+                 "verification": {
+                  "verified": false
+                 },
+                 "profile_bio": {
+                  "description": ""
+                 },
+                 "legacy": {
+                  "default_profile_image": false,
+                  "description": "",
+                  "followers_count": 500,
+                  "friends_count": 100,
+                  "listed_count": 3,
+                  "statuses_count": 50
+                 }
+                }
+               }
+              },
+              "views": {
+               "count": "1500",
+               "state": "EnabledWithCount"
+              },
+              "legacy": {
+               "created_at": "Fri Nov 27 07:55:00 +0000 2026",
+               "full_text": "Den post 5",
+               "favorite_count": 50,
+               "reply_count": 0,
+               "retweet_count": 0,
+               "quote_count": 0,
+               "bookmark_count": 0,
+               "conversation_id_str": "1861700000000000105",
+               "lang": "en"
+              }
+             }
+            },
+            "tweetDisplayType": "Tweet"
+           }
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

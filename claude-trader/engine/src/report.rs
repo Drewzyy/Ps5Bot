@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 
-/// EXACTLY the SPEC 8 shape: same keys, same order (`feeBreakdown` is the last key). Do not add or reorder fields.
+/// EXACTLY the SPEC 8 shape: same keys, same order (`xCommunity` is the last key, after `feeBreakdown`). Do not add or reorder fields.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TradeLine {
@@ -24,6 +24,9 @@ pub struct TradeLine {
     pub mode: String,
     /// Every fee component of the trade, SOL (SPEC 8). Their sum is `fees_sol`.
     pub fee_breakdown: crate::curve::FeeBreakdown,
+    /// Every part of the X Monitor score, or null (older lines, or X Monitor was not involved). Last key (SPEC 8).
+    #[serde(default)]
+    pub x_community: Option<crate::xmon::XLog>,
 }
 
 fn r9(x: f64) -> f64 {
@@ -49,6 +52,7 @@ impl TradeLine {
             fees_sol: r9(p.fees.total()),
             mode: "paper".into(),
             fee_breakdown: p.fees,
+            x_community: None,
         }
     }
 }
@@ -159,7 +163,7 @@ mod tests {
     use super::*;
 
     /// The example line from SPEC section 8, byte for byte.
-    const SPEC_LINE: &str = r#"{"ts":"2026-11-25T15:02:11-08:00","mint":"7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHR","symbol":"MOON","side":"buy","sizeSol":0.2,"entryPrice":0.00042,"entryMcapUsd":12400,"exitPrice":0.00081,"exitReason":"take-profit-1","pnlSol":0.176,"pnlPct":88.0,"holdSeconds":112,"feesSol":0.00551,"mode":"paper","feeBreakdown":{"pumpFun":0.0019,"creator":0.0006,"pumpPortal":0.002,"tx":0.00001,"priority":0.001,"jito":0.0}}"#;
+    const SPEC_LINE: &str = r#"{"ts":"2026-11-25T15:02:11-08:00","mint":"7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHR","symbol":"MOON","side":"buy","sizeSol":0.2,"entryPrice":0.00042,"entryMcapUsd":12400,"exitPrice":0.00081,"exitReason":"take-profit-1","pnlSol":0.176,"pnlPct":88.0,"holdSeconds":112,"feesSol":0.00551,"mode":"paper","feeBreakdown":{"pumpFun":0.0019,"creator":0.0006,"pumpPortal":0.002,"tx":0.00001,"priority":0.001,"jito":0.0},"xCommunity":null}"#;
 
     #[test]
     fn jsonl_shape_matches_the_spec_example_exactly() {
@@ -185,6 +189,20 @@ mod tests {
         assert_eq!(line.entry_mcap_usd, 7000);
         assert!((line.pnl_sol - 0.0176).abs() < 1e-9);
         assert_eq!(line.mode, "paper");
+    }
+
+    #[test]
+    fn an_older_line_without_x_community_still_reads_and_a_full_one_round_trips() {
+        let old = SPEC_LINE.replace(r#","xCommunity":null"#, "");
+        let l: TradeLine = serde_json::from_str(&old).unwrap();
+        assert!(l.x_community.is_none());
+        let mut l2 = l.clone();
+        l2.x_community = Some(crate::xmon::XLog { status: "ready".into(), score: 72.4, points: 11, rank: 1, clones: 2, handle: "moonbearsol".into(), ..Default::default() });
+        let text = serde_json::to_string(&l2).unwrap();
+        assert!(text.contains(r#""xCommunity":{"status":"ready""#));
+        assert!(text.contains(r#""components":{"kol":0.0,"engagement":0.0,"replies":0.0,"growth":0.0,"integrity":0.0,"community":0.0,"narrative":0.0}"#));
+        assert_eq!(serde_json::from_str::<TradeLine>(&text).unwrap(), l2);
+        assert!(text.find("feeBreakdown").unwrap() < text.find("xCommunity").unwrap(), "xCommunity is the last key");
     }
 
     fn l(pnl: f64, fees: f64) -> TradeLine {

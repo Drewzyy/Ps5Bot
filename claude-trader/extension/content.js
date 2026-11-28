@@ -31,6 +31,7 @@
   button { font: inherit; font-weight:700; border-radius:8px; padding:6px 10px; border:1px solid var(--green); background: transparent; color: var(--green); cursor:pointer; }
   button:disabled { opacity:.55; cursor:default; }
   .hint { color: var(--muted); font-size:11.5px; }
+  a { color: var(--blue); }
   .off { color: var(--muted); }
   `;
 
@@ -62,6 +63,21 @@
     root = null;
   }
 
+  // X community score and flags (from the X Monitor in the app). Unknown is shown as unknown, never as a pass.
+  function xRows(x) {
+    if (!x) return "";
+    const link = typeof x.url === "string" && x.url.startsWith("https://x.com/") ? `<a href="${esc(x.url)}" target="_blank" rel="noreferrer noopener">${esc(x.linkLabel || "X link")}</a>` : "";
+    if (x.status === "ready") {
+      const flags = [...(x.flags || [])].slice(0, 4).map((f) => `<div class="hint">${esc(f)}</div>`).join("");
+      return `<div class="row"><span class="k">X community</span><span><b>${Math.round(x.score)}</b> of 100 (+${x.points} pts)</span></div>${x.rank ? `<div class="row"><span class="k">Copy rank</span><span>${esc(x.rank)} of ${esc(x.clones)}</span></div>` : ""}${link ? `<div class="row"><span class="k">Source</span>${link}</div>` : ""}${flags}`;
+    }
+    if (x.status === "blocked") {
+      return `<div class="row"><span class="k">X community</span><span class="block">Blocked</span></div>${(x.blocks || []).slice(0, 3).map((b) => `<div class="hint">${esc(b)}</div>`).join("")}${link ? `<div class="row"><span class="k">Source</span>${link}</div>` : ""}`;
+    }
+    const why = { unknown: x.reason || "X data is not ready. Scored without it.", nolink: "This coin has no X link.", off: "X Monitor is off." }[x.status] || "";
+    return `<div class="row"><span class="k">X community</span><span class="off">${x.status === "unknown" ? "Unknown" : x.status === "nolink" ? "No X link" : "Off"}</span></div>${why ? `<div class="hint">${esc(why)}</div>` : ""}${link ? `<div class="row"><span class="k">Source</span>${link}</div>` : ""}`;
+  }
+
   function render() {
     ensureRoot();
     const card = root.querySelector(".card");
@@ -87,6 +103,7 @@
       ${minimized ? "" : `<div class="body">
         <div class="row"><span class="k">Scam Shield</span>${shield}</div>
         ${score}
+        ${xRows(v.x)}
         <div class="why">${esc(v.reason)}</div>
         <button id="chk" ${busy ? "disabled" : ""}>${busy ? "Checking..." : "Check this coin"}</button>
         <div class="hint">Only runs the scam check. The bot buys by its own rules, never from this button.</div>

@@ -260,6 +260,26 @@ pub fn render_trade(p: &Position, features: Option<&EntryFeatures>, journal: Opt
             if f.source_url.starts_with("http") {
                 s.push_str(&format!("\nSource: <{}>\n", f.source_url));
             }
+            if let Some(x) = &f.x_community {
+                s.push_str("\n## X community\n\n");
+                s.push_str(&format!("{}\n\n", x.summary()));
+                let c = &x.components;
+                s.push_str("| Part | Points |\n|---|---|\n");
+                for (n, v) in [("Smart (KOL) followers", c.kol), ("Engagement quality", c.engagement), ("Reply authenticity", c.replies), ("Follower growth", c.growth), ("Account and handle integrity", c.integrity), ("X Community presence", c.community), ("Narrative strength", c.narrative)] {
+                    s.push_str(&format!("| {n} | {v} |\n"));
+                }
+                s.push_str(&format!("| Score (0-100) | {:.1} |\n| Points added to the token score | {} |\n| Status | {} |\n", x.score, x.points, cell(&x.status)));
+                for fl in &x.flags {
+                    s.push_str(&format!("\n- Flag: {}", cell(fl)));
+                }
+                for b in &x.blocks {
+                    s.push_str(&format!("\n- Block: {}", cell(b)));
+                }
+                if x.url.starts_with("https://x.com/") {
+                    s.push_str(&format!("\n\nSource: <{}>", x.url));
+                }
+                s.push('\n');
+            }
         }
         None => s.push_str("The app did not save the entry numbers for this trade.\n"),
     }
@@ -746,7 +766,7 @@ mod tests {
     #[test]
     fn trade_note_is_built_from_the_data_only() {
         let p = closed(7, "CAT", 0.018, "trailing-stop");
-        let f = EntryFeatures { score: 91.5, buyers: 12, buys: 30, sells: 5, ratio: 6.0, curve_sol: 9.25, age_seconds: 41.0, mcap_sol: 33.0, picked_ms: T0 - 1000, source_url: "https://x.com/cat".into() };
+        let f = EntryFeatures { score: 91.5, buyers: 12, buys: 30, sells: 5, ratio: 6.0, curve_sol: 9.25, age_seconds: 41.0, mcap_sol: 33.0, picked_ms: T0 - 1000, source_url: "https://x.com/cat".into(), ..Default::default() };
         let n = render_trade(&p, Some(&f), None, &[decision("chain", "pass", "")]);
         assert!(n.starts_with("---\ngenerated-by: claude-trader\n"));
         for must in ["symbol: \"CAT\"", "lane: \"momentum\"", "result: win", "#win", "#exit/trailing-stop", "[[Coins/MintAAA111]]", "[[Days/", "pump.fun fee | 0.001000", "priority fee | 0.000200", "Picker score 91.5", "12 buyers", "https://x.com/cat", "| chain | pass |", "solscan.io/token/MintAAA111", "No journal entry"] {

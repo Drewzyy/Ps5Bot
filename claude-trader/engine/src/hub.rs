@@ -23,6 +23,7 @@ struct History {
     extension: Option<EngineEvent>,
     feed: Option<EngineEvent>,
     funnel: Option<EngineEvent>,
+    xmon: Option<EngineEvent>,
     links: HashMap<String, EngineEvent>,
     events: VecDeque<EngineEvent>,
 }
@@ -80,6 +81,7 @@ impl Hub {
                 // sent every 2 s: only the latest is kept, so they never push real events out of the history
                 EngineEvent::FeedHealth(_) => h.feed = Some(e.clone()),
                 EngineEvent::Funnel(_) => h.funnel = Some(e.clone()),
+                EngineEvent::XMonitor(_) => h.xmon = Some(e.clone()),
                 EngineEvent::Links { mint, .. } => {
                     if h.links.len() > 600 {
                         h.links.clear();
@@ -118,6 +120,7 @@ impl Hub {
         out.extend(h.extension.iter().cloned());
         out.extend(h.feed.iter().cloned());
         out.extend(h.funnel.iter().cloned());
+        out.extend(h.xmon.iter().cloned());
         out.extend(h.links.values().cloned());
         out
     }

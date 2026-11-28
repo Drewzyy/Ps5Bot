@@ -8,6 +8,9 @@
 //! 3. The extension gets the same public events the dashboard shows (no Helius key, no secrets). It can ask for the verdict
 //!    on a coin, ask for a scam check, and press the kill switch or resume. There is NO message that buys or sells.
 //!    "Check this coin" runs the Scam Shield checks only: this module has no handle to the trader.
+//! 4. X Monitor (SPEC 4e): the extension may ask for its next x.com page (`xnext`), report how it is doing (`xstatus`)
+//!    and return what it read (`xresult`). The page address is built by the app from checked parts. These messages only
+//!    carry reading jobs and reading results; none of them can trade, and none of them can make the extension write to X.
 
 use crate::db::Db;
 use crate::events::EngineEvent;
@@ -162,6 +165,9 @@ pub struct CoinVerdict {
     pub score: Option<f64>,
     pub min_score: Option<f64>,
     pub reason: String,
+    /// X Monitor's view of the coin (score, flags, blocks), when the bot knows the coin.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x: Option<crate::xmon::score::XEval>,
 }
 
 impl MintBook {
@@ -257,6 +263,7 @@ impl MintBook {
             score: i.score,
             min_score: i.score.map(|_| i.min_score),
             reason,
+            x: None,
         }
     }
 
@@ -340,11 +347,12 @@ pub struct Bridge {
     clients: AtomicU32,
     last_seen: AtomicI64,
     last_check: Mutex<HashMap<String, i64>>,
+    xmon: std::sync::OnceLock<Arc<crate::xmon::XMon>>,
 }
 
 impl Bridge {
     pub fn new(hub: Arc<Hub>, db: Arc<Db>, checker: Arc<dyn Checker>) -> Arc<Bridge> {
-        Arc::new(Bridge { hub, db, book: Mutex::new(MintBook::default()), checker, origins: vec![extension_origin()], guard: Guard::default(), clients: AtomicU32::new(0), last_seen: AtomicI64::new(0), last_check: Mutex::new(HashMap::new()) })
+        Arc::new(Bridge { hub, db, book: Mutex::new(MintBook::default()), checker, origins: vec![extension_origin()], guard: Guard::default(), clients: AtomicU32::new(0), last_seen: AtomicI64::new(0), last_check: Mutex::new(HashMap::new()), xmon: std::sync::OnceLock::new() })
     }
 
     #[cfg(test)]
@@ -357,8 +365,19 @@ impl Bridge {
         self.clients.load(Ordering::Relaxed) > 0
     }
 
+    /// Plug in the X Monitor (job queue and results). Without it the X messages are answered with "nothing to do".
+    pub fn set_xmon(&self, x: Arc<crate::xmon::XMon>) {
+        let _ = self.xmon.set(x);
+    }
+
     pub fn verdict(&self, mint: &str) -> CoinVerdict {
-        self.book.lock().unwrap().verdict(mint, &self.db)
+        let mut v = self.book.lock().unwrap().verdict(mint, &self.db);
+        if let Some(x) = self.xmon.get() {
+            if v.status != "unknown" || x.knows(mint) {
+                v.x = Some(x.evaluate(mint, now_ms()));
+            }
+        }
+        v
     }
 
     /// Keep the coin book up to date from the hub and publish the link status once a second.
@@ -390,6 +409,8 @@ impl Bridge {
     fn forward(e: &EngineEvent) -> Option<String> {
         let mut v = match e {
             EngineEvent::Activity { .. } | EngineEvent::Positions { .. } | EngineEvent::Stats { .. } | EngineEvent::Kill(_) | EngineEvent::Learning(_) => serde_json::to_value(e).ok()?,
+            // the side panel only needs one line and a few counts
+            EngineEvent::XMonitor(x) => json!({"type": "x-monitor", "state": x.state, "statusLine": x.status_line, "checkedHour": x.checked_hour, "risingCount": x.rising.len(), "loadsLastHour": x.loads_last_hour, "maxPerHour": x.max_per_hour, "loggedIn": x.logged_in, "pausedReason": x.paused_reason}),
             _ => return None,
         };
         if let Some(ps) = v.get_mut("positions").and_then(|p| p.as_array_mut()) {
@@ -480,7 +501,13 @@ impl Bridge {
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
         let mut rx = self.hub.subscribe();
-        let settings_text = || json!({"t": "settings", "startup": crate::startup::StartupSettings::load(&self.db)}).to_string();
+        let settings_text = || {
+            let mut v = json!({"t": "settings", "startup": crate::startup::StartupSettings::load(&self.db)});
+            if let Some(x) = self.xmon.get() {
+                v["xmonitor"] = x.settings_for_extension();
+            }
+            v.to_string()
+        };
         let mut last_settings = settings_text();
         if ws.send(Message::Text(json!({"t": "hello", "v": 1}).to_string())).await.is_err() || ws.send(Message::Text(last_settings.clone())).await.is_err() {
             return;
@@ -571,6 +598,28 @@ impl Bridge {
                         Err(_) => reply(json!({"t": "error", "error": "The check took too long. Try again."})),
                     }
                 });
+            }
+            // ---- X Monitor: reading jobs and reading results only
+            "xnext" => {
+                let Some(x) = self.xmon.get() else { return reply(json!({"t": "xjob", "job": null})) };
+                let now = now_ms();
+                x.set_ext_status(serde_json::from_value(v.clone()).unwrap_or_default(), now);
+                reply(json!({"t": "xjob", "job": x.next_job(now)}));
+            }
+            "xstatus" => {
+                let Some(x) = self.xmon.get() else { return reply(json!({"t": "ok"})) };
+                x.set_ext_status(serde_json::from_value(v.clone()).unwrap_or_default(), now_ms());
+                reply(json!({"t": "ok"}));
+            }
+            "xresult" => {
+                let Some(x) = self.xmon.get() else { return reply(json!({"t": "ok"})) };
+                match serde_json::from_value::<crate::xmon::model::XResult>(v.clone()) {
+                    Ok(r) => match x.submit(r, now_ms()) {
+                        Ok(()) => reply(json!({"t": "ok"})),
+                        Err(e) => reply(json!({"t": "error", "error": e})),
+                    },
+                    Err(_) => reply(json!({"t": "error", "error": "That result could not be read."})),
+                }
             }
             "cmd" => {
                 let cmd = v["cmd"].as_str().unwrap_or("");

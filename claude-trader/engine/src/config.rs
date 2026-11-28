@@ -14,6 +14,101 @@ pub struct Config {
     pub paper_fill: PaperFill,
     pub risk: Risk,
     pub learning: Learning,
+    /// X Monitor and Thesis Finder (SPEC 4e). The weights are starting guesses, not measured values.
+    #[serde(default)]
+    pub x_monitor: XMonitor,
+}
+
+/// X Monitor settings. Every number is a starting guess from research (SPEC 4e) with no tested backing; the journal logs
+/// every component so the weights can be tuned once there are enough paper trades.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct XMonitor {
+    pub weights: XWeights,
+    /// Points added to the token score per community point (0.15 means a community score of 100 adds 15).
+    pub points_factor: f64,
+    /// Never more than this many points, and never above 15 (checked at start): X alone can not buy.
+    pub max_points: f64,
+    /// Block when this share of the sampled replies looks like bots.
+    pub block_bot_reply_pct: f64,
+    /// Smallest reply sample that counts for the bot test and the reply score.
+    pub min_reply_sample: u32,
+    /// Block when this coin is later than this among coins linking the same tweet or community.
+    pub max_clone_rank: u32,
+    /// Block when more than this many coins link the same tweet or community.
+    pub max_clones: u32,
+    /// How far back counts as "the same story" for copy ranking (hours).
+    pub clone_window_hours: u32,
+    /// A tweet author with at least this many followers is a big account (the tweet must then name the coin).
+    pub big_account_followers: u64,
+    /// One smart follower with this many followers counts as a top-tier KOL.
+    pub top_tier_followers: u64,
+    /// Several coins from the same tweet or author within the window make a trending narrative.
+    pub trend_min_coins: u32,
+    pub trend_window_minutes: u32,
+    /// X data older than this is stale: it counts as unknown, never as a pass.
+    pub max_age_minutes: u32,
+    /// A queued X job that has not started after this long is dropped as stale.
+    pub job_wait_secs: u32,
+    /// Block a coin that has no X link at all (default off: no link just means no X points).
+    pub block_when_no_x_link: bool,
+    pub pacing: XPacing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct XWeights {
+    pub kol: f64,
+    pub engagement: f64,
+    pub replies: f64,
+    pub growth: f64,
+    pub integrity: f64,
+    pub community: f64,
+    pub narrative: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct XPacing {
+    pub min_gap_secs: u32,
+    pub max_gap_secs: u32,
+    pub max_loads_per_hour: u32,
+    pub cache_minutes: u32,
+}
+
+impl Default for XWeights {
+    fn default() -> Self {
+        XWeights { kol: 30.0, engagement: 20.0, replies: 10.0, growth: 10.0, integrity: 10.0, community: 10.0, narrative: 10.0 }
+    }
+}
+
+impl Default for XPacing {
+    fn default() -> Self {
+        XPacing { min_gap_secs: 8, max_gap_secs: 15, max_loads_per_hour: 120, cache_minutes: 30 }
+    }
+}
+
+impl Default for XMonitor {
+    fn default() -> Self {
+        XMonitor {
+            weights: XWeights::default(),
+            points_factor: 0.15,
+            max_points: 15.0,
+            block_bot_reply_pct: 30.0,
+            min_reply_sample: 8,
+            max_clone_rank: 5,
+            max_clones: 10,
+            clone_window_hours: 24,
+            big_account_followers: 50_000,
+            top_tier_followers: 200_000,
+            trend_min_coins: 3,
+            trend_window_minutes: 60,
+            max_age_minutes: 30,
+            job_wait_secs: 120,
+            block_when_no_x_link: false,
+            pacing: XPacing::default(),
+        }
+    }
 }
 
 /// The learning journal and the review loop (see learning.rs). The hard limits (10 trades minimum,
@@ -264,6 +359,18 @@ impl Config {
         }
         if self.learning.min_win_rate_gap_pts < 20.0 {
             return Err("learning.minWinRateGapPts cannot be below 20 points".into());
+        }
+        let w = &self.x_monitor.weights;
+        let ws = [w.kol, w.engagement, w.replies, w.growth, w.integrity, w.community, w.narrative];
+        if ws.iter().any(|x| !x.is_finite() || *x < 0.0) || ws.iter().sum::<f64>() <= 0.0 {
+            return Err("xMonitor.weights must be zero or above, and not all zero".into());
+        }
+        if !(0.0..=15.0).contains(&self.x_monitor.max_points) || !(0.0..=0.15).contains(&self.x_monitor.points_factor) {
+            return Err("xMonitor.maxPoints cannot be above 15 and xMonitor.pointsFactor cannot be above 0.15: X alone must never be able to buy".into());
+        }
+        let p = &self.x_monitor.pacing;
+        if p.min_gap_secs < 5 || p.max_gap_secs < p.min_gap_secs || p.max_loads_per_hour == 0 || p.max_loads_per_hour > 200 {
+            return Err("xMonitor.pacing: gaps must be at least 5 s (max not below min) and loads per hour between 1 and 200".into());
         }
         const STYLES: [&str; 5] = ["momentum", "snipe", "confirmation", "dip-40pct", "graduation-dip"];
         if !STYLES.contains(&self.entry.style.as_str()) {

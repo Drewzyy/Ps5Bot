@@ -141,6 +141,7 @@ pub struct Ctx {
     cfg: Config,
     links: std::sync::Mutex<std::collections::HashMap<String, crate::shield::rules::SocialLinks>>,
     shield: Shield,
+    xmon: Arc<crate::xmon::XMon>,
     trader: Arc<Trader>,
     hub: Arc<Hub>,
     db: Arc<Db>,
@@ -253,9 +254,13 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
     // Chrome extension bridge: it gets its own Shield for "Check this coin" and no handle to the trader at all.
     // ONE RugCheck client for the whole app (2 in flight, rate limited, cached per mint).
     let rug_client = Arc::new(crate::shield::net::RugCheck::new());
+    // X Monitor + Thesis Finder: the extension reads x.com and sends results over the bridge (SPEC 4e). No handle to the trader.
+    let xmon = crate::xmon::XMon::new(db.clone(), hub.clone(), opts.config.x_monitor.clone());
     if let Some(addr) = &opts.bridge_addr {
         let checker = Arc::new(crate::bridge::ShieldChecker { shield: Arc::new(Shield::with_rugcheck(opts.config.clone(), db.clone(), rpc.clone(), ShieldOpts { relax_egress: opts.relax_egress }, rug_client.clone())), hub: hub.clone(), db: db.clone() });
-        match crate::bridge::Bridge::new(hub.clone(), db.clone(), checker).serve(addr).await {
+        let bridge = crate::bridge::Bridge::new(hub.clone(), db.clone(), checker);
+        bridge.set_xmon(xmon.clone());
+        match bridge.serve(addr).await {
             Ok(a) => hub.log(format!("engine: Chrome extension bridge on ws://{a} (pinned extension only, pairing required)")),
             Err(e) => hub.log(format!("engine: Chrome extension bridge NOT started: {e}")),
         }
@@ -266,6 +271,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         links: Default::default(),
         cfg: opts.config.clone(),
         shield,
+        xmon: xmon.clone(),
         trader: trader.clone(),
         hub: hub.clone(),
         db: db.clone(),
@@ -276,9 +282,8 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
         picked: AtomicU32::new(0),
     });
 
-    for a in [AgentId::ThesisFinder, AgentId::XMonitor, AgentId::TopGainers] {
-        status(&hub, a, StatusColor::Grey, "Not active yet (later version)");
-    }
+    status(&hub, AgentId::TopGainers, StatusColor::Grey, "Not active yet (later version)");
+    xmon.tick(now_ms());
     status(&hub, AgentId::TopTraderMonitor, StatusColor::Grey, "Off in version 1");
 
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -342,6 +347,7 @@ pub async fn run(opts: EngineOpts, hub: Arc<Hub>, stop: watch::Receiver<bool>) -
                 let (checked, blocked, passed, by) = db.summary(day_start(now));
                 hub.emit(EngineEvent::ShieldSummary { ts: now, checked, blocked, passed, by_reason: by });
                 hub.emit(EngineEvent::Funnel(funnel_view(&ctx, day_start(now), now)));
+                ctx.xmon.tick(now);
                 let chk = ctx.checking.load(Ordering::Relaxed);
                 status(&hub, AgentId::ScamShield, if chk > 0 { StatusColor::Green } else { StatusColor::Amber }, format!("Checking {chk} coins. Today: {blocked} blocked, {passed} passed"));
                 let obs = ctx.observing.load(Ordering::Relaxed);
@@ -480,11 +486,20 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     if facts.links != crate::shield::rules::SocialLinks::default() {
         ctx.links.lock().unwrap().insert(t.mint.clone(), facts.links.clone());
         ctx.hub.emit(EngineEvent::Links { mint: t.mint.clone(), website: facts.links.website.clone(), twitter: facts.links.twitter.clone(), telegram: facts.links.telegram.clone() });
+        // every coin with an X link is remembered (clone ranking, narratives); pages are only opened for coins that pass the checks below
+        ctx.xmon.note_coin(&t.mint, &t.symbol, &t.name, &facts.links.twitter, now_ms());
     }
     record(&ctx, &t, "chain", &b);
     if b.block.is_some() {
         ctx.trader.release_feed(&t.mint);
         return;
+    }
+    // passed the cheap prefilter and the chain checks and has an X link: ask the extension to read it, while the 60 s watch runs
+    if !facts.links.twitter.is_empty() {
+        let n = ctx.xmon.queue_coin(&t.mint, now_ms());
+        if n > 0 {
+            pulse(&ctx, AgentId::TokenPicker, AgentId::XMonitor, format!("{}: {} X page(s) queued for the extension", t.symbol, n), &t.mint);
+        }
     }
     pulse(&ctx, AgentId::ScamShield, AgentId::TokenPicker, format!("Clean coin {} handed to Token Picker", t.symbol), &t.mint);
     observe_and_trade(ctx, t, t0, facts).await;
@@ -537,13 +552,22 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
     // The main lane may run on learned thresholds (applied changes). The shadow lane runs a candidate change, if a test is on.
     let main_t = ctx.trader.lane_tuned("momentum");
     let mcfg = &main_t.cfg;
-    let sc = picker::score_with(&obs, mcfg, &main_t.weights);
+    // X Monitor: whatever the extension has read by now. Not ready, failed or stale means "unknown": no points and no block.
+    let xe = ctx.xmon.evaluate(&t.mint, now);
+    let sc = picker::with_x(picker::score_with(&obs, mcfg, &main_t.weights), &xe, mcfg.observation.min_score);
     let shadow_sc = if ctx.trader.shadow_active() {
         let st = ctx.trader.lane_tuned(learning::SHADOW_LANE);
-        Some(picker::score_with(&obs, &st.cfg, &st.weights))
+        Some(picker::with_x(picker::score_with(&obs, &st.cfg, &st.weights), &xe, st.cfg.observation.min_score))
     } else {
         None
     };
+    if !matches!(xe.status, crate::xmon::score::XStatus::NoLink | crate::xmon::score::XStatus::Off) {
+        let blocked = xe.is_blocked();
+        ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "x-monitor".into(), outcome: if blocked { "block" } else { "pass" }.into(), reason: if blocked { "X_BLOCK".into() } else { String::new() }, detail: crate::xmon::XMon::log_for(&xe).summary(), verdict: String::new() });
+        if xe.status == crate::xmon::score::XStatus::Ready || blocked {
+            ctx.hub.emit(EngineEvent::Pulse { from: AgentId::XMonitor, to: AgentId::TokenPicker, text: format!("{}: X community {}", t.symbol, if blocked { "blocked".to_string() } else { format!("{:.0} (+{} points)", xe.score, xe.points) }) });
+        }
+    }
 
     // serial rugger bookkeeping and "seen trending"
     let peak = trades.iter().map(|x| x.mcap_sol()).fold(0.0, f64::max);
@@ -557,7 +581,7 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
     let mut gates = sc.gates.clone();
     let mut picked = sc.picked;
     // The paper variant (dip-40pct) shares the observation gate (score) but not the momentum entry gates.
-    let mut dip_eligible = sc.score >= ctx.cfg.observation.min_score && obs.dev_sold_pct <= 0.0;
+    let mut dip_eligible = picker::dip_ok(&sc, ctx.cfg.observation.min_score) && obs.dev_sold_pct <= 0.0;
     let mut shadow_picked = shadow_sc.as_ref().map(|s| s.picked).unwrap_or(false);
     if (picked || dip_eligible || shadow_picked) && ctx.mon.no_buys() {
         gates.push("feed down: no buys".into());
@@ -652,7 +676,7 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
         v
     };
     ctx.db.insert_score(now, &t.mint, &t.symbol, sc.score, picked, &gate_labels, trades.len() as u32, obs.unique_buyers);
-    let features = EntryFeatures { score: sc.score, buyers: obs.unique_buyers, buys: obs.buys, sells: obs.sells, ratio: obs.ratio, curve_sol: obs.curve_sol, age_seconds: age, mcap_sol: obs.mcap_sol, picked_ms: now, source_url: ctx.source_for(&t.mint).unwrap_or_default() };
+    let features = EntryFeatures { score: sc.score, buyers: obs.unique_buyers, buys: obs.buys, sells: obs.sells, ratio: obs.ratio, curve_sol: obs.curve_sol, age_seconds: age, mcap_sol: obs.mcap_sol, picked_ms: now, source_url: ctx.source_for(&t.mint).unwrap_or_default(), x_community: Some(crate::xmon::XLog::from(&xe)) };
     let pick = Pick { mint: t.mint.clone(), symbol: t.symbol.clone(), creator: t.trader_public_key.clone(), curve_key: t.bonding_curve_key.clone(), score: sc.score, features, size_factor };
     // A coin that scored high and was still not bought is a "missed coin": watch what it did for 5 minutes.
     if sc.score >= MISSED_MIN_SCORE && !picked {
@@ -784,7 +808,7 @@ mod tests {
         let trader = Trader::new(cfg.clone(), db.clone(), hub.clone(), TradeFeed::offline(), None, 150.0, dir, true);
         let rc = Arc::new(crate::shield::net::RugCheck::scripted(answers, vec![Duration::from_millis(5); 3]));
         let shield = Shield::with_rugcheck(cfg.clone(), db.clone(), rpc, ShieldOpts { relax_egress: false }, rc);
-        Arc::new(Ctx { cfg, links: Default::default(), shield, trader, hub, db, mon: Arc::new(MonitorState::default()), chain_slots: Semaphore::new(6), checking: AtomicU32::new(0), observing: AtomicU32::new(0), picked: AtomicU32::new(0) })
+        Arc::new(Ctx { cfg: cfg.clone(), links: Default::default(), shield, xmon: crate::xmon::XMon::new(db.clone(), hub.clone(), cfg.x_monitor.clone()), trader, hub, db, mon: Arc::new(MonitorState::default()), chain_slots: Semaphore::new(6), checking: AtomicU32::new(0), observing: AtomicU32::new(0), picked: AtomicU32::new(0) })
     }
 
     fn create() -> FeedMsg {

@@ -2,6 +2,8 @@
 // Talks to the desktop app over ws://127.0.0.1:8766 (only this extension may connect, and only after pairing).
 // It never holds a key or secret: just a pairing token. It cannot buy or sell. It can run a scam check and press the kill switch.
 import { DEFAULT_PREFS, emptyState, applyEvent, resetPrimed, badgeFor, diffNotifications, closedMints, heldMints, dexUrl } from "./lib/core.js";
+import { createXRunner } from "./xrunner.js";
+import { DEFAULT_PACE } from "./lib/xpace.js";
 
 const URL_WS = "ws://127.0.0.1:8766";
 const BACKOFF = [1000, 2000, 3000, 5000];
@@ -45,7 +47,7 @@ function changed() {
         ports.delete(p);
       }
     }
-    store.session.set({ cache: { stats: state.stats, positions: state.positions, activity: state.activity, kill: state.kill, learning: state.learning } }).catch(() => {});
+    store.session.set({ cache: { stats: state.stats, positions: state.positions, activity: state.activity, kill: state.kill, learning: state.learning, xmon: state.xmon } }).catch(() => {});
     paintBadge();
   }, 150);
 }
@@ -130,6 +132,7 @@ function openSocket(first) {
       onEvent(v.e);
     } else if (v.t === "settings") {
       state = { ...state, settings: v.startup };
+      if (v.xmonitor) xSettings = { enabled: !!v.xmonitor.enabled, paused: !!v.xmonitor.paused, pace: { ...DEFAULT_PACE, ...(v.xmonitor.pace || {}) } };
       changed();
       tabsOnSettings();
     } else if (v.id != null && pending.has(v.id)) {
@@ -227,6 +230,32 @@ async function unpair() {
   state = resetPrimed({ ...emptyState(), conn: "unpaired" });
   changed();
 }
+
+// ------------------------------------------------------------------ X Monitor (reads x.com in one background tab)
+// The app queues jobs; this runner opens each page (8 to 15 s apart), collects the page's own data and sends it back.
+// It never clicks, posts, likes or follows. Off until the app says it is on.
+
+let xSettings = { enabled: false, paused: false, pace: { ...DEFAULT_PACE } };
+const xRunner = createXRunner({
+  chrome,
+  ask: (m) => request(m, 12000),
+  connected: () => state.conn === "connected",
+  now: () => Date.now(),
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  rand: Math.random,
+  getSettings: () => xSettings,
+  store: {
+    get: async (k) => (await store.session.get(k))[k],
+    set: (k, v) => store.session.set({ [k]: v }),
+  },
+  log: (t) => console.log(t),
+});
+xRunner.start();
+chrome.tabs.onRemoved.addListener((id) => {
+  store.session.get("xTab").then((r) => {
+    if (r.xTab === id) store.session.remove("xTab");
+  });
+});
 
 // ------------------------------------------------------------------ notifications
 
@@ -355,6 +384,8 @@ async function resolveMint(hint) {
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
     await booted;
+    // messages from the x.com content script (only the bot's job tab is answered)
+    if (sender.tab && typeof msg.t === "string" && msg.t.startsWith("x")) return send(xRunner.onMessage(msg, sender));
     switch (msg.t) {
       case "getState":
         return send({ state: publicState() });

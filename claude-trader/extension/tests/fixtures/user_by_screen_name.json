@@ -1,0 +1,39 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "user": {
+   "result": {
+    "__typename": "User",
+    "id": "VXNlcjoxODQ1NTAwMTEyMjMzNDQ1NTY2",
+    "rest_id": "1845500112233445566",
+    "is_blue_verified": true,
+    "profile_image_shape": "Circle",
+    "avatar": {
+     "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+    },
+    "core": {
+     "created_at": "Mon Oct 14 09:12:44 +0000 2026",
+     "name": "Moon Bear",
+     "screen_name": "moonbearsol"
+    },
+    "privacy": {
+     "protected": false
+    },
+    "verification": {
+     "verified": false
+    },
+    "profile_bio": {
+     "description": "The bear that went to the moon. $MOONB"
+    },
+    "legacy": {
+     "default_profile_image": false,
+     "description": "The bear that went to the moon. $MOONB",
+     "followers_count": 8431,
+     "friends_count": 212,
+     "listed_count": 31,
+     "statuses_count": 346
+    }
+   }
+  }
+ }
+}
