@@ -4,6 +4,9 @@
 //! File: `recordings/feed-YYYY-MM-DD.jsonl.gz` (UTC day of the record). One JSON object per line:
 //! - `{"k":"launch","ms":..,"mint","symbol","name","creator","curve","sig","vSol","vTok","initialBuy","mayhem","quote","uri"}`
 //! - `{"k":"trade","ms":..,"mint","user","buy","sol","tok","slot","sig","vSol","vTok","realSol","mayhem","nonSol","holder"}`
+//! - `{"k":"slot","ms":..,"mint","slot":..}`  the creation slot of a coin (from the chain stage)
+//! - `{"k":"ltrade", ...same fields as trade...}`  a creation-slot trade read from the chain; kept apart from live trades because the
+//!   live feed never sees them and the observation counts must not include them
 //! - `{"k":"gap","ms":..,"from":..,"to":..,"why":".."}`  the feed was down or silent between `from` and `to`: trades in that
 //!   span may be missing (backfilled ones are recorded as normal trades), so a replay must not trust coins that span it.
 //!
@@ -61,7 +64,20 @@ impl Recorder {
     }
 
     pub fn record_trade(&self, t: &Trade) {
-        self.push(t.recv_ms, json!({"k":"trade","ms":t.recv_ms,"mint":t.mint,"user":t.user,"buy":t.is_buy,"sol":t.sol,"tok":t.tokens,"slot":t.slot,"sig":t.signature,"vSol":t.v_sol,"vTok":t.v_tokens,"realSol":t.real_sol,"mayhem":t.mayhem,"nonSol":t.non_sol_quote,"holder":t.holder_reward}));
+        self.record_trade_kind("trade", t);
+    }
+
+    /// A creation-slot trade read from the chain (see the file format above).
+    pub fn record_launch_trade(&self, t: &Trade) {
+        self.record_trade_kind("ltrade", t);
+    }
+
+    pub fn record_create_slot(&self, ms: i64, mint: &str, slot: u64) {
+        self.push(ms, json!({"k":"slot","ms":ms,"mint":mint,"slot":slot}));
+    }
+
+    fn record_trade_kind(&self, kind: &str, t: &Trade) {
+        self.push(t.recv_ms, json!({"k":kind,"ms":t.recv_ms,"mint":t.mint,"user":t.user,"buy":t.is_buy,"sol":t.sol,"tok":t.tokens,"slot":t.slot,"sig":t.signature,"vSol":t.v_sol,"vTok":t.v_tokens,"realSol":t.real_sol,"mayhem":t.mayhem,"nonSol":t.non_sol_quote,"holder":t.holder_reward}));
     }
 
     pub fn record_launch(&self, ms: i64, m: &FeedMsg) {
@@ -180,6 +196,10 @@ pub struct Recording {
     pub trades: HashMap<String, Vec<Trade>>,
     /// (from, to, why) spans where the feed was down or silent.
     pub gaps: Vec<(i64, i64, String)>,
+    /// Creation slot per coin (when the chain stage found it).
+    pub create_slots: HashMap<String, u64>,
+    /// Creation-slot trades read from the chain, per mint.
+    pub launch_trades: HashMap<String, Vec<Trade>>,
     pub files: usize,
     pub bad_lines: usize,
 }
@@ -194,7 +214,7 @@ impl Recording {
         let s = |k: &str| v[k].as_str().unwrap_or("").to_string();
         let f = |k: &str| v[k].as_f64().unwrap_or(0.0);
         match v["k"].as_str() {
-            Some("trade") => {
+            Some(k @ ("trade" | "ltrade")) => {
                 let t = Trade {
                     mint: s("mint"),
                     user: s("user"),
@@ -213,8 +233,17 @@ impl Recording {
                 };
                 if t.mint.is_empty() {
                     self.bad_lines += 1;
-                } else {
+                } else if k == "trade" {
                     self.trades.entry(t.mint.clone()).or_default().push(t);
+                } else {
+                    self.launch_trades.entry(t.mint.clone()).or_default().push(t);
+                }
+            }
+            Some("slot") => {
+                if let (Some(m), Some(sl)) = (v["mint"].as_str(), v["slot"].as_u64()) {
+                    self.create_slots.insert(m.to_string(), sl);
+                } else {
+                    self.bad_lines += 1;
                 }
             }
             Some("launch") => {
@@ -251,6 +280,10 @@ impl Recording {
         self.launches.sort_by_key(|l| l.0);
         let mut seen = std::collections::HashSet::new();
         self.launches.retain(|(_, m)| seen.insert(m.mint.clone()));
+        for v in self.launch_trades.values_mut() {
+            let mut s = std::collections::HashSet::new();
+            v.retain(|t| s.insert((t.signature.clone(), t.user.clone(), t.is_buy)));
+        }
         for v in self.trades.values_mut() {
             let mut s = std::collections::HashSet::new();
             v.retain(|t| s.insert((t.signature.clone(), t.user.clone(), t.is_buy)));
@@ -317,6 +350,24 @@ mod tests {
         assert_eq!(t.len(), 2, "the repeated trade is dropped on read");
         assert_eq!(t[0], trade(day + 1000, "s1"));
         assert_eq!(rec.gaps, vec![(day + 2500, day + 9000, "socket stalled".to_string())]);
+        assert_eq!(rec.bad_lines, 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn creation_slots_and_launch_slot_trades_are_kept_apart_from_live_trades() {
+        let dir = tmp("ltrade");
+        let r = Recorder::new(dir.clone(), RecorderCfg::default());
+        let ms = 1_795_000_000_000i64;
+        r.record_create_slot(ms, "MINT", 777);
+        r.record_launch_trade(&trade(ms, "early"));
+        r.record_launch_trade(&trade(ms, "early")); // read twice
+        r.record_trade(&trade(ms + 5000, "live"));
+        r.flush();
+        let rec = read_dir(&dir, "", "").unwrap();
+        assert_eq!(rec.create_slots["MINT"], 777);
+        assert_eq!(rec.launch_trades["MINT"].len(), 1);
+        assert_eq!(rec.trades["MINT"].len(), 1, "the live trade list does not contain the launch-slot trade");
         assert_eq!(rec.bad_lines, 0);
         let _ = std::fs::remove_dir_all(&dir);
     }

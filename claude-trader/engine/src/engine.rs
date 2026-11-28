@@ -569,6 +569,15 @@ async fn process_token(ctx: Arc<Ctx>, t: FeedMsg) {
     };
     ctx.checking.fetch_sub(1, Ordering::Relaxed);
     facts.rug = Some(rug);
+    // what the offline replay needs to judge the launch group the way the live engine does
+    if let Some(r) = ctx.trader.feed.store.recorder() {
+        if let Some(sl) = facts.create_slot {
+            r.record_create_slot(now_ms(), &t.mint, sl);
+        }
+        for lt in &facts.launch_trades {
+            r.record_launch_trade(lt);
+        }
+    }
     if facts.links != crate::shield::rules::SocialLinks::default() {
         ctx.links.lock().unwrap().insert(t.mint.clone(), facts.links.clone());
         ctx.hub.emit(EngineEvent::Links { mint: t.mint.clone(), website: facts.links.website.clone(), twitter: facts.links.twitter.clone(), telegram: facts.links.telegram.clone() });
@@ -670,7 +679,7 @@ pub async fn observe_and_trade(ctx: Arc<Ctx>, t: FeedMsg, t0: i64, mut facts: Ch
 
     // Graded launch-slot check (SPEC 7b): measured and logged for EVERY coin that reaches the end of the watch, so we can see what
     // really blocks. It blocks the buy only above the limits in `filters.graded`.
-    let (launch_exp, grade_res) = ctx.shield.launch_grade(&t.trader_public_key, &trades, &facts, ctx.trader.current_curve(&t.mint));
+    let (_launch_exp, grade_res) = ctx.shield.launch_grade(&t.trader_public_key, &trades, &facts, ctx.trader.current_curve(&t.mint));
     ctx.db.insert_decision(&DecisionRow { ts: now, mint: t.mint.clone(), symbol: t.symbol.clone(), stage: "launch-grade".into(), outcome: if grade_res.blocks() { "block" } else { "pass" }.into(), reason: if grade_res.blocks() { grade_res.code.clone() } else { String::new() }, detail: grade_res.detail.clone(), verdict: String::new() });
     // how the coin ended the watch: the funder-chain reputation learns from it (SPEC 7c). Only when the feed is really delivering
     // trades, so a dead feed cannot mark every coin dead.

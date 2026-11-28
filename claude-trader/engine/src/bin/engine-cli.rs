@@ -2,6 +2,8 @@
 //!   engine-cli                       print the loaded config (M1 behaviour)
 //!   engine-cli ext-pair|ext-unpair|ext-state --db PATH   Chrome extension pairing code (one use, 10 minutes)
 //!   engine-cli kill|resume|kill-state --db PATH   kill switch (stops buying, sells everything; resume is separate)
+//!   engine-cli backtest --data DIR|--db PATH [--lane momentum|dip-40pct|deep-sprint|all] [--config PATH] [--delay-ms N] [--from DAY] [--to DAY] [--holdout-pct N] [--json]
+//!                                   offline replay of the recorded feed through the real picker and exits (no network)
 //!   engine-cli feed [--minutes N] [--ws-port P] [--db PATH] [--rpc URL] [--config PATH] [--relax-metadata-egress]
 //! Logs to stdout, writes every decision to the SQLite `decisions` table, and (with --ws-port) serves the
 //! events on ws://127.0.0.1:P for the browser dashboard.
@@ -93,6 +95,17 @@ async fn main() {
                 println!("extension unpaired");
             }
             _ => println!("extension is {}", if engine::bridge::is_paired(&db) { "paired" } else { "not paired" }),
+        }
+        return;
+    }
+
+    if args.get(1).map(|s| s.as_str()) == Some("backtest") {
+        match engine::backtest::cli(&args[1..], &default_cfg) {
+            Ok(t) => println!("{t}"),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
         }
         return;
     }
@@ -191,7 +204,7 @@ async fn main() {
         let gated = db.scalar("SELECT COUNT(*) FROM decisions WHERE stage='risk-gate'");
         println!("{} SUMMARY      coinsSeen={seen} checked={checked} blocked={blocked} passed={passed} scored={scored} picked={picked} riskGateBlocks={gated} entered={entered} failedBuys={failed} decisions={}", ts(engine::rpc::now_ms()), db.decision_count());
         let date = engine::timefmt::date_local(engine::rpc::now_ms());
-        for lane in ["momentum", "dip-40pct"] {
+        for lane in ["momentum", "dip-40pct", "deep-sprint"] {
             if let Ok(s) = engine::report::write_daily_summary(std::path::Path::new(&logs_dir), lane, &date) {
                 println!("{} {}", ts(engine::rpc::now_ms()), engine::report::print_summary(lane, &s));
             }

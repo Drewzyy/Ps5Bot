@@ -35,6 +35,7 @@ pub mod recorder;
 pub mod funder;
 pub mod stats;
 pub mod sprint;
+pub mod backtest;
 
 pub use config::Config;
 pub use events::{AgentId, AgentStatus, EngineEvent, StatusColor};
