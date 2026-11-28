@@ -44,7 +44,7 @@ jobs:
       - name: Test the Chrome extension logic
         shell: bash
         working-directory: claude-trader/extension
-        run: node --test tests/core.test.js
+        run: node --test tests/core.test.js tests/xmon.test.js
       - name: Test the CI helper scripts
         shell: bash
         working-directory: claude-trader

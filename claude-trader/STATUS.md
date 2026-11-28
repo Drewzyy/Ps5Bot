@@ -1,5 +1,33 @@
 # Claude Trader — STATUS
 
+## M3f — X Monitor and Thesis Finder (paper only, no keys, live stays locked)
+
+### Built
+- **Extension** (`extension/`, manifest 0.2.0): `xhook.js` (MAIN world, document_start, x.com) copies x.com's own GraphQL answers to `xcontent.js` (isolated), which parses them with `lib/xparse.js` and only does so in the bot's own job tab. `xrunner.js` takes one job at a time from the app, opens it in ONE reused unfocused background tab, waits for the data (DOM fallback after 14 s), returns a structured result, then waits 8 to 15 s. `lib/xpace.js`: 120 loads an hour, 800 a day, 30 minute cache, back-off 15 min / 1 h / rest of the day, "X paused: account limited". Read only: nothing posts, likes, follows or clicks (source scan test). The app builds every address (four allowed shapes).
+- **Engine** (`engine/src/xmon/`): `model.rs` (link parser, jobs, cleaned results), `score.rs` (pure community score and hard blocks), `mod.rs` (queue with queued/running/done/failed/stale, SQLite tables `x_coins`, `x_handles`, `x_follow`, `x_results`, evaluation, clone ranking, reused-account detection, follower history, rising accounts, stories, narratives, views). Bridge messages `xnext`, `xstatus`, `xresult` (bridge still has no buy or sell message). Picker `with_x`: `round(community * 0.15)` points, max 15, X alone can never buy, a block adds a gate. Journal, JSONL (`xCommunity`, last key, SPEC 8 updated), Obsidian trade note and a `decisions` row (stage `x-monitor`) carry every component.
+- **App**: X Monitor and Thesis Finder nodes are live, dashboard cards "X community" and "Thesis Finder", Settings > X Monitor (directions, switch, pause button, pacing, weights with i texts marked as starting guesses), Tips entries, extension coin card shows score, copy rank, flags and blocks, side panel shows one X line.
+- Weights and limits are in `config.json` under `xMonitor` (SPEC 4e). All are starting guesses from the research notes.
+
+### Decisions Claude made (user can change)
+- Pages are queued after the chain stage passes, not right after the cheap prefilter: the X link only exists after the metadata fetch in the chain stage, and queueing every coin would burn the 120 pages an hour on coins that Scam Shield blocks anyway. Every coin with an X link is still recorded for clone ranking and narratives.
+- A coin with NO X link is not blocked (it gets no X points). `xMonitor.blockWhenNoXLink` switches the literal block on.
+- Reuse/rename blocks apply to profile links (and a handle mismatch for post links is a flag). A post link's author being a KOL used by many coins is not a reuse block (copy rank covers it).
+- A profile link has no replies to sample and a community link has no account, so such coins cannot reach 100.
+- Follower growth needs two sightings at least 5 minutes apart; on a first look only the account age is used (young account with 1,000+ followers a day is flagged "fast-rising").
+
+### Verification (commands actually run)
+- `cargo test --workspace`: 264 engine tests pass (was 197; new ones include `xmon::score` 20, `xmon::model` 4, `xmon` 14, picker X rules 7, bridge X 2, engine X end to end 2, report line shape).
+- `node --test tests/core.test.js tests/xmon.test.js` in `extension/`: 48 pass (parsers on synthetic fixtures, page detection, jobs, pacing with a fake clock, runner with a fake browser, read-only source scan, manifest).
+- `npm run build` ok. `bash scripts/check-live-gate.sh` ok (script unchanged).
+- Screenshots (DEMO data, viewed): `docs/screenshots/x-nodes.png`, `x-node-panel.png`, `x-community-card.png`, `x-thesis-card.png`, `x-settings.png`, `x-settings-info.png`, `x-ext-card-ready.png`, `x-ext-card-blocked.png`, `x-ext-card-unknown.png` (the extension card uses the real `content.js` on a stand-in page with a stubbed `chrome.runtime`, made-up data).
+
+### NOT verified (this sandbox cannot reach x.com)
+- Everything about the real site: the GraphQL shapes (fixtures are synthetic, made by `extension/tests/make-fixtures.mjs`), the community operation names (guessed, found by member count), whether a background tab loads all data, how fast the spare account is limited, whether the DOM fallback selectors still match.
+- The Chrome extension was not loaded in a real Chrome in this session (no Playwright extension run for the X parts). The Tauri app was only compiled on Linux.
+
+### The user's setup steps
+1. Make a spare X account (not your main one). 2. Log into x.com in the Chrome profile the bot uses. 3. Optional: follow a few hundred crypto KOLs with it. 4. Reload the extension from the new folder (chrome://extensions, Reload) and keep it paired. 5. Settings > X Monitor (on by default). Watch the "X community" card.
+
 ## M3e — RugCheck outages, trade-feed health, "Why no trades?" (paper only, no keys, live stays locked)
 
 ### Why (from the user's 75-minute Windows run with a working Helius key)

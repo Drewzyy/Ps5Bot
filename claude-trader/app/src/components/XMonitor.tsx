@@ -51,14 +51,14 @@ export function XCommunityCard({ engine }: { engine: EngineState }) {
         <div className="empty">X Monitor starts after the engine does. It needs the Chrome extension and a spare X account (see Settings, X Monitor).</div>
       ) : (
         <>
-          <p className="fhl">{x.statusLine}{x.state === "working" ? ` Pages opened this hour: ${x.loadsLastHour} of ${x.maxPerHour}.` : ""}</p>
+          <p className="fhl">{x.statusLine}{x.state === "working" ? `. Pages opened this hour: ${x.loadsLastHour} of ${x.maxPerHour}.` : ""}</p>
           <h4 className="xh">Rising accounts</h4>
           {x.rising.length === 0 ? (
             <div className="empty">None yet. An account counts as rising when its followers grow 20% or more between two looks, or it is under 2 weeks old with about 1,000 followers a day.</div>
           ) : (
             <div className="xlist">
               {x.rising.map((r) => (
-                <div className="xrow" key={r.handle} data-testid="x-rising">
+                <div className="xrow rise" key={r.handle} data-testid="x-rising">
                   <b className="xs">@{r.handle}</b>
                   <span className="xv">{num(r.followers)} followers</span>
                   <span className="xn">{r.why}{r.symbol ? ` (coin ${r.symbol})` : ""}</span>
