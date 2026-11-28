@@ -223,6 +223,10 @@ pub struct XCommunityInfo {
     pub description: String,
     pub posts_seen: u32,
     pub latest_post_ms: i64,
+    /// Handles of the community's moderators (from `moderatorsSliceTimeline_Query`), when the page fetched them.
+    pub moderators: Vec<String>,
+    /// How many members the members list showed (a sample, not the member count).
+    pub members_sample: u32,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -240,6 +244,26 @@ pub struct XSmart {
     pub handles: Vec<XSmartFollower>,
     pub top_followers: u64,
     pub has_more: bool,
+}
+
+/// X's own "About this account" data (the `AboutAccountQuery` answer), when the page fetched it while the job ran.
+/// Read from X's page only; `changes_known` is false when the answer had no username-changes field (then nothing is claimed).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct XAbout {
+    /// How many times the username was changed (X's `username_changes.count`).
+    pub username_changes: u32,
+    pub changes_known: bool,
+    /// When it was last changed (ms), 0 when never or unknown.
+    pub last_changed_ms: i64,
+    /// `account_based_in`: the country X shows for the account.
+    pub country: String,
+    /// `location_accurate`: X says the location may be inaccurate (a VPN or proxy) when this is false.
+    pub location_accurate: Option<bool>,
+    /// `affiliate_username`: the account this one is affiliated with.
+    pub affiliate: String,
+    /// `source`: how the account was created or its app store source, as X words it.
+    pub source: String,
 }
 
 /// What the extension sends back for one job.
@@ -264,6 +288,7 @@ pub struct XResult {
     pub replies: Vec<XReply>,
     pub community: Option<XCommunityInfo>,
     pub smart: Option<XSmart>,
+    pub about: Option<XAbout>,
 }
 
 impl XResult {
@@ -311,6 +336,21 @@ impl XResult {
             cut(&mut c.id, 30);
             cut(&mut c.name, 100);
             cut(&mut c.description, 300);
+        }
+        if let Some(a) = self.about.as_mut() {
+            cut(&mut a.country, 60);
+            cut(&mut a.affiliate, 15);
+            cut(&mut a.source, 60);
+            a.username_changes = a.username_changes.min(1000);
+            if a.last_changed_ms < 0 {
+                a.last_changed_ms = 0;
+            }
+        }
+        if let Some(c) = self.community.as_mut() {
+            c.moderators.truncate(20);
+            for h in c.moderators.iter_mut() {
+                cut(h, 15);
+            }
         }
         if let Some(s) = self.smart.as_mut() {
             s.handles.truncate(40);

@@ -7,6 +7,10 @@ use crate::config::XMonitor as Cfg;
 use serde::{Deserialize, Serialize};
 
 const DAY_MS: i64 = 86_400_000;
+/// A username change this recent blocks a profile link. Starting guesses (SPEC 4e): no data supports them yet.
+const ABOUT_RECENT_DAYS: i64 = 90;
+/// Or this many changes whenever they happened.
+const ABOUT_MAX_CHANGES: u32 = 3;
 
 /// Hard ceiling on what X can add to the token score. `config.xMonitor.maxPoints` can lower it, never raise it.
 pub const X_MAX_POINTS: f64 = 15.0;
@@ -122,6 +126,8 @@ pub struct XInputs<'a> {
     pub smart: Option<&'a XSmart>,
     pub growth: Option<Growth>,
     pub history: &'a History,
+    /// X's own About data for the profile (username changes, country, affiliate), when it was captured.
+    pub about: Option<&'a XAbout>,
     pub rank: u32,
     pub clones: u32,
     /// Age of the primary data in minutes.
@@ -499,6 +505,27 @@ pub fn score(i: &XInputs, cfg: &Cfg) -> XEval {
                 blocks.push(format!("This X account was already linked to an earlier coin ({t}). Reused account."));
             }
         }
+        // X's own count of username changes (the About page data), when the page showed it
+        if matches!(i.target, XTarget::Profile { .. }) {
+            if let Some(a) = i.about.filter(|a| a.changes_known) {
+                let recent = a.last_changed_ms > 0 && i.now - a.last_changed_ms <= ABOUT_RECENT_DAYS * DAY_MS;
+                if a.username_changes > 0 && (recent || a.username_changes >= ABOUT_MAX_CHANGES) {
+                    rename = true;
+                    let when = if a.last_changed_ms > 0 { format!(", last {} days ago", ((i.now - a.last_changed_ms) / DAY_MS).max(0)) } else { String::new() };
+                    blocks.push(format!("X says this account changed its username {} time(s){when}. A renamed account is a common clone or rug sign.", a.username_changes));
+                } else if a.username_changes > 0 {
+                    flags.push(format!("The username was changed {} time(s), last {} days ago.", a.username_changes, if a.last_changed_ms > 0 { ((i.now - a.last_changed_ms) / DAY_MS).max(0).to_string() } else { "an unknown number of".into() }));
+                }
+                if !a.country.is_empty() {
+                    flags.push(format!("X shows the account as based in {}{}.", a.country, if a.location_accurate == Some(false) { " (X marks this location as possibly inaccurate)" } else { "" }));
+                } else if a.location_accurate == Some(false) {
+                    flags.push("X marks the account's location as possibly inaccurate.".into());
+                }
+                if !a.affiliate.is_empty() {
+                    flags.push(format!("The account is affiliated with @{}.", a.affiliate));
+                }
+            }
+        }
         if !rename {
             frac += 0.4;
         }
@@ -641,6 +668,7 @@ mod tests {
         smart: Option<XSmart>,
         growth: Option<Growth>,
         history: History,
+        about: Option<XAbout>,
         rank: u32,
         clones: u32,
         state: &'static str,
@@ -648,19 +676,19 @@ mod tests {
 
     impl Fx {
         fn profile() -> Fx {
-            Fx { target: XTarget::Profile { handle: "moonbearsol".into() }, user: Some(user("moonbearsol", 8000, 90)), posts: vec![post("Moon Bear $MOONB is live", 10_000, 250)], tweet: None, replies: vec![], community: None, smart: Some(smart(6, 50_000)), growth: None, history: History::default(), rank: 0, clones: 0, state: "ok" }
+            Fx { target: XTarget::Profile { handle: "moonbearsol".into() }, user: Some(user("moonbearsol", 8000, 90)), posts: vec![post("Moon Bear $MOONB is live", 10_000, 250)], tweet: None, replies: vec![], community: None, smart: Some(smart(6, 50_000)), growth: None, history: History::default(), about: None, rank: 0, clones: 0, state: "ok" }
         }
         fn status() -> Fx {
             let mut u = user("alphacalls", 182_000, 800);
             u.name = "Alpha Calls".into();
-            Fx { target: XTarget::Status { handle: Some("alphacalls".into()), id: "1861500000000000001".into() }, user: Some(u.clone()), posts: vec![], tweet: Some(XTweet { id: "1861500000000000001".into(), text: "New one to watch: $MOONB, the bear that went to the moon".into(), views: 215_000, likes: 3100, replies: 410, reposts: 640, quotes: 55, author: Some(u), ..Default::default() }), replies: good_replies(), community: None, smart: Some(smart(6, 50_000)), growth: None, history: History::default(), rank: 1, clones: 1, state: "ok" }
+            Fx { target: XTarget::Status { handle: Some("alphacalls".into()), id: "1861500000000000001".into() }, user: Some(u.clone()), posts: vec![], tweet: Some(XTweet { id: "1861500000000000001".into(), text: "New one to watch: $MOONB, the bear that went to the moon".into(), views: 215_000, likes: 3100, replies: 410, reposts: 640, quotes: 55, author: Some(u), ..Default::default() }), replies: good_replies(), community: None, smart: Some(smart(6, 50_000)), growth: None, history: History::default(), about: None, rank: 1, clones: 1, state: "ok" }
         }
         fn eval(&self) -> XEval {
             self.eval_with(&cfg())
         }
         fn eval_with(&self, c: &Cfg) -> XEval {
             score(
-                &XInputs { target: &self.target, token_name: "Moon Bear", symbol: "MOONB", mint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", coin_ts: NOW - MIN, now: NOW, primary_state: self.state, user: self.user.as_ref(), posts: &self.posts, tweet: self.tweet.as_ref(), replies: &self.replies, community: self.community.as_ref(), smart: self.smart.as_ref(), growth: self.growth.clone(), history: &self.history, rank: self.rank, clones: self.clones, age_min: 1 },
+                &XInputs { target: &self.target, token_name: "Moon Bear", symbol: "MOONB", mint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", coin_ts: NOW - MIN, now: NOW, primary_state: self.state, user: self.user.as_ref(), posts: &self.posts, tweet: self.tweet.as_ref(), replies: &self.replies, community: self.community.as_ref(), smart: self.smart.as_ref(), growth: self.growth.clone(), history: &self.history, about: self.about.as_ref(), rank: self.rank, clones: self.clones, age_min: 1 },
                 c,
             )
         }
@@ -803,6 +831,57 @@ mod tests {
         let mut s = Fx::status();
         s.history.earlier_tokens = vec!["A".into(), "B".into()];
         s.history.other_handles = vec!["oldname".into()];
+        assert_eq!(s.eval().status, XStatus::Ready);
+    }
+
+    fn about(changes: u32, days_ago: i64) -> XAbout {
+        XAbout { username_changes: changes, changes_known: true, last_changed_ms: if changes > 0 { NOW - days_ago * DAY_MS } else { 0 }, country: "Nigeria".into(), location_accurate: Some(false), affiliate: String::new(), source: String::new() }
+    }
+
+    #[test]
+    fn x_own_username_change_count_blocks_a_recent_or_serial_rename_and_only_flags_an_old_one() {
+        // renamed 20 days ago: blocked, with X's own numbers in the reason
+        let mut f = Fx::profile();
+        f.about = Some(about(1, 20));
+        let e = f.eval();
+        assert_eq!(e.status, XStatus::Blocked);
+        assert!(e.blocks.iter().any(|b| b.contains("changed its username 1 time(s), last 20 days ago")), "{:?}", e.blocks);
+        // renamed three times, the last one long ago: still a serial renamer
+        let mut g = Fx::profile();
+        g.about = Some(about(3, 400));
+        assert_eq!(g.eval().status, XStatus::Blocked);
+        // one old rename: a flag, not a block, and no integrity penalty for it
+        let mut h = Fx::profile();
+        h.about = Some(about(1, 400));
+        let e = h.eval();
+        assert_eq!(e.status, XStatus::Ready, "{:?}", e.blocks);
+        assert!(e.flags.iter().any(|x| x.contains("changed 1 time(s), last 400 days ago")), "{:?}", e.flags);
+        assert_eq!(e.components.integrity, Fx::profile().eval().components.integrity);
+        // no changes at all
+        let mut n = Fx::profile();
+        n.about = Some(about(0, 0));
+        assert_eq!(n.eval().status, XStatus::Ready);
+        // an About answer without the changes field claims nothing
+        let mut u = Fx::profile();
+        u.about = Some(XAbout { changes_known: false, username_changes: 9, ..Default::default() });
+        let e = u.eval();
+        assert_eq!(e.status, XStatus::Ready);
+        assert!(!e.flags.iter().any(|x| x.contains("username")));
+        // never captured: nothing changes
+        assert_eq!(Fx::profile().eval(), Fx::profile().eval());
+    }
+
+    #[test]
+    fn country_and_affiliate_from_the_about_data_are_shown_as_flags_not_blocks() {
+        let mut f = Fx::profile();
+        f.about = Some(XAbout { country: "Nigeria".into(), location_accurate: Some(false), affiliate: "pumpfun".into(), changes_known: true, ..Default::default() });
+        let e = f.eval();
+        assert_eq!(e.status, XStatus::Ready);
+        assert!(e.flags.iter().any(|x| x.contains("based in Nigeria") && x.contains("possibly inaccurate")), "{:?}", e.flags);
+        assert!(e.flags.iter().any(|x| x.contains("affiliated with @pumpfun")));
+        // a post link does not use the author's About data (it belongs to a profile job)
+        let mut s = Fx::status();
+        s.about = Some(about(2, 5));
         assert_eq!(s.eval().status, XStatus::Ready);
     }
 

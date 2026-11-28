@@ -34,19 +34,36 @@
   // ------------------------------------------------------------------ which response is this
 
   const OP_URL = /\/i\/api\/graphql\/[^/?#]+\/([A-Za-z0-9_]+)/;
-  const WANTED = /^(UserByScreenName|UserByRestId|UserTweets|UserTweetsAndReplies|TweetDetail|TweetResultByRestId|Communit[A-Za-z]*|[A-Za-z]*FollowersYouFollow[A-Za-z]*)$/;
+  // X rotates the id in the URL, never (so far) the operation name. We match by NAME only, and only read these. The names come from
+  // twscrape's api.py (a maintained X client) and from our own earlier guesses: AboutAccountQuery, the community operations
+  // (CommunityQuery, CommunityTweetsTimeline, membersSliceTimeline_Query, moderatorsSliceTimeline_Query) and the user and post ones.
+  // xhook.js carries the same list (it runs in the page, so it cannot import this file); a test keeps the two in step.
+  const OPS = {
+    AboutAccountQuery: "about",
+    UserByScreenName: "user",
+    UserByRestId: "user",
+    UserTweets: "posts",
+    UserTweetsAndReplies: "posts",
+    TweetDetail: "detail",
+    TweetResultByRestId: "detail",
+    CommunityQuery: "community",
+    CommunityByRestId: "community",
+    CommunityTweetsTimeline: "community",
+    membersSliceTimeline_Query: "community",
+    moderatorsSliceTimeline_Query: "community",
+  };
+  const WANTED = /^(Communit[A-Za-z]*|[A-Za-z]*FollowersYouFollow[A-Za-z]*)$/;
 
   function opName(url) {
     const m = OP_URL.exec(String(url || ""));
     return m ? m[1] : null;
   }
 
-  /** user | posts | detail | community | smart, or null for an operation we do not read. */
+  /** user | about | posts | detail | community | smart, or null for an operation we do not read. */
   function classify(op) {
-    if (!op || !WANTED.test(op)) return null;
-    if (/^UserBy/.test(op)) return "user";
-    if (/^UserTweets/.test(op)) return "posts";
-    if (/^(TweetDetail|TweetResultByRestId)$/.test(op)) return "detail";
+    if (!op) return null;
+    if (Object.prototype.hasOwnProperty.call(OPS, op)) return OPS[op];
+    if (!WANTED.test(op)) return null;
     if (/^Communit/.test(op)) return "community";
     if (/FollowersYouFollow/.test(op)) return "smart";
     return null;
@@ -179,6 +196,19 @@
           out.push(t);
         }
       }
+      // community timelines list their posts as `items_results: [{ result: <tweet> }]` (with slice_info.next_cursor), not as entries
+      if (Array.isArray(n.items_results)) {
+        for (const it of n.items_results) {
+          const r = obj(it) && obj(it.result);
+          if (r && (r.__typename === "Tweet" || r.__typename === "TweetWithVisibilityResults" || (obj(r.legacy) && r.legacy.full_text !== undefined))) {
+            const t = tweetFromResult(r);
+            if (t && !seen.has(t.id)) {
+              seen.add(t.id);
+              out.push(t);
+            }
+          }
+        }
+      }
       for (const k of Object.keys(n)) if (k !== "tweet_results") walk(n[k], depth + 1);
     })(json, 0);
     return out;
@@ -254,6 +284,74 @@
     };
   }
 
+  /**
+   * AboutAccountQuery (the "About this account" page): `about_profile` with `username_changes {count, last_changed_at_msec}`,
+   * `account_based_in`, `location_accurate`, `affiliate_username` and `source`. X leaves `username_changes` out when there are
+   * none, so a missing field is "unknown" (changesKnown false), never "0 changes". Returns null when no about_profile is found.
+   */
+  function parseAbout(json) {
+    const j = obj(json);
+    if (!j || !obj(j.data)) return null;
+    let found = null;
+    let budget = MAX_NODES;
+    (function walk(n, depth) {
+      if (found || !n || typeof n !== "object" || budget-- <= 0 || depth > 40) return;
+      if (Array.isArray(n)) {
+        for (const x of n) walk(x, depth + 1);
+        return;
+      }
+      if (obj(n.about_profile)) {
+        found = n.about_profile;
+        return;
+      }
+      for (const k of Object.keys(n)) walk(n[k], depth + 1);
+    })(j.data, 0);
+    if (!found) return null;
+    const uc = obj(found.username_changes);
+    const known = !!uc && uc.count !== undefined && uc.count !== null;
+    const acc = found.location_accurate;
+    return {
+      usernameChanges: known ? num(uc.count) : 0,
+      changesKnown: known,
+      lastChangedMs: uc ? toMs(first(uc.last_changed_at_msec, uc.last_changed_at)) : 0,
+      country: str(found.account_based_in, 60),
+      locationAccurate: typeof acc === "boolean" ? acc : acc === "true" ? true : acc === "false" ? false : null,
+      affiliate: str(found.affiliate_username, 15).replace(/^@/, ""),
+      source: str(found.source, 60),
+    };
+  }
+
+  /** membersSliceTimeline_Query / moderatorsSliceTimeline_Query: `items_results` of users with `slice_info.next_cursor`. */
+  function parseCommunitySlice(json, op) {
+    const j = obj(json);
+    if (!j || !obj(j.data)) return null;
+    const users = [];
+    const seen = new Set();
+    let sawSlice = false;
+    let budget = MAX_NODES;
+    (function walk(n, depth) {
+      if (!n || typeof n !== "object" || budget-- <= 0 || depth > 40) return;
+      if (Array.isArray(n)) {
+        for (const x of n) walk(x, depth + 1);
+        return;
+      }
+      if (Array.isArray(n.items_results) || obj(n.slice_info)) sawSlice = true;
+      if (Array.isArray(n.items_results)) {
+        for (const it of n.items_results) {
+          const u = obj(it) && obj(it.result) ? userFromResult(it.result) : null;
+          if (u && !seen.has(u.screenName.toLowerCase())) {
+            seen.add(u.screenName.toLowerCase());
+            users.push(u);
+          }
+        }
+      }
+      for (const k of Object.keys(n)) walk(n[k], depth + 1);
+    })(j.data, 0);
+    if (!sawSlice) return null;
+    const handles = users.map((u) => u.screenName);
+    return /^moderators/i.test(String(op)) ? { moderators: handles.slice(0, 20), membersSample: 0 } : { moderators: [], membersSample: Math.min(handles.length, 1000) };
+  }
+
   /** followers_you_follow: accounts the logged-in spare account follows that also follow the target. */
   function parseSmart(json) {
     const j = obj(json);
@@ -310,7 +408,15 @@
       const d = parseDetail(json, c.focalId);
       return d ? { kind, tweet: d.tweet, replies: d.replies } : es ? { kind, state: es } : { kind, drift: true };
     }
+    if (kind === "about") {
+      const a = parseAbout(json);
+      return a ? { kind, about: a } : es ? { kind, state: es } : { kind, drift: true };
+    }
     if (kind === "community") {
+      if (/^(members|moderators)SliceTimeline/i.test(String(op))) {
+        const s = parseCommunitySlice(json, op);
+        return s ? { kind, community: { id: "", name: "", members: null, createdAtMs: 0, description: "", postsSeen: 0, latestPostMs: 0, moderators: s.moderators, membersSample: s.membersSample } } : es ? { kind, state: es } : { kind, drift: true };
+      }
       const d = parseCommunity(json);
       return d ? { kind, community: d } : es ? { kind, state: es } : { kind, drift: true };
     }
@@ -397,6 +503,6 @@
     return "ok";
   }
 
-  const api = { opName, classify, errorState, parseUser, parsePosts, parseDetail, parseCommunity, parseSmart, parseResponse, parseCount, parseJoined, parseMetricsLabel, profileFromDom, detectPage, userFromResult, tweetFromResult, toMs };
+  const api = { opName, classify, errorState, parseUser, parsePosts, parseDetail, parseCommunity, parseSmart, parseAbout, parseCommunitySlice, parseResponse, parseCount, parseJoined, parseMetricsLabel, profileFromDom, detectPage, userFromResult, tweetFromResult, toMs };
   root.CTXParse = api;
 })(globalThis);

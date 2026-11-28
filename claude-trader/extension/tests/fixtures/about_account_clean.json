@@ -1,0 +1,19 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "user_result_by_screen_name": {
+   "result": {
+    "__typename": "User",
+    "rest_id": "1845500112233445566",
+    "about_profile": {
+     "account_based_in": "Canada",
+     "location_accurate": true,
+     "source": "Web",
+     "username_changes": {
+      "count": 0
+     }
+    }
+   }
+  }
+ }
+}

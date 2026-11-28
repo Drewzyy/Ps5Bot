@@ -26,7 +26,7 @@ export const TERMINAL = new Set(["not_found", "suspended", "protected", "limited
 export const ACCOUNT_PROBLEM = new Set(["limited", "locked"]);
 
 export function newCollector(job, now) {
-  return { job, startedAt: now, user: null, userAt: 0, state: "", posts: [], tweet: null, replies: [], community: null, communityAt: 0, smart: null, drift: false, http: [], source: "graphql", pieces: 0 };
+  return { job, startedAt: now, user: null, about: null, userAt: 0, state: "", posts: [], tweet: null, replies: [], community: null, communityAt: 0, smart: null, drift: false, http: [], source: "graphql", pieces: 0 };
 }
 
 /** Add one parsed piece (the output of CTXParse.parseResponse) to the collector. */
@@ -41,6 +41,8 @@ export function addPiece(c, piece, now) {
       c.userAt = now;
       if (piece.state === "protected") c.state = c.state || "protected";
     } else if (piece.state && piece.state !== "unavailable") c.state = c.state || piece.state;
+  } else if (piece.kind === "about") {
+    if (piece.about) c.about = piece.about;
   } else if (piece.kind === "posts") {
     if (Array.isArray(piece.posts)) c.posts = piece.posts;
   } else if (piece.kind === "detail") {
@@ -52,7 +54,7 @@ export function addPiece(c, piece, now) {
     if (piece.community) {
       const prev = c.community || {};
       const n = piece.community;
-      c.community = { id: n.id || prev.id || "", name: n.name || prev.name || "", members: n.members ?? prev.members ?? null, createdAtMs: n.createdAtMs || prev.createdAtMs || 0, description: n.description || prev.description || "", postsSeen: Math.max(n.postsSeen || 0, prev.postsSeen || 0), latestPostMs: Math.max(n.latestPostMs || 0, prev.latestPostMs || 0) };
+      c.community = { id: n.id || prev.id || "", name: n.name || prev.name || "", members: n.members ?? prev.members ?? null, createdAtMs: n.createdAtMs || prev.createdAtMs || 0, description: n.description || prev.description || "", postsSeen: Math.max(n.postsSeen || 0, prev.postsSeen || 0), latestPostMs: Math.max(n.latestPostMs || 0, prev.latestPostMs || 0), moderators: (n.moderators && n.moderators.length ? n.moderators : prev.moderators) || [], membersSample: Math.max(n.membersSample || 0, prev.membersSample || 0) };
       c.communityAt = now;
     }
   } else if (piece.kind === "smart") {
@@ -100,6 +102,8 @@ export function buildResult(c, now) {
   }
   if (c.community) out.community = c.community;
   if (c.smart) out.smart = c.smart;
+  // X's About data, only when the page happened to fetch it during a profile job (the bot never opens the About page itself)
+  if (c.about && c.job.kind === "profile") out.about = c.about;
   return out;
 }
 

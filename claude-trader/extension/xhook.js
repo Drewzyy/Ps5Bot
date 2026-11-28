@@ -7,12 +7,17 @@
   if (window.__ctXHook) return;
   window.__ctXHook = true;
   var OP = /\/i\/api\/graphql\/[^/?#]+\/([A-Za-z0-9_]+)/;
-  var WANT = /^(UserByScreenName|UserByRestId|UserTweets|UserTweetsAndReplies|TweetDetail|TweetResultByRestId|Communit[A-Za-z]*|[A-Za-z]*FollowersYouFollow[A-Za-z]*)$/;
+  // Matched by operation NAME (X rotates the id in the URL, not the name). The same list is in lib/xparse.js (OPS); a test keeps them in step.
+  var WANT_EXACT = {
+    AboutAccountQuery: 1, UserByScreenName: 1, UserByRestId: 1, UserTweets: 1, UserTweetsAndReplies: 1, TweetDetail: 1, TweetResultByRestId: 1,
+    CommunityQuery: 1, CommunityByRestId: 1, CommunityTweetsTimeline: 1, membersSliceTimeline_Query: 1, moderatorsSliceTimeline_Query: 1,
+  };
+  var WANT_PATTERN = /^(Communit[A-Za-z]*|[A-Za-z]*FollowersYouFollow[A-Za-z]*)$/;
   var MAX = 6 * 1024 * 1024;
 
   function opOf(url) {
     var m = OP.exec(String(url || ""));
-    return m && WANT.test(m[1]) ? m[1] : null;
+    return m && (Object.prototype.hasOwnProperty.call(WANT_EXACT, m[1]) || WANT_PATTERN.test(m[1])) ? m[1] : null;
   }
 
   function relay(op, status, text, remaining, reset) {

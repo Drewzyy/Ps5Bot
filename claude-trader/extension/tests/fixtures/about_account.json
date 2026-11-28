@@ -1,0 +1,22 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "user_result_by_screen_name": {
+   "result": {
+    "__typename": "User",
+    "rest_id": "1845500112233445566",
+    "about_profile": {
+     "account_based_in": "Iceland",
+     "location_accurate": false,
+     "learn_more_url": "https://help.x.com/about-this-account",
+     "affiliate_username": "pumpfun",
+     "source": "Web",
+     "username_changes": {
+      "count": "2",
+      "last_changed_at_msec": "1793000000000"
+     }
+    }
+   }
+  }
+ }
+}

@@ -131,4 +131,15 @@ const kols = [
 ];
 write("followers_you_follow.json", { data: { user: { result: { __typename: "User", timeline: { timeline: { instructions: [{ type: "TimelineAddEntries", entries: [...kols.map(([h, f], i) => ({ entryId: `user-${9000 + i}`, sortIndex: "1", content: { entryType: "TimelineTimelineItem", itemContent: { itemType: "TimelineUser", user_results: { result: user({ rest: String(9000 + i), handle: h, name: h.replace(/_/g, " "), created: "Wed Jan 15 08:00:00 +0000 2020", followers: f }) } } } })), cursor("bottom")] }] } } } } } });
 
+// ------------------------------------------------------------ AboutAccountQuery and the community slices (names from twscrape's api.py; the nesting is a GUESS)
+const aboutAccount = (o) => ({ data: { user_result_by_screen_name: { result: { __typename: "User", rest_id: MOONB.rest, about_profile: o } } } });
+write("about_account.json", aboutAccount({ account_based_in: "Iceland", location_accurate: false, learn_more_url: "https://help.x.com/about-this-account", affiliate_username: "pumpfun", source: "Web", username_changes: { count: "2", last_changed_at_msec: "1793000000000" } }));
+write("about_account_no_changes.json", aboutAccount({ account_based_in: "Canada", location_accurate: true, source: "Web" }));
+write("about_account_clean.json", aboutAccount({ account_based_in: "Canada", location_accurate: true, source: "Web", username_changes: { count: 0 } }));
+write("about_drift.json", { data: { user_result_by_screen_name: { result: { __typename: "User", rest_id: MOONB.rest, profile_summary: { joined: "2026" } } } } });
+const memberUser = (n) => user({ rest: "7770" + n, handle: `den_member_${n}`, name: `Den Member ${n}`, created: "Thu Jan 09 08:00:00 +0000 2025", followers: 100 * n });
+write("community_members_slice.json", { data: { communityResults: { result: { __typename: "Community", rest_id: COMM, members_slice: { items_results: [1, 2, 3, 4].map((n) => ({ id: `u${n}`, result: memberUser(n) })), slice_info: { next_cursor: "DAACCgAC" } } } } } });
+write("community_moderators_slice.json", { data: { communityResults: { result: { __typename: "Community", rest_id: COMM, moderators_slice: { items_results: [{ id: "m1", result: memberUser(1) }, { id: "m2", result: memberUser(2) }], slice_info: { next_cursor: "" } } } } } });
+write("community_timeline_items.json", { data: { communityResults: { result: { __typename: "Community", rest_id: COMM, member_count: 412, name: "MoonBear Den", community_tweets_slice: { items_results: [1, 2, 3].map((n) => ({ id: `t${n}`, result: tweet({ id: `186180000000000020${n}`, text: `Slice post ${n}`, created: "Fri Nov 27 07:5" + n + ":00 +0000 2026", views: 100 * n, author: { rest: "6660" + n, handle: `slice_poster_${n}`, name: `Slice ${n}`, created: "Thu Jan 09 08:00:00 +0000 2025", followers: 50 * n } }) })), slice_info: { next_cursor: "DAAB" } } } } } });
+
 console.log("fixtures written to", OUT.pathname);

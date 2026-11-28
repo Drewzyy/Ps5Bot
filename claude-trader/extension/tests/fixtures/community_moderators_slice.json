@@ -1,0 +1,88 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "communityResults": {
+   "result": {
+    "__typename": "Community",
+    "rest_id": "1861700000000000007",
+    "moderators_slice": {
+     "items_results": [
+      {
+       "id": "m1",
+       "result": {
+        "__typename": "User",
+        "id": "VXNlcjo3NzcwMQ==",
+        "rest_id": "77701",
+        "is_blue_verified": false,
+        "profile_image_shape": "Circle",
+        "avatar": {
+         "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+        },
+        "core": {
+         "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+         "name": "Den Member 1",
+         "screen_name": "den_member_1"
+        },
+        "privacy": {
+         "protected": false
+        },
+        "verification": {
+         "verified": false
+        },
+        "profile_bio": {
+         "description": ""
+        },
+        "legacy": {
+         "default_profile_image": false,
+         "description": "",
+         "followers_count": 100,
+         "friends_count": 100,
+         "listed_count": 3,
+         "statuses_count": 50
+        }
+       }
+      },
+      {
+       "id": "m2",
+       "result": {
+        "__typename": "User",
+        "id": "VXNlcjo3NzcwMg==",
+        "rest_id": "77702",
+        "is_blue_verified": false,
+        "profile_image_shape": "Circle",
+        "avatar": {
+         "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+        },
+        "core": {
+         "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+         "name": "Den Member 2",
+         "screen_name": "den_member_2"
+        },
+        "privacy": {
+         "protected": false
+        },
+        "verification": {
+         "verified": false
+        },
+        "profile_bio": {
+         "description": ""
+        },
+        "legacy": {
+         "default_profile_image": false,
+         "description": "",
+         "followers_count": 200,
+         "friends_count": 100,
+         "listed_count": 3,
+         "statuses_count": 50
+        }
+       }
+      }
+     ],
+     "slice_info": {
+      "next_cursor": ""
+     }
+    }
+   }
+  }
+ }
+}

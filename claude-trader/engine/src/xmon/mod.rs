@@ -745,6 +745,7 @@ impl XMon {
             smart: smart.as_ref(),
             growth,
             history: &history,
+            about: primary.about.as_ref().filter(|_| matches!(target, XTarget::Profile { .. })),
             rank,
             clones,
             age_min: (now - pts) / 60_000,
@@ -1067,6 +1068,34 @@ mod tests {
         assert!(x.submit(profile_result(j.id, "moonbearsol", "111", 8000), T0 + 6000).is_err());
         // a job id the app never handed out is refused
         assert!(x.submit(profile_result(999, "a", "1", 1), T0 + 6000).is_err());
+    }
+
+    #[test]
+    fn the_about_data_a_profile_job_captured_reaches_the_rename_block_through_the_whole_path() {
+        let (x, _) = mk();
+        ready(&x, T0);
+        x.note_coin("M1", "MOONB", "Moon Bear", "https://x.com/moonbearsol", T0);
+        x.queue_coin("M1", T0);
+        let j = run_next(&x, T0 + 1000);
+        // the extension sends JSON: the about object comes in with X's own field names mapped by the extension
+        let mut res = profile_result(j.id, "moonbearsol", "111", 8000);
+        let json = serde_json::json!({"usernameChanges": 2, "changesKnown": true, "lastChangedMs": T0 - 10 * 86_400_000, "country": "Iceland", "locationAccurate": true, "affiliate": "", "source": "Web"});
+        res.about = Some(serde_json::from_value(json).unwrap());
+        let wire = serde_json::to_string(&res).unwrap();
+        let back: XResult = serde_json::from_str(&wire).unwrap();
+        assert_eq!(back.about.as_ref().unwrap().username_changes, 2);
+        x.submit(back, T0 + 5000).unwrap();
+        let e = x.evaluate("M1", T0 + 6000);
+        assert_eq!(e.status, XStatus::Blocked, "{:?}", e);
+        assert!(e.blocks.iter().any(|b| b.contains("changed its username 2 time(s)")), "{:?}", e.blocks);
+        // the same account without About data scores normally: a missing capture never blocks
+        let (y, _) = mk();
+        ready(&y, T0);
+        y.note_coin("M1", "MOONB", "Moon Bear", "https://x.com/moonbearsol", T0);
+        y.queue_coin("M1", T0);
+        let j2 = run_next(&y, T0 + 1000);
+        y.submit(profile_result(j2.id, "moonbearsol", "111", 8000), T0 + 5000).unwrap();
+        assert_ne!(y.evaluate("M1", T0 + 6000).status, XStatus::Blocked);
     }
 
     #[test]

@@ -593,6 +593,153 @@ test("runner loop: waits 8 to 15 s between pages and does nothing while paused o
   assert.equal(n, 0, "paused: no job requests");
 });
 
+// ------------------------------------------------------------------ AboutAccountQuery and the community operations (matched by NAME)
+
+const OPS_SEEN = ["AboutAccountQuery", "UserByScreenName", "UserByRestId", "UserTweets", "UserTweetsAndReplies", "TweetDetail", "TweetResultByRestId", "CommunityQuery", "CommunityByRestId", "CommunityTweetsTimeline", "membersSliceTimeline_Query", "moderatorsSliceTimeline_Query", "UserFollowersYouFollow"];
+const OPS_IGNORED = ["HomeTimeline", "CreateTweet", "FavoriteTweet", "SearchTimeline", "Followers", "BlueVerifiedFollowers", "Retweeters", "ListLatestTweetsTimeline", "aboutAccountQuery", "membersSliceTimeline", "UserByScreenNameExtra"];
+
+/** Run the real xhook.js in a fake page and report which GraphQL operations it copied out. */
+async function hookRelays(urls) {
+  const posted = [];
+  const sandbox = { location: { origin: "https://x.com" }, console };
+  sandbox.window = sandbox;
+  sandbox.postMessage = (m) => posted.push(m);
+  sandbox.fetch = (u) => Promise.resolve({ status: 200, headers: { get: () => null }, clone: () => ({ text: () => Promise.resolve('{"data":{}}') }) });
+  vm.runInNewContext(src("xhook.js"), sandbox);
+  for (const u of urls) {
+    const r = sandbox.fetch(u);
+    await r;
+    await new Promise((res) => setImmediate(res));
+  }
+  return posted.map((m) => m.op);
+}
+
+const gql = (id, op) => `https://x.com/i/api/graphql/${id}/${op}?variables=%7B%7D`;
+
+test("the page hook copies exactly the listed operations, matched by name, whatever the query id", async () => {
+  const urls = [...OPS_SEEN.map((o, i) => gql(`Id${i}-AbC_x`, o)), ...OPS_IGNORED.map((o, i) => gql(`Zz${i}`, o))];
+  const relayed = await hookRelays(urls);
+  assert.deepEqual(relayed.sort(), [...OPS_SEEN].sort());
+  // the id rotates: the same name with another id is still copied
+  assert.deepEqual(await hookRelays([gql("TzOG2twZEfhr9KmClvVVqA", "AboutAccountQuery"), gql("brandNewId", "AboutAccountQuery")]), ["AboutAccountQuery", "AboutAccountQuery"]);
+  // a request that is not GraphQL, and a name that only contains a wanted one, are not copied
+  assert.deepEqual(await hookRelays(["https://x.com/i/api/1.1/jot/client_event.json", "https://x.com/i/api/graphql/abc/NotUserByScreenName"]), []);
+});
+
+test("the hook's list and the parser's list agree on every operation name", async () => {
+  const all = [...OPS_SEEN, ...OPS_IGNORED];
+  const relayed = new Set(await hookRelays(all.map((o, i) => gql(`i${i}`, o))));
+  for (const op of all) assert.equal(relayed.has(op), P.classify(op) !== null, op);
+});
+
+test("operations: AboutAccountQuery and the four community operations are classified by name", () => {
+  assert.equal(P.classify("AboutAccountQuery"), "about");
+  for (const op of ["CommunityQuery", "CommunityByRestId", "CommunityTweetsTimeline", "membersSliceTimeline_Query", "moderatorsSliceTimeline_Query"]) assert.equal(P.classify(op), "community", op);
+  assert.equal(P.classify("aboutaccountquery"), null, "names are exact");
+  assert.equal(P.opName("https://x.com/i/api/graphql/TzOG2twZEfhr9KmClvVVqA/AboutAccountQuery?variables=%7B%22screenName%22%3A%22moonbearsol%22%7D"), "AboutAccountQuery");
+  assert.equal(P.opName("https://x.com/i/api/graphql/abc/membersSliceTimeline_Query"), "membersSliceTimeline_Query");
+});
+
+test("AboutAccountQuery: username changes (count, last change), country, location flag and affiliate", () => {
+  const a = J(P.parseAbout(fx("about_account")));
+  assert.deepEqual(a, { usernameChanges: 2, changesKnown: true, lastChangedMs: 1793000000000, country: "Iceland", locationAccurate: false, affiliate: "pumpfun", source: "Web" });
+  const r = J(P.parseResponse("AboutAccountQuery", fx("about_account")));
+  assert.equal(r.kind, "about");
+  assert.equal(r.about.usernameChanges, 2);
+});
+
+test("AboutAccountQuery: a missing username_changes is unknown, not zero changes; a count of 0 is known", () => {
+  const none = J(P.parseAbout(fx("about_account_no_changes")));
+  assert.equal(none.changesKnown, false);
+  assert.equal(none.country, "Canada");
+  assert.equal(none.locationAccurate, true);
+  assert.equal(none.lastChangedMs, 0);
+  const zero = J(P.parseAbout(fx("about_account_clean")));
+  assert.deepEqual([zero.changesKnown, zero.usernameChanges], [true, 0]);
+});
+
+test("AboutAccountQuery: an unknown shape is drift, an error body is its state, and odd input never throws", () => {
+  assert.equal(P.parseAbout(fx("about_drift")), null);
+  assert.equal(J(P.parseResponse("AboutAccountQuery", fx("about_drift"))).drift, true);
+  assert.equal(P.parseResponse("AboutAccountQuery", fx("error_rate_limit")).state, "limited");
+  for (const bad of [null, 1, "x", [], {}, { data: null }, { data: { about_profile: 5 } }, { data: { a: { about_profile: { username_changes: { count: "many" } } } } }]) {
+    assert.doesNotThrow(() => P.parseAbout(bad));
+  }
+  assert.equal(J(P.parseAbout({ data: { a: { about_profile: { username_changes: { count: -3 } } } } })).usernameChanges, 0, "a negative count is not believed");
+});
+
+test("community slices: the members list and the moderators list (items_results with slice_info)", () => {
+  const m = J(P.parseResponse("membersSliceTimeline_Query", fx("community_members_slice")));
+  assert.equal(m.kind, "community");
+  assert.equal(m.community.membersSample, 4);
+  assert.deepEqual(m.community.moderators, []);
+  assert.equal(m.community.members, null, "the member count comes from the community object, not from a slice");
+  const mod = J(P.parseResponse("moderatorsSliceTimeline_Query", fx("community_moderators_slice")));
+  assert.deepEqual(mod.community.moderators, ["den_member_1", "den_member_2"]);
+  assert.equal(J(P.parseResponse("membersSliceTimeline_Query", fx("community_drift"))).drift, true);
+});
+
+test("community timelines that list posts as items_results (not entries) are read", () => {
+  const c = J(P.parseCommunity(fx("community_timeline_items")));
+  assert.equal(c.members, 412);
+  assert.equal(c.postsSeen, 3);
+  assert.ok(c.latestPostMs > 0);
+  const via = J(P.parseResponse("CommunityTweetsTimeline", fx("community_timeline_items")));
+  assert.equal(via.community.postsSeen, 3);
+  // the old fixture shapes still parse
+  assert.equal(J(P.parseCommunity(fx("community_tweets"))).postsSeen, 5);
+});
+
+test("the collector keeps the About data and the community slices for a profile and a community job", () => {
+  const job = { id: 1, kind: "profile", key: "moonbearsol", url: "https://x.com/moonbearsol" };
+  const c = newCollector(job, 0);
+  addPiece(c, P.parseResponse("UserByScreenName", fx("user_by_screen_name")), 10);
+  addPiece(c, P.parseResponse("AboutAccountQuery", fx("about_account")), 20);
+  addPiece(c, P.parseResponse("UserTweets", fx("user_tweets"), { ownerRestId: "1845500112233445566" }), 30);
+  const res = J(buildResult(c, 40));
+  assert.equal(res.ok, true);
+  assert.equal(res.about.usernameChanges, 2);
+  assert.equal(res.about.country, "Iceland");
+  // without the page ever fetching About, the result simply has none
+  const c2 = newCollector(job, 0);
+  addPiece(c2, P.parseResponse("UserByScreenName", fx("user_by_screen_name")), 10);
+  assert.equal("about" in buildResult(c2, 20), false);
+  // a community job merges the community object, the timeline and both slices
+  const cj = newCollector({ id: 2, kind: "community", key: "1861700000000000007", url: "https://x.com/i/communities/1861700000000000007" }, 0);
+  addPiece(cj, P.parseResponse("CommunityQuery", fx("community_by_rest_id")), 5);
+  addPiece(cj, P.parseResponse("membersSliceTimeline_Query", fx("community_members_slice")), 6);
+  addPiece(cj, P.parseResponse("moderatorsSliceTimeline_Query", fx("community_moderators_slice")), 7);
+  addPiece(cj, P.parseResponse("CommunityTweetsTimeline", fx("community_timeline_items")), 8);
+  const out = J(buildResult(cj, 9));
+  assert.equal(out.community.members, 412);
+  assert.deepEqual([out.community.membersSample, out.community.moderators.length, out.community.postsSeen], [4, 2, 3]);
+});
+
+test("runner: the About answer that the page fetched during a profile job is in the result sent to the app", async () => {
+  const j = { id: 8, kind: "profile", key: "moonbearsol", url: "https://x.com/moonbearsol" };
+  let r;
+  r = rig({
+    onNavigate: () => {
+      setImmediate(() => {
+        r.runner.onMessage({ t: "xpiece", jobId: 8, piece: P.parseResponse("UserByScreenName", fx("user_by_screen_name")) }, sender());
+        r.runner.onMessage({ t: "xpiece", jobId: 8, piece: P.parseResponse("AboutAccountQuery", fx("about_account")) }, sender());
+        r.runner.onMessage({ t: "xpiece", jobId: 8, piece: P.parseResponse("UserTweets", fx("user_tweets"), { ownerRestId: "1845500112233445566" }) }, sender());
+      });
+    },
+  });
+  await r.runner.runJob(j);
+  const res = r.log.sent.find((m) => m.t === "xresult");
+  assert.equal(res.about.usernameChanges, 2);
+  assert.equal(res.about.lastChangedMs, 1793000000000);
+  assert.equal(r.log.navigations.length, 1, "no extra page was opened to get it");
+});
+
+test("the extension never opens an About page of its own: only the four address shapes stay allowed", () => {
+  assert.equal(jobUrlOk({ kind: "profile", url: "https://x.com/moonbearsol/about" }), false);
+  assert.equal(jobUrlOk({ kind: "profile", url: "https://x.com/moonbearsol" }), true);
+});
+
+
 // ------------------------------------------------------------------ read only: no write path exists
 
 test("the X code never clicks, posts, likes or follows", () => {

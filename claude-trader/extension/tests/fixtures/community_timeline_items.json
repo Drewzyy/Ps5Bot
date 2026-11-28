@@ -1,0 +1,194 @@
+{
+ "__synthetic__": "SYNTHETIC test fixture, not a recording from x.com. All names and numbers are invented.",
+ "data": {
+  "communityResults": {
+   "result": {
+    "__typename": "Community",
+    "rest_id": "1861700000000000007",
+    "member_count": 412,
+    "name": "MoonBear Den",
+    "community_tweets_slice": {
+     "items_results": [
+      {
+       "id": "t1",
+       "result": {
+        "__typename": "Tweet",
+        "rest_id": "1861800000000000201",
+        "core": {
+         "user_results": {
+          "result": {
+           "__typename": "User",
+           "id": "VXNlcjo2NjYwMQ==",
+           "rest_id": "66601",
+           "is_blue_verified": false,
+           "profile_image_shape": "Circle",
+           "avatar": {
+            "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+           },
+           "core": {
+            "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+            "name": "Slice 1",
+            "screen_name": "slice_poster_1"
+           },
+           "privacy": {
+            "protected": false
+           },
+           "verification": {
+            "verified": false
+           },
+           "profile_bio": {
+            "description": ""
+           },
+           "legacy": {
+            "default_profile_image": false,
+            "description": "",
+            "followers_count": 50,
+            "friends_count": 100,
+            "listed_count": 3,
+            "statuses_count": 50
+           }
+          }
+         }
+        },
+        "views": {
+         "count": "100",
+         "state": "EnabledWithCount"
+        },
+        "legacy": {
+         "created_at": "Fri Nov 27 07:51:00 +0000 2026",
+         "full_text": "Slice post 1",
+         "favorite_count": 0,
+         "reply_count": 0,
+         "retweet_count": 0,
+         "quote_count": 0,
+         "bookmark_count": 0,
+         "conversation_id_str": "1861800000000000201",
+         "lang": "en"
+        }
+       }
+      },
+      {
+       "id": "t2",
+       "result": {
+        "__typename": "Tweet",
+        "rest_id": "1861800000000000202",
+        "core": {
+         "user_results": {
+          "result": {
+           "__typename": "User",
+           "id": "VXNlcjo2NjYwMg==",
+           "rest_id": "66602",
+           "is_blue_verified": false,
+           "profile_image_shape": "Circle",
+           "avatar": {
+            "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+           },
+           "core": {
+            "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+            "name": "Slice 2",
+            "screen_name": "slice_poster_2"
+           },
+           "privacy": {
+            "protected": false
+           },
+           "verification": {
+            "verified": false
+           },
+           "profile_bio": {
+            "description": ""
+           },
+           "legacy": {
+            "default_profile_image": false,
+            "description": "",
+            "followers_count": 100,
+            "friends_count": 100,
+            "listed_count": 3,
+            "statuses_count": 50
+           }
+          }
+         }
+        },
+        "views": {
+         "count": "200",
+         "state": "EnabledWithCount"
+        },
+        "legacy": {
+         "created_at": "Fri Nov 27 07:52:00 +0000 2026",
+         "full_text": "Slice post 2",
+         "favorite_count": 0,
+         "reply_count": 0,
+         "retweet_count": 0,
+         "quote_count": 0,
+         "bookmark_count": 0,
+         "conversation_id_str": "1861800000000000202",
+         "lang": "en"
+        }
+       }
+      },
+      {
+       "id": "t3",
+       "result": {
+        "__typename": "Tweet",
+        "rest_id": "1861800000000000203",
+        "core": {
+         "user_results": {
+          "result": {
+           "__typename": "User",
+           "id": "VXNlcjo2NjYwMw==",
+           "rest_id": "66603",
+           "is_blue_verified": false,
+           "profile_image_shape": "Circle",
+           "avatar": {
+            "image_url": "https://pbs.twimg.com/profile_images/0/x_normal.jpg"
+           },
+           "core": {
+            "created_at": "Thu Jan 09 08:00:00 +0000 2025",
+            "name": "Slice 3",
+            "screen_name": "slice_poster_3"
+           },
+           "privacy": {
+            "protected": false
+           },
+           "verification": {
+            "verified": false
+           },
+           "profile_bio": {
+            "description": ""
+           },
+           "legacy": {
+            "default_profile_image": false,
+            "description": "",
+            "followers_count": 150,
+            "friends_count": 100,
+            "listed_count": 3,
+            "statuses_count": 50
+           }
+          }
+         }
+        },
+        "views": {
+         "count": "300",
+         "state": "EnabledWithCount"
+        },
+        "legacy": {
+         "created_at": "Fri Nov 27 07:53:00 +0000 2026",
+         "full_text": "Slice post 3",
+         "favorite_count": 0,
+         "reply_count": 0,
+         "retweet_count": 0,
+         "quote_count": 0,
+         "bookmark_count": 0,
+         "conversation_id_str": "1861800000000000203",
+         "lang": "en"
+        }
+       }
+      }
+     ],
+     "slice_info": {
+      "next_cursor": "DAAB"
+     }
+    }
+   }
+  }
+ }
+}
